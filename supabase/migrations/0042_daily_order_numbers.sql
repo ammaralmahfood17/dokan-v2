@@ -11,6 +11,7 @@ create table if not exists public.daily_order_counters (
 );
 
 -- Secure function to atomically get + increment the counter
+drop function if exists public.next_order_number(uuid);
 create or replace function public.next_order_number(p_project_id uuid)
 returns integer
 language plpgsql
