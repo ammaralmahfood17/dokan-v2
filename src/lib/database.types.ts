@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       categories: {
@@ -199,12 +174,38 @@ export type Database = {
           },
         ]
       }
+      order_sequences: {
+        Row: {
+          day: string
+          last_n: number
+          project_id: string
+        }
+        Insert: {
+          day: string
+          last_n?: number
+          project_id: string
+        }
+        Update: {
+          day?: string
+          last_n?: number
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_sequences_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           created_at: string
           id: string
           notes: string | null
-          order_number: number
+          order_number: string
           project_id: string
           service_type: string | null
           status: Database["public"]["Enums"]["order_status"]
@@ -216,7 +217,7 @@ export type Database = {
           created_at?: string
           id?: string
           notes?: string | null
-          order_number?: number
+          order_number?: string
           project_id: string
           service_type?: string | null
           status?: Database["public"]["Enums"]["order_status"]
@@ -228,7 +229,7 @@ export type Database = {
           created_at?: string
           id?: string
           notes?: string | null
-          order_number?: number
+          order_number?: string
           project_id?: string
           service_type?: string | null
           status?: Database["public"]["Enums"]["order_status"]
@@ -375,6 +376,89 @@ export type Database = {
         }
         Relationships: []
       }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          project_id: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          project_id: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          project_id?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_requests: {
+        Row: {
+          created_at: string
+          id: string
+          is_resolved: boolean
+          project_id: string
+          table_id: string
+          type: Database["public"]["Enums"]["service_request_type"]
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_resolved?: boolean
+          project_id: string
+          table_id: string
+          type: Database["public"]["Enums"]["service_request_type"]
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_resolved?: boolean
+          project_id?: string
+          table_id?: string
+          type?: Database["public"]["Enums"]["service_request_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_requests_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_requests_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "tables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_members: {
         Row: {
           created_at: string
@@ -454,18 +538,22 @@ export type Database = {
     }
     Functions: {
       generate_basic_slug: { Args: { input: string }; Returns: string }
-      get_business_storefront_by_slug: {
-        Args: { p_slug: string }
+      get_menu_by_qr: { Args: { qr_code: string }; Returns: Json }
+      get_menu_by_table_slug: {
+        Args: { p_project_slug: string; p_table_slug: string }
         Returns: Json
       }
-      get_menu_by_qr: { Args: { qr_code: string }; Returns: Json }
       get_order_status_by_qr: {
         Args: { p_order_id: string; p_qr_code: string }
         Returns: Json
       }
-      has_branch_access: {
-        Args: { target_branch_id: string }
-        Returns: boolean
+      get_order_status_public: {
+        Args: {
+          p_order_id: string
+          p_project_slug: string
+          p_table_slug: string
+        }
+        Returns: Json
       }
       is_project_member: { Args: { p_project_id: string }; Returns: boolean }
       is_project_owner: { Args: { p_project_id: string }; Returns: boolean }
@@ -492,14 +580,13 @@ export type Database = {
         Args: { p_order_id?: string; qr_code: string }
         Returns: undefined
       }
-      staff_business_ids: { Args: never; Returns: string[] }
-      staff_role_for_business: {
-        Args: { target_business_id: string }
-        Returns: Database["public"]["Enums"]["app_role"]
-      }
       subscription_is_valid: {
         Args: { p_business_id: string }
         Returns: boolean
+      }
+      table_order_count_recent: {
+        Args: { p_project_id: string; p_seconds?: number; p_table_id: string }
+        Returns: number
       }
       unaccent: { Args: { "": string }; Returns: string }
     }
@@ -515,6 +602,7 @@ export type Database = {
         | "cancelled"
       order_type: "dinein" | "walkin" | "drivethru"
       plan_interval: "monthly" | "yearly"
+      service_request_type: "waiter" | "bill"
       subscription_status: "trialing" | "active" | "past_due" | "cancelled"
     }
     CompositeTypes: {
@@ -641,9 +729,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       app_role: ["super_admin", "owner", "manager", "staff"],
@@ -652,7 +737,9 @@ export const Constants = {
       order_status: ["pending", "preparing", "ready", "delivered", "cancelled"],
       order_type: ["dinein", "walkin", "drivethru"],
       plan_interval: ["monthly", "yearly"],
+      service_request_type: ["waiter", "bill"],
       subscription_status: ["trialing", "active", "past_due", "cancelled"],
     },
   },
 } as const
+
