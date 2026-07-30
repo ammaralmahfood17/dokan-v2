@@ -1,13 +1,6 @@
-// Dokan Service Worker v3 — Performance optimized
-// Caches:
-//   1. App shell (/, /offline.html, /manifest.json, icons)
-//   2. Next.js static JS/CSS chunks (/_next/static/*) — cache-first for instant navigation
-// Never caches API/RPC responses or realtime data — orders and menu must be fresh.
-// When offline, serves a dedicated /offline.html page instead of inline HTML.
-
+// Dokan Service Worker v4 — Push notifications + Performance optimized
 const CACHE_NAME = 'dokan-shell-v' + new Date().toISOString().slice(0, 10).replace(/-/g, '');
 
-// App shell + all Next.js static chunks for instant repeat navigation
 const SHELL_ASSETS = [
   '/',
   '/offline.html',
@@ -33,10 +26,55 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+/* ========== PUSH NOTIFICATIONS ========== */
+self.addEventListener('push', (event) => {
+  const data = event.data?.json();
+  if (!data) return;
+
+  const { title, body, url, tag } = data;
+
+  const options = {
+    body: body || '',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
+    vibrate: [200, 100, 200],
+    tag: tag || 'dokan-order',
+    renotify: true,
+    data: { url: url || '/' },
+    silent: false,
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(title || 'دكان', options)
+  );
+});
+
+/* Open the app when user clicks the notification */
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const urlToOpen = event.notification.data?.url || '/dashboard/kitchen';
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clients) {
+      // Focus existing tab if open
+      for (var i = 0; i < clients.length; i++) {
+        var client = clients[i];
+        if (client.url.indexOf(self.location.host) !== -1 && 'focus' in client) {
+          client.focus();
+          client.navigate(urlToOpen);
+          return;
+        }
+      }
+      // Otherwise open new tab
+      return self.clients.openWindow(urlToOpen);
+    })
+  );
+});
+
+/* ========== FETCH CACHING ========== */
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Never intercept API calls, Supabase requests, or non-GET requests.
   const isDynamic =
     event.request.method !== 'GET' ||
     url.pathname.startsWith('/api/') ||
@@ -44,7 +82,6 @@ self.addEventListener('fetch', (event) => {
 
   if (isDynamic) return;
 
-  // Cache-first for Next.js static assets (instant navigation on repeat visits)
   if (url.pathname.startsWith('/_next/static/')) {
     event.respondWith(
       caches.match(event.request).then((cached) => {
@@ -61,7 +98,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Network-first with cache fallback for everything else (pages, fonts, images)
   event.respondWith(
     caches.match(event.request).then((cached) => {
       const network = fetch(event.request)
@@ -73,7 +109,6 @@ self.addEventListener('fetch', (event) => {
           return response;
         })
         .catch(() => {
-          // Offline fallback
           if (cached) return cached;
           return caches.match('/offline.html').then((offline) => {
             if (offline) return offline;

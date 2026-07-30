@@ -6,5 +6,5 @@ export default async function SettingsPage() {
   const ctx = await getCurrentProject();
   if (!ctx) redirect('/onboarding');
 
-  return <SettingsClient project={ctx.project} />;
+  return <SettingsClient project={ctx.project} projectId={ctx.project.id} />;
 }

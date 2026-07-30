@@ -4,6 +4,7 @@ import { FormEvent, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { CURRENCIES, DEFAULT_PRIMARY_COLOR, type Project } from '@/lib/types';
 import { Button } from '@/components/ui/button';
+import { PushNotificationManager } from '@/components/push-notification-manager';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 
@@ -25,7 +26,13 @@ function validateSettings(name: string, color: string): FieldErrors {
   return errors;
 }
 
-export function SettingsClient({ project }: { project: Project }) {
+export function SettingsClient({
+  project,
+  projectId,
+}: {
+  project: Project;
+  projectId: string;
+}) {
   const router = useRouter();
   const [name, setName] = useState(project.name);
   const [currency, setCurrency] = useState(project.currency);
@@ -67,8 +74,13 @@ export function SettingsClient({ project }: { project: Project }) {
       <div className="page-header">
         <div>
           <h1>الإعدادات</h1>
-          <p>اسم المتجر، العملة، الهوية، والحالة</p>
+          <p>اسم المتجر، العملة، الهوية، والإشعارات</p>
         </div>
+      </div>
+
+      {/* Push Notification Settings */}
+      <div className="mb-4 max-w-lg">
+        <PushNotificationManager projectId={projectId} />
       </div>
 
       <form onSubmit={onSubmit} className="card card-body max-w-lg">

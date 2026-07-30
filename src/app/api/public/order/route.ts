@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createSecureOrder } from '@/lib/order-pricing';
 import { rateLimit, createRateLimitResponse } from '@/lib/rate-limit';
+import { sendPushToProject } from '@/lib/push';
+import { formatMoney } from '@/lib/utils';
 
 export async function POST(request: NextRequest) {
   try {
@@ -82,6 +84,17 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('[Public Order] Order created', { orderId: result.order.id, projectId: project.id });
+
+    // Non-blocking push notification to all staff
+    sendPushToProject(project.id, {
+      title: '🔔 طلب جديد',
+      body: `طلب #${result.order.orderNumber} من القائمة — ${formatMoney(
+        result.order.totalAmount,
+        'BHD'
+      )}`,
+      url: '/dashboard/kitchen',
+      tag: `order-${result.order.id}`,
+    }).catch(() => {});
 
     return NextResponse.json({
       order: {

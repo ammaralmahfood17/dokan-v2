@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createSecureOrder } from '@/lib/order-pricing';
 import { rateLimit, createRateLimitResponse } from '@/lib/rate-limit';
+import { sendPushToProject } from '@/lib/push';
+import { formatMoney } from '@/lib/utils';
 import type { OrderType, PublicOrderItemInput } from '@/lib/types';
 
 /**
@@ -87,6 +89,14 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('[POS] Order created', { orderId, projectId: membership.project_id, type });
+
+    // Non-blocking push notification to all staff
+    sendPushToProject(membership.project_id, {
+      title: '🔔 طلب جديد',
+      body: `طلب #${orderNumber} — ${formatMoney(totalAmount, 'BHD')}`,
+      url: '/dashboard/kitchen',
+      tag: `order-${orderId}`,
+    }).catch(() => {});
 
     return NextResponse.json({
       order: {
