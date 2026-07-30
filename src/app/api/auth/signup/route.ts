@@ -20,17 +20,9 @@ import { rateLimit, createRateLimitResponse } from '@/lib/rate-limit';
  */
 
 export async function POST(request: Request) {
-  console.log('[API /auth/signup] === SIGNUP REQUEST RECEIVED ===');
-
   try {
     const body = await request.json();
     const { email, password, fullName } = body;
-
-    console.log('[API /auth/signup] Input:', { 
-      email, 
-      fullName: fullName?.substring(0, 30), 
-      hasPassword: !!password 
-    });
 
     if (!email || !password) {
       return NextResponse.json({ 
@@ -59,12 +51,8 @@ export async function POST(request: Request) {
       },
     });
 
-    console.log('[API /auth/signup] createUser result:');
-    console.log('  user id:', createData?.user?.id);
-    console.log('  error:', createError ? JSON.stringify(createError, Object.getOwnPropertyNames(createError), 2) : null);
-
     if (createError) {
-      console.error('[API /auth/signup] Supabase createUser ERROR:', createError);
+      console.error('[API /auth/signup] createUser error:', createError.message);
       return NextResponse.json({
         error: createError.message || 'فشل إنشاء الحساب',
         code: createError.code,
@@ -80,8 +68,6 @@ export async function POST(request: Request) {
       }, { status: 500 });
     }
 
-    console.log('[API /auth/signup] SUCCESS - auth user created:', userId);
-
     return NextResponse.json({
       success: true,
       user: {
@@ -91,7 +77,7 @@ export async function POST(request: Request) {
       message: 'تم إنشاء الحساب بنجاح',
     });
   } catch (err: any) {
-    console.error('[API /auth/signup] UNEXPECTED EXCEPTION:', err);
+    console.error('[API /auth/signup] unexpected error:', err?.message);
     return NextResponse.json({
       error: 'خطأ داخلي في الخادم',
       details: err?.message,

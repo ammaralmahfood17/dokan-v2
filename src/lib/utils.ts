@@ -79,7 +79,8 @@ export function isValidMoney(value: unknown): value is number {
 /** Format money for display with currency code */
 export function formatMoney(value: number, currency = 'BHD'): string {
   const n = Number.isFinite(value) ? money(value) : 0;
-  return `${n.toFixed(3)} ${currency}`;
+  const decimals = ['BHD', 'KWD'].includes(currency) ? 3 : 2;
+  return `${n.toFixed(decimals)} ${currency}`;
 }
 
 /** Build public menu URL path */

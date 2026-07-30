@@ -1,6 +1,0 @@
--- ============================================================================
--- Migration 0027 — Add max_items guard (50) to place_order RPC
--- ============================================================================
--- No limit existed before — a malicious client could submit an order with
--- 10,000+ items, overwhelming the DB. Now: raise TOO_MANY_ITEMS if > 50.
--- ============================================================================
