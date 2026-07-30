@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AlertTriangle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { formatMoney } from '@/lib/utils';
 import {
@@ -47,16 +48,21 @@ export function OrdersClient({
   const [orders, setOrders] = useState(initialOrders);
   const [filter, setFilter] = useState<OrderStatus | 'all'>('all');
   const [updating, setUpdating] = useState<string | null>(null);
+  const [confirmCancel, setConfirmCancel] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const supabase = createClient();
+    // Only fetch today's real orders (service_type = null means real order)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const { data } = await supabase
       .from('orders')
       .select('*, tables(number, slug), order_items(*)')
       .eq('project_id', projectId)
-      .is('service_type', null)
+      .is('service_type', null) // null = real order (not waiter/bill)
+      .gte('created_at', today.toISOString())
       .order('created_at', { ascending: false })
-      .limit(100);
+      .limit(50);
     if (data) setOrders(data as unknown as OrderRow[]);
   }, [projectId]);
 
@@ -159,7 +165,7 @@ export function OrdersClient({
                       {order.tables
                         ? `طاولة ${order.tables.number}`
                         : 'بدون طاولة'}{' '}
-                      · {new Date(order.created_at).toLocaleString('ar-BH')}
+                      · {new Date(order.created_at).toLocaleString('ar-BH')} {/* Bahrain locale */}
                     </p>
                   </div>
                   <p className="text-sm font-bold">
@@ -209,7 +215,7 @@ export function OrdersClient({
                         size="sm"
                         variant="secondary"
                         disabled={updating === order.id}
-                        onClick={() => setStatus(order.id, 'cancelled')}
+                        onClick={() => setConfirmCancel(order.id)}
                       >
                         إلغاء
                       </Button>
@@ -231,6 +237,26 @@ export function OrdersClient({
         </div>
       )}
       </PullToRefresh>
+
+      {confirmCancel && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setConfirmCancel(null)}>
+          <div className="w-full max-w-xs rounded-[10px] bg-[var(--color-surface)] p-5 text-center shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-3 mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[var(--color-warn-tint)]">
+              <AlertTriangle className="h-5 w-5 text-[var(--color-warn)]" />
+            </div>
+            <p className="mb-1 text-sm font-bold">تأكيد الإلغاء</p>
+            <p className="mb-5 text-xs text-[var(--color-text-secondary)]">هل أنت متأكد من إلغاء هذا الطلب؟</p>
+            <div className="flex gap-2">
+              <Button variant="danger" block disabled={updating === confirmCancel} onClick={() => { setStatus(confirmCancel, 'cancelled'); setConfirmCancel(null); }}>
+                {updating === confirmCancel ? 'جاري…' : 'نعم، إلغاء'}
+              </Button>
+              <Button variant="secondary" onClick={() => setConfirmCancel(null)}>
+                رجوع
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

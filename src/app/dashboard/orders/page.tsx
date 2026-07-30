@@ -9,13 +9,19 @@ export default async function OrdersPage() {
   if (!ctx) redirect('/onboarding');
 
   const supabase = await createClient();
+
+  // Filter: only real orders (not waiter/bill requests), today only
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
   const { data: orders } = await supabase
     .from('orders')
     .select('*, tables(number, slug), order_items(*)')
     .eq('project_id', ctx.project.id)
-    .is('service_type', null)
+    .is('service_type', null) // null = real order (not waiter/bill)
+    .gte('created_at', today.toISOString())
     .order('created_at', { ascending: false })
-    .limit(100);
+    .limit(50);
 
   return (
     <OrdersClient
