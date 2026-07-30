@@ -32,9 +32,7 @@ export default function OnboardingPage() {
     let cancelled = false;
     (async () => {
       const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      const user = session?.user ?? null;
-
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         router.replace('/login?next=/onboarding');
         return;
@@ -251,6 +249,7 @@ export default function OnboardingPage() {
                     className="input"
                     required
                     dir="ltr"
+                    maxLength={60}
                     value={effectiveSlug}
                     onChange={(e) => {
                       setSlugTouched(true);
