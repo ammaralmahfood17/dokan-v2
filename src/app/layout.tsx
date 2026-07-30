@@ -47,8 +47,8 @@ export default function RootLayout({
     <html lang="ar" dir="rtl" className={cairo.variable}>
       <head>
         {/* Preconnect to Supabase for faster API calls */}
-        <link rel="preconnect" href="https://idjolioomfbtjkmpfnuf.supabase.co" />
-        <link rel="dns-prefetch" href="https://idjolioomfbtjkmpfnuf.supabase.co" />
+        <link rel="preconnect" href={process.env.NEXT_PUBLIC_SUPABASE_URL!} />
+        <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_SUPABASE_URL!} />
         {/* Page transition animation */}
         <style>{`@keyframes page-enter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } } .page-enter { animation: page-enter 0.25s ease-out both; }`}</style>
       </head>
