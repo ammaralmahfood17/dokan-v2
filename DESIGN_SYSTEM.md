@@ -8,106 +8,71 @@ Gulf hospitality multi-tenant restaurant SaaS — Arabic RTL-first, dark mode pr
 ### Light Mode
 | Role | Hex | CSS Variable |
 |------|-----|-------------|
-| Primary | `#1B5E20` | `--color-primary` |
-| Primary Hover | `#2E7D32` | `--color-primary-hover` |
-| Primary Tint | `#E8F5E9` | `--color-primary-tint` |
-| On Primary | `#FFFFFF` | `--color-on-primary` |
-| Secondary | `#2D3436` | `--color-secondary` |
-| Accent | `#D4AF37` | `--color-accent` |
-| Accent Hover | `#C9A032` | `--color-accent-hover` |
-| Background | `#F5F0E8` | `--color-bg` |
-| Foreground | `#1C1A17` | `--color-fg` |
-| Card | `#FFFFFF` | `--color-card` |
-| Card Border | `#E8E0D0` | `--color-card-border` |
-| Muted | `#EDEEF0` | `--color-muted` |
-| Muted Foreground | `#7A7268` | `--color-muted-fg` |
-| Border | `#E0DCD4` | `--color-border` |
-| Ring | `#1B5E20` | `--color-ring` |
-| Destructive | `#DC2626` | `--color-destructive` |
-| Success | `#16A34A` | `--color-success` |
-| Warning | `#D97706` | `--color-warning` |
-| Info | `#2563EB` | `--color-info` |
-| Sand | `#F5F0E8` | `--color-sand` |
+| Primary | `#4338CA` | `--color-primary` |
+| Primary Hover | `#3730A3` | `--color-primary-hover` |
+| Primary Tint | `#EEF2FF` | `--color-primary-tint` |
+| Background | `#F8FAFC` | `--color-bg` |
+| Surface (Cards) | `#FFFFFF` | `--color-surface` |
+| Border | `#E2E8F0` | `--color-border` |
+| Text Primary | `#0F172A` | `--color-text` |
+| Text Secondary | `#64748B` | `--color-text-secondary` |
+| Text Muted | `#94A3B8` | `--color-text-muted` |
+| Success | `#0D9488` | `--color-success` |
+| Warning | `#D97706` | `--color-warn` |
+| Danger | `#DC2626` | `--color-danger` |
+| Accent (Gold) | `#D4AF37` | `--color-accent` |
 
-### Dark Mode
+### Dark Mode (`.dark` class)
 | Role | Hex | CSS Variable |
 |------|-----|-------------|
-| Primary | `#4CAF50` | `--color-primary` |
-| Primary Hover | `#66BB6A` | `--color-primary-hover` |
-| Primary Tint | `#1B3D1E` | `--color-primary-tint` |
-| Accent | `#D4AF37` | `--color-accent` |
-| Accent Hover | `#E0C04A` | `--color-accent-hover` |
-| Background Deep | `#0A0A0F` | `--color-bg-deep` |
-| Background | `#0F0F15` | `--color-bg` |
-| Card | `#1A1A24` | `--color-card` |
-| Card Border | `#2A2A38` | `--color-card-border` |
-| Card Hover | `#222230` | `--color-card-hover` |
-| Foreground | `#EDEDEF` | `--color-fg` |
-| Muted | `#8A8F98` | `--color-muted` |
-| Muted Foreground | `#6B7280` | `--color-muted-fg` |
-| Border | `#2A2A3A` | `--color-border` |
-| Ring | `#4CAF50` | `--color-ring` |
+| Primary | `#6366F1` | `--color-primary` |
+| Primary Hover | `#818CF8` | `--color-primary-hover` |
+| Primary Tint | `#1E1B4B` | `--color-primary-tint` |
+| Background | `#0F0F17` | `--color-bg` |
+| Surface | `#1A1A26` | `--color-surface` |
+| Border | `#2E2E3F` | `--color-border` |
+| Text Primary | `#F1F5F9` | `--color-text` |
+| Text Secondary | `#94A3B8` | `--color-text-secondary` |
+| Text Muted | `#64748B` | `--color-text-muted` |
+| Danger Hover | `#EF4444` | `--color-danger-hover` |
 
 ## Typography
-| Property | Value | CSS Variable |
-|----------|-------|-------------|
-| Font heading | Tajawal (Arabic), Inter (English) | `--font-heading` |
-| Font body | Noto Sans Arabic (Arabic), Inter (English) | `--font-body` |
-| Font mono | JetBrains Mono | `--font-mono` |
-| Base size | 16px | |
-| Body scale | 0.875rem (14px) | |
-| Heading 1 | 1.75rem (28px) bold | |
-| Heading 2 | 1.375rem (22px) bold | |
-| Heading 3 | 1.125rem (18px) bold | |
-| Small | 0.75rem (12px) | |
-| Line-height | 1.5 body / 1.3 headings | |
+| Usage | Font | Weight | Variable |
+|-------|------|--------|----------|
+| UI / Navigation | **Cairo** | 400 / 600 / 700 | `--font-cairo` |
+| Headings | **Tajawal** | 500 / 700 / 800 | `--font-tajawal` |
+| Body | **Noto Sans Arabic** | 400 / 500 / 600 | `--font-noto` |
 
-## Spacing
+## Spacing (rem)
 | Token | Value |
 |-------|-------|
-| `--space-1` | 4px |
-| `--space-2` | 8px |
-| `--space-3` | 12px |
-| `--space-4` | 16px |
-| `--space-5` | 20px |
-| `--space-6` | 24px |
-| `--space-8` | 32px |
-| `--space-10` | 40px |
-| `--space-12` | 48px |
-| `--space-16` | 64px |
+| `--space-1` | 0.25rem (4px) |
+| `--space-2` | 0.5rem (8px) |
+| `--space-3` | 0.75rem (12px) |
+| `--space-4` | 1rem (16px) |
+| `--space-6` | 1.5rem (24px) |
+| `--space-8` | 2rem (32px) |
 
 ## Border Radius
 | Token | Value |
 |-------|-------|
-| `--radius-sm` | 4px |
+| `--radius-sm` | 6px |
 | `--radius-md` | 8px |
-| `--radius-lg` | 12px |
-| `--radius-xl` | 16px |
-| `--radius-full` | 9999px |
+| `--radius-lg` | 10px |
+| `--radius-xl` | 14px |
 
-## Shadows (Dark Mode)
-| Token | Value |
-|-------|-------|
-| `--shadow-sm` | `0 1px 2px rgba(0,0,0,0.3)` |
-| `--shadow-md` | `0 4px 12px rgba(0,0,0,0.4)` |
-| `--shadow-lg` | `0 8px 24px rgba(0,0,0,0.5)` |
-| `--shadow-xl` | `0 16px 40px rgba(0,0,0,0.6)` |
-| `--shadow-accent` | `0 0 20px rgba(212,175,55,0.15)` |
+## Shadows
+| Token | Light | Dark |
+|-------|-------|------|
+| `--shadow-sm` | `0 1px 2px rgba(0,0,0,0.05)` | `0 1px 2px rgba(0,0,0,0.3)` |
+| `--shadow-md` | `0 4px 12px rgba(0,0,0,0.08)` | `0 4px 12px rgba(0,0,0,0.4)` |
+| `--shadow-lg` | `0 8px 30px rgba(0,0,0,0.12)` | `0 8px 30px rgba(0,0,0,0.5)` |
+| `--shadow-xl` | `0 20px 60px rgba(0,0,0,0.15)` | `0 20px 60px rgba(0,0,0,0.6)` |
 
-## Effects
-- Smooth transitions: 200ms cubic-bezier(0.16,1,0.3,1)
-- Card hover: translateY(-2px) + shadow increase
-- Button hover: brightness(1.1) + subtle scale(1.02)
-- Focus ring: 3px solid var(--color-ring) with 2px offset
-- Reduced motion: respect prefers-reduced-motion
-
-## UI Pattern Rules
-- RTL-first: dir="rtl" on html, logical CSS properties
-- Cards: rounded-xl (16px), background var(--color-card), border var(--color-card-border)
-- Buttons: rounded-lg (12px), padding 10px 20px, font-weight 600
-- Inputs: rounded-lg (12px), padding 10px 14px, border var(--color-border)
-- Page max-width: 1400px, centered, padding 24px on desktop / 16px mobile
-- Cursor pointer on all clickables
-- No emoji as icons → use Lucide/Heroicons SVG
-- Hover states: 150-300ms transition
-- Button active: scale(0.97)
+## Design Principles
+1. **RTL-first** — `dir="rtl"`, logical CSS properties, mirror all margins/paddings
+2. **Dark mode default** — Gulf user base prefers dark UIs
+3. **Indigo primary** — Modern SaaS feel, pairs with Gold accents
+4. **Smooth transitions** — All interactive states have `0.18–0.2s ease` transitions
+5. **Generous whitespace** — `16px` minimum gap, `24px` section spacing
+6. **Card-based layout** — Elevated cards with consistent `--radius-xl` and `--shadow-md`

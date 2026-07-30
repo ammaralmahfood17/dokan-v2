@@ -66,10 +66,15 @@ function preloadChime() {
         _chimeQueue = [];
         q.forEach((fn) => fn());
       })
-      .catch(() => { _loadingChime = false; });
+      .catch(() => { _loadingChime = false; flushChimeQueue(); });
   };
-  xhr.onerror = () => { _loadingChime = false; };
+  xhr.onerror = () => { _loadingChime = false; flushChimeQueue(); };
   xhr.send();
+}
+
+/** Drain the chime queue silently (on error or after any flush) */
+function flushChimeQueue() {
+  _chimeQueue = [];
 }
 
 /** Play a rich restaurant-style chime (ding-ding-ding) using the .wav or fallback oscillators */
@@ -230,7 +235,17 @@ export function KitchenClient({
     } else {
       clearFlash();
     }
+    return () => clearFlash(); // cleanup on unmount
   }, [newOrderCount]);
+
+  // Reset originalTitle on mount to stay in sync with document.title
+  useEffect(() => {
+    originalTitle = document.title;
+    return () => {
+      clearFlash();
+      originalTitle = ''; // reset for next mount
+    };
+  }, []);
 
   // Notification helper
   const notifyNewOrder = useCallback((orderNum: number) => {

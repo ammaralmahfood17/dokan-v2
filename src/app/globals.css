@@ -74,7 +74,8 @@
   --color-warn: #FBBF24;
   --color-warn-tint: #451A03;
   --color-danger: #F87171;
-  --color-danger-tint: #450A0A;
+  --color-danger-hover: #EF4444;
+  --color-danger-tint: rgba(248, 113, 113, 0.1);
 
   --color-accent: #D4AF37;
   --color-accent-hover: #E0C04A;
