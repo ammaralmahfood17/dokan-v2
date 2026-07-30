@@ -1,7 +1,7 @@
 'use client';
 
 import { FormEvent, useState, useCallback } from 'react';
-import { Plus, Copy, ExternalLink, Printer } from 'lucide-react';
+import { Plus, Copy, ExternalLink, Printer, Trash2 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { createClient } from '@/lib/supabase/client';
 import {
@@ -38,6 +38,7 @@ export function TablesClient({
     label: string;
   } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<Table | null>(null);
 
   const refresh = useCallback(async () => { router.refresh(); }, [router]);
 
@@ -100,8 +101,10 @@ export function TablesClient({
 
   async function printAllQrs() {
     const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-
+    if (!printWindow) {
+      toast.error('الرجاء السماح للنوافذ المنبثقة (popups)');
+      return;
+    }
     const qrPromises = tables.map(async (t) => {
       const path = menuPath(projectSlug, t.slug);
       const url = `${siteUrl}${path}`;
@@ -154,6 +157,17 @@ export function TablesClient({
       </html>
     `);
     printWindow.document.close();
+  }
+
+  async function deleteTable(table: Table) {
+    setLoading(true);
+    const supabase = createClient();
+    const { error } = await supabase.from('tables').delete().eq('id', table.id);
+    setLoading(false);
+    setConfirmDelete(null);
+    if (error) { toast.error('فشل حذف الطاولة'); return; }
+    setTables((prev) => prev.filter((t) => t.id !== table.id));
+    toast.success('تم حذف الطاولة');
   }
 
   return (
@@ -227,6 +241,14 @@ export function TablesClient({
                     >
                       <ExternalLink className="h-3.5 w-3.5" />
                     </a>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setConfirmDelete(t)}
+                      aria-label="حذف الطاولة"
+                    >
+                      <Trash2 className="h-3.5 w-3.5 text-[var(--color-danger)]" />
+                    </Button>
                   </div>
                 </div>
               );
@@ -246,6 +268,7 @@ export function TablesClient({
                 className="input"
                 type="number"
                 min={1}
+                max={999}
                 required
                 dir="ltr"
                 value={tableNumber}
@@ -253,7 +276,7 @@ export function TablesClient({
                   const value = e.target.value;
                   setTableNumber(value);
                   const number = Number(value);
-                  if (Number.isFinite(number) && number > 0) {
+                  if (Number.isFinite(number) && number > 0 && number <= 999) {
                     setTableSlug(tableSlugFromNumber(number));
                   }
                 }}
@@ -309,6 +332,28 @@ export function TablesClient({
               >
                 تحميل
               </a>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {confirmDelete && (
+        <Modal title="حذف الطاولة" onClose={() => setConfirmDelete(null)}>
+          <div className="text-center">
+            <div className="mb-3 mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-danger-tint)]">
+              <Trash2 className="h-6 w-6 text-[var(--color-danger)]" />
+            </div>
+            <p className="mb-1 text-sm font-bold">طاولة {confirmDelete.number}</p>
+            <p className="mb-5 text-xs text-[var(--color-text-secondary)]">
+              هل أنت متأكد من حذف هذه الطاولة؟ الطلبات المرتبطة ستبقى.
+            </p>
+            <div className="flex gap-2">
+              <Button variant="danger" block disabled={loading} onClick={() => deleteTable(confirmDelete)}>
+                {loading ? 'جاري…' : 'نعم، احذف'}
+              </Button>
+              <Button variant="secondary" onClick={() => setConfirmDelete(null)}>
+                إلغاء
+              </Button>
             </div>
           </div>
         </Modal>
