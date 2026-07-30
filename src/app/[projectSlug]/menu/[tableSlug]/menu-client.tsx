@@ -38,6 +38,7 @@ export function MenuClient({
   const [picker, setPicker] = useState<ProductWithAddons | null>(null);
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
   const [itemNotes, setItemNotes] = useState('');
+  const [orderNotes, setOrderNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [orderDone, setOrderDone] = useState<{
     id: string;
@@ -183,6 +184,7 @@ export function MenuClient({
         body: JSON.stringify({
           projectSlug: project.slug,
           tableSlug: table.slug,
+          notes: orderNotes.trim() || undefined,
           items: cart.map((l) => ({
             productId: l.productId,
             quantity: l.quantity,
@@ -295,6 +297,61 @@ export function MenuClient({
   // ======== CART BAR BADGE ========
   const cartBadge = itemCount > 0;
 
+  /** Render a single product card */
+  function renderProduct(p: ProductWithAddons) {
+    return (
+      <button
+        key={p.id}
+        type="button"
+        onClick={() => quickAdd(p)}
+        className="card flex w-full items-start gap-3 p-3 text-start transition-transform duration-150 hover:border-slate-300 active:scale-[0.98]"
+      >
+        {p.image_url ? (
+          <Image
+            src={p.image_url}
+            alt={p.name}
+            width={64}
+            height={64}
+            placeholder="blur"
+            blurDataURL={BLUR_PLACEHOLDER}
+            className="h-16 w-16 shrink-0 rounded-[8px] object-cover"
+          />
+        ) : (
+          <div
+            className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[8px] text-lg font-bold text-white/90"
+            style={{ background: `${primary}22`, color: primary }}
+          >
+            {p.name.slice(0, 1)}
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold">{p.name}</p>
+          {p.description && (
+            <p className="mt-0.5 line-clamp-2 text-xs text-[var(--color-text-secondary)]">
+              {p.description}
+            </p>
+          )}
+          <p className="mt-1 text-sm font-bold" style={{ color: primary }}>
+            {formatMoney(Number(p.price), currency)}
+          </p>
+        </div>
+        <span
+          className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] text-white transition-transform duration-200 ${
+            lastAddedKey === p.id ? 'scale-125' : 'scale-100'
+          }`}
+          style={{ background: primary }}
+        >
+          <Plus className="h-5 w-5" />
+          {lastAddedKey === p.id && (
+            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-green-500 text-[9px] text-white">
+              <Check className="h-3 w-3" />
+            </span>
+          )}
+        </span>
+      </button>
+    );
+  }
+
   // ======== MAIN MENU ========
   return (
     <div className="min-h-dvh bg-[var(--color-bg)] pb-24 page-enter">
@@ -378,69 +435,36 @@ export function MenuClient({
         </div>
       )}
 
-      {/* PRODUCTS */}
-      <main ref={productsRef} className="mx-auto max-w-lg space-y-3 px-3 py-4">
+      {/* PRODUCTS — grouped by category */}
+      <main ref={productsRef} className="mx-auto max-w-lg px-3 py-4">
         {!filtered.length ? (
           <div className="card empty">
             <h3>القائمة فارغة</h3>
             <p className="text-sm">لا توجد منتجات متاحة حالياً.</p>
           </div>
         ) : (
-          filtered.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => quickAdd(p)}
-              className="card flex w-full items-start gap-3 p-3 text-start transition-transform duration-150 hover:border-slate-300 active:scale-[0.98]"
-            >
-              {p.image_url ? (
-                <Image
-                  src={p.image_url}
-                  alt={p.name}
-                  width={64}
-                  height={64}
-                  placeholder="blur"
-                  blurDataURL={BLUR_PLACEHOLDER}
-                  className="h-16 w-16 shrink-0 rounded-[8px] object-cover"
-                />
-              ) : (
-                <div
-                  className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[8px] text-lg font-bold text-white/90"
-                  style={{ background: `${primary}22`, color: primary }}
-                >
-                  {p.name.slice(0, 1)}
-                </div>
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold">{p.name}</p>
-                {p.description && (
-                  <p className="mt-0.5 line-clamp-2 text-xs text-[var(--color-text-secondary)]">
-                    {p.description}
-                  </p>
-                )}
-                <p
-                  className="mt-1 text-sm font-bold"
-                  style={{ color: primary }}
-                >
-                  {formatMoney(Number(p.price), currency)}
-                </p>
+          <>
+            {activeCategory === 'all' ? (
+              /* All categories: group products under each category */
+              categories.filter((c) => products.some((p) => p.category_id === c.id)).map((cat) => {
+                const catProducts = filtered.filter((p) => p.category_id === cat.id);
+                if (!catProducts.length) return null;
+                return (
+                  <section key={cat.id} className="mb-6">
+                    <h2 className="mb-3 text-sm font-bold text-[var(--color-text-secondary)]">{cat.name}</h2>
+                    <div className="space-y-3">
+                      {catProducts.map((p) => renderProduct(p))}
+                    </div>
+                  </section>
+                );
+              })
+            ) : (
+              /* Single category: flat list */
+              <div className="space-y-3">
+                {filtered.map((p) => renderProduct(p))}
               </div>
-              <span
-                className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] text-white transition-transform duration-200 ${
-                  lastAddedKey === p.id ? 'scale-125' : 'scale-100'
-                }`}
-                style={{ background: primary }}
-              >
-                <Plus className="h-5 w-5" />
-                {/* Quick flash badge */}
-                {lastAddedKey === p.id && (
-                  <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-green-500 text-[9px] text-white">
-                    <Check className="h-3 w-3" />
-                  </span>
-                )}
-              </span>
-            </button>
-          ))
+            )}
+          </>
         )}
       </main>
 
@@ -522,9 +546,13 @@ export function MenuClient({
             <input
               className="input"
               value={itemNotes}
-              onChange={(e) => setItemNotes(e.target.value)}
+              onChange={(e) => {
+                if (e.target.value.length <= 200) setItemNotes(e.target.value);
+              }}
               placeholder="مثال: بدون سكر"
+              maxLength={200}
             />
+            <p className="hint">{itemNotes.length}/200</p>
           </div>
           <Button block onClick={confirmAdd} style={{ background: primary }}>
             أضف إلى السلة
@@ -579,6 +607,17 @@ export function MenuClient({
               </li>
             ))}
           </ul>
+          <div className="mb-4">
+            <label className="label">ملاحظة للطلب</label>
+            <input
+              className="input"
+              value={orderNotes}
+              onChange={(e) => { if (e.target.value.length <= 500) setOrderNotes(e.target.value); }}
+              placeholder="مثال: تحساسية من المكسرات"
+              maxLength={500}
+            />
+            <p className="hint">{orderNotes.length}/500</p>
+          </div>
           <div className="mb-4 flex items-center justify-between">
             <span className="font-semibold">الإجمالي</span>
             <span className="text-base font-bold">
@@ -658,9 +697,6 @@ function Sheet({
       <div
         ref={sheetRef}
         className="max-h-dvh w-full max-w-lg overflow-y-auto rounded-t-[12px] bg-[var(--color-surface)] pb-safe-bottom shadow-xl transition-transform duration-300 sm:max-h-[85vh] sm:rounded-[12px] animate-slide-up"
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
       >
         {/* Drag handle + header */}
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3">

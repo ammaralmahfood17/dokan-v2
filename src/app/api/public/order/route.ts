@@ -4,13 +4,14 @@ import { createSecureOrder } from '@/lib/order-pricing';
 import { rateLimit, createRateLimitResponse } from '@/lib/rate-limit';
 import { sendPushToProject } from '@/lib/push';
 import { formatMoney } from '@/lib/utils';
+import type { PublicOrderItemInput } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as {
       projectSlug?: string;
       tableSlug?: string;
-      items?: any[];
+      items?: PublicOrderItemInput[];
       notes?: string;
     };
 
