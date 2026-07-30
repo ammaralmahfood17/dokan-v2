@@ -19,178 +19,184 @@ type OrderRow = Order & {
 const OVERDUE_MIN_PENDING = 15;
 const OVERDUE_MIN_PREPARING = 30;
 
-/* ========== Audio System ========== */
+/* ========== Audio System Hook ========== */
 
-let _audioCtx: AudioContext | null = null;
-let _chimeBuf: AudioBuffer | null = null;
-let _loadingChime = false;
-let _chimeQueue: (() => void)[] = [];
+function useAudioSystem() {
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const chimeBufRef = useRef<AudioBuffer | null>(null);
+  const loadingChimeRef = useRef(false);
+  const chimeQueueRef = useRef<(() => void)[]>([]);
 
-function getAudioCtx(): AudioContext | null {
-  const Ctor = window.AudioContext || (window as any).webkitAudioContext;
-  if (!Ctor) return null;
-  if (!_audioCtx || _audioCtx.state === 'closed') {
-    _audioCtx = new Ctor();
-  }
-  return _audioCtx;
-}
+  const getAudioCtx = useCallback((): AudioContext | null => {
+    const Ctor = window.AudioContext || (window as any).webkitAudioContext;
+    if (!Ctor) return null;
+    if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+      audioCtxRef.current = new Ctor();
+    }
+    return audioCtxRef.current;
+  }, []);
 
-/** Try to resume a suspended AudioContext (autoplay policy). Returns true if ready. */
-function ensureAudioReady(): boolean {
-  const ctx = getAudioCtx();
-  if (!ctx) return false;
-  if (ctx.state === 'suspended') {
-    ctx.resume().catch(() => {});
-    return false; // not immediately ready
-  }
-  return ctx.state === 'running';
-}
-
-/** Preload the .wav file into a decoded AudioBuffer */
-function preloadChime() {
-  if (_chimeBuf || _loadingChime) return;
-  _loadingChime = true;
-  const ctx = getAudioCtx();
-  if (!ctx) { _loadingChime = false; return; }
-
-  const xhr = new XMLHttpRequest();
-  xhr.open('GET', '/sounds/notification.wav', true);
-  xhr.responseType = 'arraybuffer';
-  xhr.onload = () => {
-    ctx.decodeAudioData(xhr.response)
-      .then((buf) => {
-        _chimeBuf = buf;
-        _loadingChime = false;
-        // Flush queue
-        const q = _chimeQueue.slice();
-        _chimeQueue = [];
-        q.forEach((fn) => fn());
-      })
-      .catch(() => { _loadingChime = false; flushChimeQueue(); });
-  };
-  xhr.onerror = () => { _loadingChime = false; flushChimeQueue(); };
-  xhr.send();
-}
-
-/** Drain the chime queue silently (on error or after any flush) */
-function flushChimeQueue() {
-  _chimeQueue = [];
-}
-
-/** Play a rich restaurant-style chime (ding-ding-ding) using the .wav or fallback oscillators */
-function playChime() {
-  try {
+  const ensureAudioReady = useCallback((): boolean => {
     const ctx = getAudioCtx();
-    if (!ctx) return;
-
-    // Try to resume if suspended
+    if (!ctx) return false;
     if (ctx.state === 'suspended') {
       ctx.resume().catch(() => {});
+      return false;
     }
+    return ctx.state === 'running';
+  }, [getAudioCtx]);
 
-    // If we have the decoded buffer, play it
-    if (_chimeBuf) {
-      const source = ctx.createBufferSource();
-      source.buffer = _chimeBuf;
-      const gain = ctx.createGain();
-      gain.gain.value = 0.6;
-      source.connect(gain);
-      gain.connect(ctx.destination);
-      source.start();
-      return;
-    }
+  const playFallbackChime = useCallback((ctx: AudioContext) => {
+    const master = ctx.createGain();
+    master.gain.value = 0.15;
+    master.connect(ctx.destination);
 
-    // If still loading, queue this notification
-    if (_loadingChime) {
-      _chimeQueue.push(playChime);
-      return;
-    }
+    const notes = [660, 880, 1100];
+    const startTime = ctx.currentTime + 0.05;
 
-    // Start preloading for next time
-    preloadChime();
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const noteGain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      noteGain.gain.setValueAtTime(0, startTime + i * 0.12);
+      noteGain.gain.linearRampToValueAtTime(1, startTime + i * 0.12 + 0.02);
+      noteGain.gain.exponentialRampToValueAtTime(0.001, startTime + i * 0.12 + 0.15);
+      osc.connect(noteGain);
+      noteGain.connect(master);
+      osc.start(startTime + i * 0.12);
+      osc.stop(startTime + i * 0.12 + 0.15);
+    });
+  }, []);
 
-    // Fallback: 3-tone restaurant chime using oscillators — much louder
-    playFallbackChime(ctx);
-  } catch {
-    // ignore
-  }
-}
-
-function playFallbackChime(ctx: AudioContext) {
-  const master = ctx.createGain();
-  master.gain.value = 0.15;
-  master.connect(ctx.destination);
-
-  // Three ascending tones: ding ding ding!
-  const notes = [660, 880, 1100]; // Hz
-  const startTime = ctx.currentTime + 0.05;
-
-  notes.forEach((freq, i) => {
-    const osc = ctx.createOscillator();
-    const noteGain = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.value = freq;
-    noteGain.gain.setValueAtTime(0, startTime + i * 0.12);
-    noteGain.gain.linearRampToValueAtTime(1, startTime + i * 0.12 + 0.02);
-    noteGain.gain.exponentialRampToValueAtTime(0.001, startTime + i * 0.12 + 0.15);
-    osc.connect(noteGain);
-    noteGain.connect(master);
-    osc.start(startTime + i * 0.12);
-    osc.stop(startTime + i * 0.12 + 0.15);
-  });
-}
-
-/** Try to resume AudioContext on ANY user interaction (fires repeatedly, not just once) */
-function attachAudioResumeOnInteraction() {
-  const handler = () => {
+  const preloadChime = useCallback(() => {
+    if (chimeBufRef.current || loadingChimeRef.current) return;
+    loadingChimeRef.current = true;
     const ctx = getAudioCtx();
-    if (ctx?.state === 'suspended') {
-      ctx.resume().catch(() => {});
+    if (!ctx) { loadingChimeRef.current = false; return; }
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', '/sounds/notification.wav', true);
+    xhr.responseType = 'arraybuffer';
+    xhr.onload = () => {
+      ctx.decodeAudioData(xhr.response)
+        .then((buf) => {
+          chimeBufRef.current = buf;
+          loadingChimeRef.current = false;
+          // Flush queue
+          const q = chimeQueueRef.current.slice();
+          chimeQueueRef.current = [];
+          q.forEach((fn) => fn());
+        })
+        .catch(() => { loadingChimeRef.current = false; chimeQueueRef.current = []; });
+    };
+    xhr.onerror = () => { loadingChimeRef.current = false; chimeQueueRef.current = []; };
+    xhr.send();
+  }, [getAudioCtx]);
+
+  const playChime = useCallback(() => {
+    try {
+      const ctx = getAudioCtx();
+      if (!ctx) return;
+
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
+
+      // If we have the decoded buffer, play it
+      if (chimeBufRef.current) {
+        const source = ctx.createBufferSource();
+        source.buffer = chimeBufRef.current;
+        const gain = ctx.createGain();
+        gain.gain.value = 0.6;
+        source.connect(gain);
+        gain.connect(ctx.destination);
+        source.start();
+        return;
+      }
+
+      // If still loading, queue for retry
+      if (loadingChimeRef.current) {
+        chimeQueueRef.current.push(playChime);
+        return;
+      }
+
+      // Start preloading for next time
+      preloadChime();
+
+      // Fallback: 3-tone restaurant chime
+      playFallbackChime(ctx);
+    } catch {
+      // ignore
     }
-  };
-  document.addEventListener('click', handler);
-  document.addEventListener('touchstart', handler);
-  document.addEventListener('keydown', handler);
-  return () => {
-    document.removeEventListener('click', handler);
-    document.removeEventListener('touchstart', handler);
-    document.removeEventListener('keydown', handler);
-  };
+  }, [getAudioCtx, preloadChime, playFallbackChime]);
+
+  const attachAudioResumeOnInteraction = useCallback(() => {
+    const handler = () => {
+      const ctx = getAudioCtx();
+      if (ctx?.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
+    };
+    document.addEventListener('click', handler);
+    document.addEventListener('touchstart', handler);
+    document.addEventListener('keydown', handler);
+    return () => {
+      document.removeEventListener('click', handler);
+      document.removeEventListener('touchstart', handler);
+      document.removeEventListener('keydown', handler);
+    };
+  }, [getAudioCtx]);
+
+  return { playChime, ensureAudioReady, preloadChime, attachAudioResumeOnInteraction };
 }
 
-/* ========== Page title flashing ========== */
+/* ========== Page title flashing (ref-based, tied to component) ========== */
 
-let originalTitle = '';
-let flashInterval: ReturnType<typeof setInterval> | null = null;
+function useTitleFlash() {
+  const originalTitleRef = useRef('');
+  const flashIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-function flashTitle(count: number) {
-  if (!originalTitle) originalTitle = document.title;
-  if (flashInterval) clearInterval(flashInterval);
+  const flashTitle = useCallback((count: number) => {
+    if (!originalTitleRef.current) originalTitleRef.current = document.title;
+    if (flashIntervalRef.current) clearInterval(flashIntervalRef.current);
 
-  let showAlert = true;
-  flashInterval = setInterval(() => {
-    document.title = showAlert
-      ? `🔔 ${count} طلب جديد | ${originalTitle}`
-      : originalTitle;
-    showAlert = !showAlert;
-  }, 1000);
+    let showAlert = true;
+    flashIntervalRef.current = setInterval(() => {
+      document.title = showAlert
+        ? `🔔 ${count} طلب جديد | ${originalTitleRef.current}`
+        : originalTitleRef.current;
+      showAlert = !showAlert;
+    }, 1000);
 
-  // Stop flashing after 10 seconds
-  setTimeout(() => {
-    if (flashInterval) {
-      clearInterval(flashInterval);
-      flashInterval = null;
+    // Stop flashing after 10 seconds
+    setTimeout(() => {
+      if (flashIntervalRef.current) {
+        clearInterval(flashIntervalRef.current);
+        flashIntervalRef.current = null;
+      }
+      document.title = originalTitleRef.current;
+    }, 10000);
+  }, []);
+
+  const clearFlash = useCallback(() => {
+    if (flashIntervalRef.current) {
+      clearInterval(flashIntervalRef.current);
+      flashIntervalRef.current = null;
     }
-    document.title = originalTitle;
-  }, 10000);
-}
+    if (originalTitleRef.current) document.title = originalTitleRef.current;
+  }, []);
 
-function clearFlash() {
-  if (flashInterval) {
-    clearInterval(flashInterval);
-    flashInterval = null;
-  }
-  if (originalTitle) document.title = originalTitle;
+  const syncTitle = useCallback(() => {
+    originalTitleRef.current = document.title;
+  }, []);
+
+  const resetTitle = useCallback(() => {
+    clearFlash();
+    originalTitleRef.current = '';
+  }, [clearFlash]);
+
+  return { flashTitle, clearFlash, syncTitle, resetTitle };
 }
 
 /* ========== Component ========== */
@@ -207,19 +213,22 @@ export function KitchenClient({
   const [orders, setOrders] = useState(initialOrders);
   const knownIds = useRef(new Set(initialOrders.map((o) => o.id)));
   const [soundOn, setSoundOn] = useState(true);
-  const [newOrderCount, setNewOrderCount] = useState(0); // for flash badge
+  const [newOrderCount, setNewOrderCount] = useState(0);
   const [time, setTime] = useState(() =>
     new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
   );
   const [now, setNow] = useState(() => Date.now());
   const [confirmCancel, setConfirmCancel] = useState<string | null>(null);
 
-  // Clock + tick
+  const { playChime, ensureAudioReady, preloadChime, attachAudioResumeOnInteraction } = useAudioSystem();
+  const { flashTitle, clearFlash, syncTitle, resetTitle } = useTitleFlash();
+
+  // Clock + tick — كل دقيقة (60s) لأن العرض بالدقائق
   useEffect(() => {
     const id = setInterval(() => {
       setTime(new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }));
       setNow(Date.now());
-    }, 30000);
+    }, 60000);
     return () => clearInterval(id);
   }, []);
 
@@ -227,7 +236,7 @@ export function KitchenClient({
   useEffect(() => {
     preloadChime();
     return attachAudioResumeOnInteraction();
-  }, []);
+  }, [preloadChime, attachAudioResumeOnInteraction]);
 
   // Flash title when new orders come in
   useEffect(() => {
@@ -236,17 +245,14 @@ export function KitchenClient({
     } else {
       clearFlash();
     }
-    return () => clearFlash(); // cleanup on unmount
-  }, [newOrderCount]);
+    return () => clearFlash();
+  }, [newOrderCount, flashTitle, clearFlash]);
 
-  // Reset originalTitle on mount to stay in sync with document.title
+  // Sync originalTitle on mount
   useEffect(() => {
-    originalTitle = document.title;
-    return () => {
-      clearFlash();
-      originalTitle = ''; // reset for next mount
-    };
-  }, []);
+    syncTitle();
+    return () => resetTitle();
+  }, [syncTitle, resetTitle]);
 
   // Notification helper
   const notifyNewOrder = useCallback((orderNum: number) => {
@@ -258,7 +264,7 @@ export function KitchenClient({
       description: `#${orderNum}`,
     });
     setNewOrderCount((c) => c + 1);
-  }, [soundOn]);
+  }, [soundOn, playChime]);
 
   // Full refresh fallback
   const fullRefresh = useCallback(async () => {
@@ -277,7 +283,7 @@ export function KitchenClient({
 
     for (const o of rows) {
       if (!knownIds.current.has(o.id) && o.status === 'pending') {
-        notifyNewOrder(o.order_number ?? 0);
+        notifyNewOrder(o.order_number);
       }
       knownIds.current.add(o.id);
     }
@@ -314,7 +320,7 @@ export function KitchenClient({
           if (!fullOrder) return;
 
           knownIds.current.add(newId);
-          notifyNewOrder(fullOrder.order_number ?? 0);
+          notifyNewOrder(fullOrder.order_number);
           setOrders((prev) => [fullOrder, ...prev]);
         }
       )
@@ -400,7 +406,7 @@ export function KitchenClient({
 
   return (
     <div className="kds-root" onClick={clearBadge}>
-      {/* Topbar — مطابقة للتصميم */}
+      {/* Topbar */}
       <div className="flex items-center justify-between border-b border-[#1E2330] px-6 py-4">
         <div className="flex items-center gap-3">
           <span className="text-sm font-bold text-white">
@@ -428,7 +434,6 @@ export function KitchenClient({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              // Test sound
               if (!soundOn) setSoundOn(true);
               ensureAudioReady();
               playChime();
@@ -442,7 +447,7 @@ export function KitchenClient({
         </div>
       </div>
 
-      {/* Kanban columns — مطابقة للتصميم */}
+      {/* Kanban columns */}
       <div className="flex gap-4 overflow-x-auto p-5 lg:grid lg:grid-cols-3">
         <KdsColumn title="جديد" count={pending.length}>
           {pending.length === 0 && (
@@ -460,7 +465,7 @@ export function KitchenClient({
               advanceLabel="بدء التجهيز"
               onCancel={() => setConfirmCancel(o.id)}
             />
-          ) )}
+          ))}
         </KdsColumn>
         <KdsColumn title="قيد التجهيز" count={preparing.length}>
           {preparing.length === 0 && (
@@ -477,7 +482,7 @@ export function KitchenClient({
               advanceLabel="تم التجهيز"
               onCancel={() => setConfirmCancel(o.id)}
             />
-          ) )}
+          ))}
         </KdsColumn>
         <KdsColumn title="جاهز" count={ready.length}>
           {ready.length === 0 && (
@@ -494,11 +499,9 @@ export function KitchenClient({
               advanceLabel="تسليم"
               onCancel={() => setConfirmCancel(o.id)}
             />
-          ) )}
+          ))}
         </KdsColumn>
       </div>
-
-      {/* Loading overlay while preloading chime */}
 
       {confirmCancel && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setConfirmCancel(null)}>
