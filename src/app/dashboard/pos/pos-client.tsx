@@ -299,10 +299,10 @@ export function PosClient({
 
       {picker && (
         <div
-          className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 sm:items-center sm:p-4"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4"
           onClick={(e) => { if (e.target === e.currentTarget) setPicker(null); }}
         >
-          <div className="max-h-dvh w-full max-w-md overflow-y-auto rounded-b-none bg-[var(--color-surface)] p-4 pb-safe-bottom sm:max-h-[85vh] sm:rounded-[10px]">
+          <div className="w-full max-w-md max-h-[85dvh] overflow-y-auto rounded-t-2xl bg-[var(--color-surface)] p-4 pb-safe-bottom sm:max-h-[85vh] sm:rounded-[10px] animate-slide-up">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-bold">{picker.name}</h3>
               <button
