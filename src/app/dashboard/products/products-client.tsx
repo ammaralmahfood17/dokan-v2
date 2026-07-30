@@ -140,16 +140,6 @@ export function ProductsClient({
     return list;
   }, [sortedProducts, activeCat, searchQuery]);
 
-  // Product count per category
-  const catCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const p of sortedProducts) {
-      const cid = p.category_id || '';
-      counts[cid] = (counts[cid] || 0) + 1;
-    }
-    return counts;
-  }, [sortedProducts]);
-
   function openCreate() {
     setEditing(null);
     setName('');
@@ -595,9 +585,6 @@ export function ProductsClient({
             }`}
           >
             <span>الكل</span>
-            <span className={`text-[10px] ${!activeCat ? 'text-white/70' : 'text-[var(--color-text-muted)]'}`}>
-              {sortedProducts.length}
-            </span>
           </button>
           {categories.map((c) => (
             <button
@@ -611,9 +598,6 @@ export function ProductsClient({
               }`}
             >
               <span>{c.name}</span>
-              <span className={`text-[10px] ${activeCat === c.id ? 'text-white/70' : 'text-[var(--color-text-muted)]'}`}>
-                {catCounts[c.id] || 0}
-              </span>
               {/* Edit/delete on hover */}
               <span className="mr-1 flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
                 <span
@@ -671,13 +655,6 @@ export function ProductsClient({
                       <h3 className="text-sm font-bold">{p.name}</h3>
                       {!p.is_available && (
                         <span className="badge badge-cancelled">متوقف</span>
-                      )}
-                    </div>
-                    <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-                      {p.category_id && categories.find((c) => c.id === p.category_id) && (
-                        <span className="inline-flex items-center gap-0.5 rounded-full bg-[var(--color-primary-tint)] px-2 py-0.5 text-[10px] font-semibold text-[var(--color-primary)]">
-                          {categories.find((c) => c.id === p.category_id)!.name}
-                        </span>
                       )}
                     </div>
                     {p.description && (
