@@ -5,7 +5,7 @@ import { Bell, BellOff, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
-const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!;
+const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
 type State = 'loading' | 'unsupported' | 'denied' | 'inactive' | 'subscribed';
 
@@ -67,10 +67,16 @@ export function PushNotificationManager({
         return;
       }
 
+      if (!VAPID_PUBLIC_KEY) {
+        toast.error('مفاتيح الإشعارات غير مضبوطة — راجع الإعدادات');
+        setState('inactive');
+        return;
+      }
+
       // Subscribe to push
       const subscription = await swReg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as BufferSource,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as unknown as BufferSource,
       });
 
       // Save to server

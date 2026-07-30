@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/server';
 
 // Temporary: push_subscriptions not yet in generated types
-const db = () => createClient() as any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function db() {
+  return (await createClient()) as any;
+}
 
 /**
  * POST /api/push/unsubscribe
@@ -10,7 +13,7 @@ const db = () => createClient() as any;
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
@@ -21,7 +24,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'بيانات ناقصة' }, { status: 400 });
     }
 
-    const { error } = await db()
+    const { error } = await (await db())
       .from('push_subscriptions')
       .delete()
       .eq('endpoint', body.endpoint)
