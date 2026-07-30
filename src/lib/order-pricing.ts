@@ -1,0 +1,194 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database, Json } from '@/lib/database.types';
+import type { OrderItemAddon, OrderType, PublicOrderItemInput } from '@/lib/types';
+import { money } from '@/lib/utils';
+
+type AdminClient = SupabaseClient<Database>;
+
+export type ValidatedOrderLine = {
+  product_id: string;
+  product_name: string;
+  quantity: number;
+  unit_price: number;
+  addons: OrderItemAddon[];
+  notes: string | null;
+};
+
+export type CreateOrderResult =
+  | {
+      ok: true;
+      order: { id: string; status: string; totalAmount: number; orderNumber: number };
+    }
+  | { ok: false; error: string; status: number };
+
+/**
+ * Shared server-side order creation:
+ * - Re-validates project + optional table
+ * - Fetches real product/addon prices
+ * - Recalculates total_amount
+ * - Inserts order + order_items
+ *
+ * Used by public order API and POS.
+ */
+export async function createSecureOrder(
+  supabase: AdminClient,
+  params: {
+    projectId: string;
+    tableId: string | null;
+    type: OrderType;
+    items: PublicOrderItemInput[];
+    notes?: string | null;
+  }
+): Promise<CreateOrderResult> {
+  const { projectId, tableId, type, items, notes } = params;
+
+  if (!items.length) {
+    return { ok: false, error: 'السلة فارغة', status: 400 };
+  }
+
+  if (items.length > 50) {
+    return { ok: false, error: 'عدد الأصناف كبير جداً', status: 400 };
+  }
+
+  const validated: ValidatedOrderLine[] = [];
+  let totalAmount = 0;
+
+  for (const item of items) {
+    const quantity = Number(item.quantity);
+    // Require a positive integer quantity (reject 1.5, NaN, etc.)
+    if (
+      !item.productId ||
+      !Number.isFinite(quantity) ||
+      !Number.isInteger(quantity) ||
+      quantity <= 0
+    ) {
+      return { ok: false, error: 'بيانات صنف غير صالحة', status: 400 };
+    }
+    if (quantity > 99) {
+      return { ok: false, error: 'الكمية غير مسموحة', status: 400 };
+    }
+
+    // Additional input hardening (Phase 1)
+    if (item.notes && item.notes.length > 200) {
+      return { ok: false, error: 'ملاحظات الصنف طويلة جداً (الحد 200 حرف)', status: 400 };
+    }
+
+    const { data: product, error: prodErr } = await supabase
+      .from('products')
+      .select('id, name, price, is_available, project_id')
+      .eq('id', item.productId)
+      .eq('project_id', projectId)
+      .single();
+
+    if (prodErr || !product || !product.is_available) {
+      return {
+        ok: false,
+        error: 'منتج غير متاح أو لا ينتمي لهذا المتجر',
+        status: 400,
+      };
+    }
+
+    const addonIds = Array.isArray(item.addonIds) ? item.addonIds : [];
+    const addonDetails: OrderItemAddon[] = [];
+    let addonTotal = 0;
+
+    if (addonIds.length > 0) {
+      const { data: addons } = await supabase
+        .from('product_addons')
+        .select('id, name, price, is_available, product_id')
+        .in('id', addonIds)
+        .eq('product_id', product.id)
+        .eq('is_available', true);
+
+      const found = addons ?? [];
+      // Reject if any requested addon is missing or wrong product
+      if (found.length !== addonIds.length) {
+        return {
+          ok: false,
+          error: 'إضافة غير صالحة',
+          status: 400,
+        };
+      }
+
+      for (const addon of found) {
+        const price = money(Number(addon.price));
+        addonTotal = money(addonTotal + price);
+        addonDetails.push({
+          id: addon.id,
+          name: addon.name,
+          price,
+        });
+      }
+    }
+
+    const unitPrice = money(Number(product.price) + addonTotal);
+    const lineTotal = money(unitPrice * quantity);
+    totalAmount = money(totalAmount + lineTotal);
+
+    validated.push({
+      product_id: product.id,
+      product_name: product.name,
+      quantity,
+      unit_price: unitPrice,
+      addons: addonDetails,
+      notes: item.notes?.trim() || null,
+    });
+  }
+
+  // Get daily sequential order number
+  const { data: numData, error: numErr } = await supabase
+    .rpc('next_order_number', { p_project_id: projectId });
+
+  if (numErr || !numData) {
+    console.error('Order number error:', numErr);
+    return { ok: false, error: 'فشل إنشاء رقم الطلب', status: 500 };
+  }
+
+  const { data: order, error: orderErr } = await supabase
+    .from('orders')
+    .insert({
+      project_id: projectId,
+      table_id: tableId,
+      type,
+      status: 'pending',
+      total_amount: totalAmount,
+      notes: notes?.trim() || null,
+      order_number: numData,
+    })
+    .select('id, status, total_amount, order_number')
+    .single();
+
+  if (orderErr || !order) {
+    console.error('Order insert error:', orderErr);
+    return { ok: false, error: 'فشل إنشاء الطلب', status: 500 };
+  }
+
+  const rows = validated.map((line) => ({
+    order_id: order.id,
+    product_id: line.product_id,
+    product_name: line.product_name,
+    quantity: line.quantity,
+    unit_price: line.unit_price,
+    addons: line.addons as unknown as Json,
+    notes: line.notes,
+  }));
+
+  const { error: itemsErr } = await supabase.from('order_items').insert(rows);
+
+  if (itemsErr) {
+    console.error('Order items insert error:', itemsErr);
+    // Best-effort cleanup
+    await supabase.from('orders').delete().eq('id', order.id);
+    return { ok: false, error: 'فشل إضافة أصناف الطلب', status: 500 };
+  }
+
+  return {
+    ok: true,
+    order: {
+      id: order.id,
+      status: order.status,
+      totalAmount: money(Number(order.total_amount)),
+      orderNumber: order.order_number,
+    },
+  };
+}

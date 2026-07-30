@@ -1,0 +1,318 @@
+'use client';
+
+import { FormEvent, useState, useCallback } from 'react';
+import { Plus, Copy, ExternalLink, Printer } from 'lucide-react';
+import QRCode from 'qrcode';
+import { createClient } from '@/lib/supabase/client';
+import {
+  generateQrToken,
+  menuPath,
+  tableSlugFromNumber,
+} from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Modal } from '@/components/ui/modal';
+import { PullToRefresh } from '@/components/ui/pull-to-refresh';
+import type { Table } from '@/lib/types';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+
+type TableRow = Table;
+
+export function TablesClient({
+  projectId,
+  projectSlug,
+  siteUrl,
+  initialTables,
+}: {
+  projectId: string;
+  projectSlug: string;
+  siteUrl: string;
+  initialTables: Table[];
+}) {
+  const router = useRouter();
+  const [tables, setTables] = useState(initialTables);
+  const [showTable, setShowTable] = useState(false);
+  const [qrPreview, setQrPreview] = useState<{
+    url: string;
+    dataUrl: string;
+    label: string;
+  } | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const refresh = useCallback(async () => { router.refresh(); }, [router]);
+
+  const [tableNumber, setTableNumber] = useState('1');
+  const [tableSlug, setTableSlug] = useState('table-1');
+
+  async function createTable(e: FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    const number = Number(tableNumber);
+    const slug = tableSlug.trim() || tableSlugFromNumber(number);
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+      .from('tables')
+      .insert({
+        project_id: projectId,
+        number,
+        slug,
+        qrcode: generateQrToken(),
+        is_active: true,
+      })
+      .select('*')
+      .single();
+    setLoading(false);
+    if (error || !data) {
+      toast.error(error?.message?.includes('unique') ? 'المعرّف مستخدم' : 'فشل إنشاء الطاولة');
+      return;
+    }
+    setTables((prev) => [...prev, data as TableRow]);
+    setShowTable(false);
+    toast.success('تم إنشاء الطاولة مع QR');
+    await showQr(data as Table);
+    router.refresh();
+  }
+
+  async function showQr(table: Table) {
+    const path = menuPath(projectSlug, table.slug);
+    const url = `${siteUrl}${path}`;
+    try {
+      const dataUrl = await QRCode.toDataURL(url, {
+        width: 280,
+        margin: 2,
+        color: { dark: '#0F172A', light: '#FFFFFF' },
+      });
+      setQrPreview({
+        url,
+        dataUrl,
+        label: `طاولة ${table.number}`,
+      });
+    } catch {
+      toast.error('فشل توليد QR');
+    }
+  }
+
+  function copyUrl(url: string) {
+    void navigator.clipboard.writeText(url);
+    toast.success('تم نسخ الرابط');
+  }
+
+  async function printAllQrs() {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const qrPromises = tables.map(async (t) => {
+      const path = menuPath(projectSlug, t.slug);
+      const url = `${siteUrl}${path}`;
+      try {
+        const dataUrl = await QRCode.toDataURL(url, {
+          width: 180,
+          margin: 1,
+          color: { dark: '#0F172A', light: '#FFFFFF' },
+        });
+        return { number: t.number, slug: t.slug, dataUrl, url };
+      } catch {
+        return null;
+      }
+    });
+
+    const qrData = (await Promise.all(qrPromises)).filter(Boolean) as {
+      number: number; slug: string; dataUrl: string; url: string
+    }[];
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html dir="rtl">
+      <head>
+        <meta charset="utf-8">
+        <title>QR الطاولات — ${projectSlug}</title>
+        <style>
+          body { font-family: 'Cairo', sans-serif; padding: 20px; background: #fff; }
+          h1 { font-size: 18px; color: #0F172A; margin-bottom: 16px; text-align: center; }
+          .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+          .card { border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px; text-align: center; break-inside: avoid; }
+          .card img { width: 160px; height: 160px; margin: 0 auto 8px; display: block; }
+          .card .label { font-weight: 700; font-size: 14px; color: #0F172A; }
+          .card .slug { font-size: 11px; color: #475569; direction: ltr; }
+          @media print { body { padding: 10px; } }
+        </style>
+      </head>
+      <body>
+        <h1>QR الطاولات — ${projectSlug}</h1>
+        <div class="grid">
+          ${qrData.map((q) => `
+            <div class="card">
+              <img src="${q.dataUrl}" alt="Table ${q.number}" />
+              <div class="label">طاولة ${q.number}</div>
+              <div class="slug">${q.slug}</div>
+            </div>
+          `).join('')}
+        </div>
+        <script>window.print(); window.close();</script>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+  }
+
+  return (
+    <div className="page">
+      <PullToRefresh onRefresh={refresh}>
+      <div className="page-header">
+        <div>
+          <h1>الطاولات و QR</h1>
+          <p>الطاولات وروابط القوائم العامة</p>
+        </div>
+        <div className="flex gap-2">
+          {tables.length > 0 && (
+            <Button variant="secondary" size="sm" onClick={printAllQrs}>
+              <Printer className="h-4 w-4" />
+              طباعة QR
+            </Button>
+          )}
+          <Button size="sm" onClick={() => setShowTable(true)}>
+            <Plus className="h-4 w-4" />
+            طاولة جديدة
+          </Button>
+        </div>
+      </div>
+
+      <section>
+        <p className="section-title">الطاولات</p>
+        {!tables.length ? (
+          <div className="card empty">
+            <h3>ما فيه طاولات بعد</h3>
+            <p className="mb-4 text-sm">أضف أول طاولة عشان تولّد QR ويقدر العملاء يطلبون.</p>
+            <Button onClick={() => setShowTable(true)}>
+              أضف أول طاولة
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {tables.map((t) => {
+              const path = menuPath(projectSlug, t.slug);
+              const url = `${siteUrl}${path}`;
+              return (
+                <div
+                  key={t.id}
+                  className="dashboard-card card flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+                >
+                  <div>
+                    <p className="text-sm font-bold">طاولة {t.number}</p>
+                    <p className="text-xs text-[var(--color-text-secondary)]">
+                      <span dir="ltr">{t.slug}</span>
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => showQr(t)}
+                    >
+                      عرض QR
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyUrl(url)}
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                    </Button>
+                    <a
+                      href={path}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn btn-ghost btn-sm"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* Create Table Modal */}
+      {showTable && (
+        <Modal title="طاولة جديدة" onClose={() => setShowTable(false)}>
+          <form onSubmit={createTable}>
+            <div className="field">
+              <label className="label">رقم الطاولة</label>
+              <input
+                className="input"
+                type="number"
+                min={1}
+                required
+                dir="ltr"
+                value={tableNumber}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setTableNumber(value);
+                  const number = Number(value);
+                  if (Number.isFinite(number) && number > 0) {
+                    setTableSlug(tableSlugFromNumber(number));
+                  }
+                }}
+              />
+            </div>
+            <div className="field">
+              <label className="label">معرّف الرابط (slug)</label>
+              <input
+                className="input"
+                required
+                dir="ltr"
+                value={tableSlug}
+                onChange={(e) => setTableSlug(e.target.value)}
+              />
+              <p className="hint">
+                /{projectSlug}/menu/{tableSlug || '…'}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button type="submit" block disabled={loading}>
+                إنشاء + توليد QR
+              </Button>
+              <Button type="button" variant="secondary" onClick={() => setShowTable(false)}>
+                إلغاء
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* QR Preview Modal */}
+      {qrPreview && (
+        <Modal title={`QR — ${qrPreview.label}`} onClose={() => setQrPreview(null)}>
+          <div className="text-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={qrPreview.dataUrl}
+              alt="QR Code"
+              className="mx-auto rounded-[8px] border border-[var(--color-border)]"
+            />
+            <p className="mt-3 break-all text-xs text-[var(--color-text-secondary)]" dir="ltr">
+              {qrPreview.url}
+            </p>
+            <div className="mt-4 flex gap-2">
+              <Button block onClick={() => copyUrl(qrPreview.url)}>
+                <Copy className="h-4 w-4" />
+                نسخ الرابط
+              </Button>
+              <a
+                href={qrPreview.dataUrl}
+                download={`qr-${qrPreview.label}.png`}
+                className="btn btn-secondary btn-block"
+              >
+                تحميل
+              </a>
+            </div>
+          </div>
+        </Modal>
+      )}
+      </PullToRefresh>
+    </div>
+  );
+}

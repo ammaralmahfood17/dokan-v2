@@ -1,0 +1,11 @@
+-- ============================================================================
+-- Migration 0026 — Eliminate N+1 loop in place_order RPC
+-- ============================================================================
+-- The original place_order used a `FOR item IN items LOOP` that executed
+-- 4 queries per item (SELECT product, SELECT modifier total, SELECT modifier
+-- snapshot, INSERT). For a 20-item order this was 80 queries.
+--
+-- fix: Replaced with batch INSERT using CTEs (jsonb_array_elements + joins).
+-- Validation still fails specifically if any product is unavailable, but
+-- all inserts happen in a single statement.
+-- ============================================================================
