@@ -15,9 +15,10 @@ import {
   Store,
   Menu,
   X,
+  Moon,
+  Sun,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { createClient } from '@/lib/supabase/client';
 
 type NavItem = {
   href: string;
@@ -49,14 +50,31 @@ export function AppSidebar({
   const pathname = usePathname();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
+  const [isDark, setIsDark] = useState(false);
 
-  // Prefetch heavier routes after mount
+  // Init dark mode from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem('dokan-theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const dark = stored === 'dark' || (!stored && prefersDark);
+    setIsDark(dark);
+    document.documentElement.classList.toggle('dark', dark);
+  }, []);
+
+  function toggleDark() {
+    const next = !isDark;
+    setIsDark(next);
+    document.documentElement.classList.toggle('dark', next);
+    localStorage.setItem('dokan-theme', next ? 'dark' : 'light');
+  }
+
   useEffect(() => {
     try { router.prefetch('/dashboard/settings'); } catch {}
     try { router.prefetch('/dashboard/tables'); } catch {}
   }, [router]);
 
   async function logout() {
+    const { createClient } = await import('@/lib/supabase/client');
     const supabase = createClient();
     await supabase.auth.signOut();
     router.push('/login');
@@ -79,27 +97,37 @@ export function AppSidebar({
         onClick={() => setIsOpen(false)}
         aria-current={active ? 'page' : undefined}
         className={cn(
-          'flex items-center gap-2.5 rounded-[8px] px-3 py-2.5 text-[13px] font-semibold transition-colors',
+          'group flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-[13px] font-semibold transition-all duration-200',
           'lg:px-3 lg:py-2',
           active
-            ? 'bg-[var(--color-primary-tint)] text-[var(--color-primary)]'
+            ? 'bg-[var(--color-primary-tint)] text-[var(--color-primary)] shadow-sm'
             : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)]'
         )}
       >
-        <Icon className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" />
+        <div className={cn(
+          'flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] transition-all duration-200',
+          active
+            ? 'bg-[var(--color-primary)] text-white'
+            : 'bg-transparent text-[var(--color-text-muted)] group-hover:text-[var(--color-text)]'
+        )}>
+          <Icon className={cn('h-[15px] w-[15px]', active ? 'text-white' : '')} />
+        </div>
         <span>{item.label}</span>
+        {active && (
+          <div className="mr-auto h-1.5 w-1.5 rounded-full bg-[var(--color-primary)]" />
+        )}
       </Link>
     );
   }
 
   return (
     <>
-      {/* Hamburger button — mobile only, positioned on the left (leading edge in RTL) */}
+      {/* Hamburger — mobile only */}
       <button
         type="button"
         onClick={() => setIsOpen(true)}
         className={cn(
-          'fixed left-3 top-3 z-40 flex h-9 w-9 items-center justify-center rounded-[8px] bg-[var(--color-surface)] shadow-md border border-[var(--color-border)]',
+          'fixed left-3 top-3 z-40 flex h-9 w-9 items-center justify-center rounded-[10px] bg-[var(--color-surface)] shadow-md border border-[var(--color-border)] backdrop-blur-sm',
           'lg:hidden',
           isOpen && 'hidden'
         )}
@@ -108,10 +136,10 @@ export function AppSidebar({
         <Menu className="h-5 w-5 text-[var(--color-text)]" />
       </button>
 
-      {/* Backdrop — mobile only */}
+      {/* Backdrop — mobile */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden animate-fade-in"
           onClick={() => setIsOpen(false)}
         />
       )}
@@ -119,18 +147,16 @@ export function AppSidebar({
       {/* Sidebar */}
       <aside
         className={cn(
-          // Mobile: fixed, slides from right
-          'fixed right-0 top-0 z-50 flex h-dvh w-[260px] flex-col border-l border-[var(--color-border)] bg-[var(--color-surface)] shadow-xl transition-transform duration-300',
+          'fixed right-0 top-0 z-50 flex h-dvh w-[270px] flex-col border-l border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl transition-transform duration-300',
           isOpen ? 'translate-x-0' : 'translate-x-full',
-          // Desktop: sticky, always visible in flex flow
           'lg:static lg:z-auto lg:h-auto lg:w-56 lg:translate-x-0 lg:shadow-none lg:border-l'
         )}
       >
-        {/* Header with close button (mobile) + project info */}
+        {/* Header */}
         <div className="flex items-center justify-between border-b border-[var(--color-border)] px-3 py-3 lg:px-4 lg:py-4">
           <div className="flex items-center gap-2.5">
             <div
-              className="flex h-8 w-8 items-center justify-center rounded-[8px] text-white lg:h-9 lg:w-9"
+              className="flex h-9 w-9 items-center justify-center rounded-[10px] text-white shadow-sm"
               style={{ background: primaryColor || '#4338CA' }}
             >
               <Store className="h-4 w-4" />
@@ -139,37 +165,54 @@ export function AppSidebar({
               <div className="truncate text-sm font-bold text-[var(--color-text)]">
                 {projectName}
               </div>
-              <div className="text-[11px] text-[var(--color-text-secondary)]">دكان</div>
+              <div className="flex items-center gap-1 text-[11px] text-[var(--color-text-muted)]">
+                <span>دكان</span>
+                <span className="h-1 w-1 rounded-full bg-[var(--color-text-muted)]" />
+                <span>المطعم</span>
+              </div>
             </div>
           </div>
-
-          {/* Close button — mobile only */}
           <button
             type="button"
             onClick={() => setIsOpen(false)}
             className="flex h-8 w-8 items-center justify-center rounded-[8px] hover:bg-[var(--color-bg)] lg:hidden"
-            aria-label="إغلاق القائمة"
+            aria-label="إغلاق"
           >
-            <X className="h-5 w-5 text-[var(--color-text-muted)]" />
+            <X className="h-4 w-4 text-[var(--color-text-muted)]" />
           </button>
         </div>
 
-        {/* Main navigation */}
+        {/* Navigation */}
         <nav className="flex-1 space-y-0.5 overflow-y-auto p-2 lg:p-2">
           {NAV_MAIN.map(navItem)}
         </nav>
 
-        {/* Bottom actions */}
-        <div className="border-t border-[var(--color-border)] p-2">
+        {/* Bottom */}
+        <div className="border-t border-[var(--color-border)] p-2 space-y-0.5">
           {NAV_BOTTOM.map(navItem)}
 
+          {/* Dark mode toggle */}
+          <button
+            type="button"
+            onClick={toggleDark}
+            className="flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-[13px] font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)] transition-all duration-200"
+          >
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] text-[var(--color-text-muted)]">
+              {isDark ? <Sun className="h-[15px] w-[15px]" /> : <Moon className="h-[15px] w-[15px]" />}
+            </div>
+            <span>{isDark ? 'الوضع النهاري' : 'الوضع الليلي'}</span>
+          </button>
+
+          {/* Logout */}
           <button
             type="button"
             onClick={logout}
-            className="flex w-full items-center gap-2.5 rounded-[8px] px-3 py-2.5 text-[13px] font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] hover:text-[var(--color-danger)]"
+            className="flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-[13px] font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-danger-tint)] hover:text-[var(--color-danger)] transition-all duration-200"
           >
-            <LogOut className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" />
-            تسجيل الخروج
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px]">
+              <LogOut className="h-[15px] w-[15px]" />
+            </div>
+            <span>تسجيل الخروج</span>
           </button>
         </div>
       </aside>

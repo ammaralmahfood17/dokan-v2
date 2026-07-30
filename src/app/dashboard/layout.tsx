@@ -14,31 +14,39 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="flex min-h-dvh">
-      {/* Sidebar — unified for mobile + desktop */}
+    <div className="flex min-h-dvh bg-[var(--color-bg)]">
+      {/* Sidebar */}
       <AppSidebar
         projectName={ctx.project.name}
         primaryColor={ctx.project.primary_color}
       />
 
-      {/* Content area */}
+      {/* Content */}
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Mobile header — shows only on small screens */}
-        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 lg:hidden">
-          <div className="flex items-center gap-2">
+        {/* Mobile header */}
+        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface)]/95 backdrop-blur-md px-4 py-3 lg:hidden">
+          <div className="flex items-center gap-2.5">
             <div
-              className="flex h-8 w-8 items-center justify-center rounded-[8px] text-xs font-bold text-white"
+              className="flex h-8 w-8 items-center justify-center rounded-[8px] text-xs font-bold text-white shadow-sm"
               style={{ background: ctx.project.primary_color }}
             >
               {ctx.project.name.slice(0, 1)}
             </div>
-            <span className="text-sm font-bold">{ctx.project.name}</span>
+            <span className="text-sm font-bold text-[var(--color-text)]">
+              {ctx.project.name}
+            </span>
           </div>
-          <span className="text-[11px] text-[var(--color-text-muted)]">دكان</span>
+          <span className="text-[11px] font-medium text-[var(--color-text-muted)] tracking-wider">
+            دكان
+          </span>
         </header>
 
-        {/* Main content */}
-        <main className="flex-1">{children}</main>
+        {/* Main */}
+        <main className="flex-1">
+          <div className="page-enter">
+            {children}
+          </div>
+        </main>
       </div>
     </div>
   );
