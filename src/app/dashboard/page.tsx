@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Check, ChevronLeft, ShoppingBag, Clock, DollarSign } from 'lucide-react';
+import { Check, ChevronLeft, ShoppingBag, Clock, Banknote } from 'lucide-react';
 import { getCurrentProject, buildChecklist } from '@/lib/project';
 import { createClient } from '@/lib/supabase/server';
 import { formatMoney } from '@/lib/utils';
@@ -86,7 +86,7 @@ export default async function DashboardPage() {
         </div>
         <div className="dashboard-stat card card-body flex items-center gap-3">
           <div className="rounded-xl bg-[var(--color-success-tint)] p-2 text-[var(--color-success)]">
-            <DollarSign className="h-5 w-5" />
+            <Banknote className="h-5 w-5" />
           </div>
           <div>
             <p className="section-title mb-0.5">مبيعات اليوم</p>
@@ -187,7 +187,13 @@ export default async function DashboardPage() {
                     </p>
                   </div>
                   <div className="text-end">
-                    <span className={`badge badge-${o.status}`}>{o.status}</span>
+                    <span className={`badge badge-${o.status}`}>
+                      {o.status === 'pending' ? 'قيد الانتظار' :
+                       o.status === 'preparing' ? 'قيد التحضير' :
+                       o.status === 'ready' ? 'جاهز' :
+                       o.status === 'delivered' ? 'تم التسليم' :
+                       o.status === 'cancelled' ? 'ملغي' : o.status}
+                    </span>
                     <p className="mt-1 text-sm font-bold">
                       {formatMoney(Number(o.total_amount), ctx.project.currency)}
                     </p>

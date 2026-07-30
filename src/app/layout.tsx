@@ -60,6 +60,10 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href={process.env.NEXT_PUBLIC_SUPABASE_URL!} />
         <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_SUPABASE_URL!} />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-maskable-512.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="دكان" />
         {/* Blocking script: apply dark mode before paint, prevent flash */}
         <script
           dangerouslySetInnerHTML={{
