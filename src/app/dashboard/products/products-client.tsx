@@ -289,10 +289,18 @@ export function ProductsClient({
 
     const processedAddons = formAddons
       .filter((a) => a.name.trim().length > 0)
-      .map((a) => ({
-        name: a.name.trim(),
-        price: money(Number(a.price) || 0),
-      }));
+      .map((a) => {
+        const addonPrice = Number(a.price);
+        if (!Number.isFinite(addonPrice) || addonPrice < 0) {
+          toast.error(`سعر الإضافة «${a.name}» غير صالح`);
+          return null;
+        }
+        return {
+          name: a.name.trim(),
+          price: money(addonPrice || 0),
+        };
+      })
+      .filter(Boolean) as { name: string; price: number }[];
 
     if (editing) {
       const { data, error } = await supabase
@@ -396,7 +404,6 @@ export function ProductsClient({
     }
     setLoading(false);
     setShowProductForm(false);
-    router.refresh();
   }
 
   // Delete confirmation state
@@ -411,7 +418,6 @@ export function ProductsClient({
     }
     setProducts((prev) => prev.filter((p) => p.id !== id));
     toast.success('تم حذف المنتج');
-    router.refresh();
   }
 
   async function toggleAvailable(p: ProductWithAddons) {
@@ -474,7 +480,6 @@ export function ProductsClient({
     setCatName('');
     setShowCategoryForm(false);
     toast.success('تم إنشاء التصنيف');
-    router.refresh();
   }
 
   const refresh = useCallback(async () => { router.refresh(); }, [router]);
@@ -567,13 +572,14 @@ export function ProductsClient({
                   >
                     {p.is_available ? 'إيقاف' : 'تفعيل'}
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => openEdit(p)}>
+                  <Button variant="ghost" size="sm" onClick={() => openEdit(p)} aria-label="تعديل">
                     <Pencil className="h-4 w-4" />
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setConfirmDelete(p)}
+                    aria-label="حذف"
                   >
                     <Trash2 className="h-4 w-4 text-[var(--color-danger)]" />
                   </Button>
@@ -694,6 +700,7 @@ export function ProductsClient({
                     value={categoryId}
                     onChange={(e) => setCategoryId(e.target.value)}
                   >
+                    <option value="">بدون تصنيف</option>
                     {categories.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.name}
