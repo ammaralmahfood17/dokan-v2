@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Cairo, Tajawal, Noto_Sans_Arabic } from 'next/font/google';
+import { Cairo, Tajawal } from 'next/font/google';
 import { Toaster } from 'sonner';
 import './globals.css';
 
@@ -17,12 +17,8 @@ const tajawal = Tajawal({
   display: 'swap',
 });
 
-const notoSansArabic = Noto_Sans_Arabic({
-  subsets: ['arabic'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-noto',
-  display: 'swap',
-});
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseOrigin = supabaseUrl ? new URL(supabaseUrl).origin : '';
 
 export const metadata: Metadata = {
   title: {
@@ -30,8 +26,16 @@ export const metadata: Metadata = {
     template: '%s — دكان',
   },
   description: 'منصة سحابية لإدارة المطاعم والمقاهي في الخليج',
-  icons: [{ url: '/icon.svg', type: 'image/svg+xml' }],
+  icons: [
+    { rel: 'icon', url: '/favicon.ico', sizes: '32x32' },
+    { rel: 'icon', url: '/icon.svg', type: 'image/svg+xml' },
+  ],
   manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    title: 'دكان',
+    statusBarStyle: 'black-translucent',
+  },
   other: { 'mobile-web-app-capable': 'yes' },
 };
 
@@ -55,15 +59,25 @@ export default function RootLayout({
       lang="ar"
       dir="rtl"
       suppressHydrationWarning
-      className={`${cairo.variable} ${tajawal.variable} ${notoSansArabic.variable}`}
+      className={`${cairo.variable} ${tajawal.variable}`}
     >
       <head>
-        <link rel="preconnect" href={process.env.NEXT_PUBLIC_SUPABASE_URL!} />
-        <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_SUPABASE_URL!} />
+        {/* Supabase: early connect */}
+        {supabaseUrl && (
+          <>
+            <link rel="preconnect" href={supabaseOrigin} />
+            <link rel="dns-prefetch" href={supabaseOrigin} />
+          </>
+        )}
+        {/* iOS touch icons */}
         <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-maskable-512.png" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="دكان" />
+        <link rel="apple-touch-startup-image" media="(prefers-color-scheme: light)" href="/splash/light-1242x2688.png" />
+        <link rel="apple-touch-startup-image" media="(prefers-color-scheme: dark)" href="/splash/dark-1242x2688.png" />
+        {/* Preload critical routes */}
+        <link rel="prefetch" href="/dashboard" as="document" />
+        <link rel="prefetch" href="/dashboard/kitchen" as="document" />
+        <link rel="prefetch" href="/dashboard/pos" as="document" />
+        <link rel="prefetch" href="/login" as="document" />
         {/* Blocking script: apply dark mode before paint, prevent flash */}
         <script
           dangerouslySetInnerHTML={{

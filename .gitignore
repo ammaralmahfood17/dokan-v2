@@ -35,3 +35,7 @@ next-env.d.ts
 supabase/.branches
 supabase/.temp
 .env*
+
+# agent scaffolding (not project code)
+.claude/
+skills-lock.json
