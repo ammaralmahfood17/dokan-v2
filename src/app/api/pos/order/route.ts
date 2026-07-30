@@ -88,10 +88,18 @@ export async function POST(request: NextRequest) {
       console.warn('[Audit] Failed to write order audit log', auditErr);
     }
 
-    // Non-blocking push notification to all staff
+    const { data: project } = await supabase
+      .from('projects')
+      .select('currency')
+      .eq('id', membership.project_id)
+      .single();
+
+    const currency = project?.currency || 'BHD';
+
+    // Non-blocking push notification
     sendPushToProject(membership.project_id, {
       title: '🔔 طلب جديد',
-      body: `طلب #${orderNumber} — ${formatMoney(totalAmount, 'BHD')}`,
+      body: `طلب #${orderNumber} — ${formatMoney(totalAmount, currency)}`,
       url: '/dashboard/kitchen',
       tag: `order-${orderId}`,
     }).catch(() => {});

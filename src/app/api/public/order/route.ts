@@ -20,12 +20,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'بيانات غير صالحة' }, { status: 400 });
     }
 
-    // Rate limit per project (Phase 3 hardening)
+    // Rate limit per project + per IP
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
     const rateKey = `public-order:${projectSlug}`;
     const limitResult = await rateLimit(rateKey, { limit: 20, windowMs: 60 * 1000, keyPrefix: 'public-order' });
+    const ipLimitResult = await rateLimit(`ip:${ip}`, { limit: 10, windowMs: 60 * 1000, keyPrefix: 'public-order-ip' });
 
     if (!limitResult.allowed) {
       const res = createRateLimitResponse(limitResult.resetIn);
+      return NextResponse.json({ error: res.error }, { status: res.status });
+    }
+    if (!ipLimitResult.allowed) {
+      const res = createRateLimitResponse(ipLimitResult.resetIn);
       return NextResponse.json({ error: res.error }, { status: res.status });
     }
 
@@ -34,7 +40,7 @@ export async function POST(request: NextRequest) {
     // 1. Validate project
     const { data: project, error: projectErr } = await supabase
       .from('projects')
-      .select('id, is_active')
+      .select('id, is_active, currency')
       .eq('slug', projectSlug)
       .single();
 
@@ -88,7 +94,7 @@ export async function POST(request: NextRequest) {
       title: '🔔 طلب جديد',
       body: `طلب #${result.order.orderNumber} من القائمة — ${formatMoney(
         result.order.totalAmount,
-        'BHD'
+        project.currency
       )}`,
       url: '/dashboard/kitchen',
       tag: `order-${result.order.id}`,
