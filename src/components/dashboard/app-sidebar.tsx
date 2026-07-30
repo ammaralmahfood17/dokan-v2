@@ -52,11 +52,10 @@ export function AppSidebar({
   const [isOpen, setIsOpen] = useState(false);
   const [isDark, setIsDark] = useState(false);
 
-  // Init dark mode from localStorage on mount
+  // Init dark mode from localStorage on mount (default light)
   useEffect(() => {
     const stored = localStorage.getItem('dokan-theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const dark = stored === 'dark' || (!stored && prefersDark);
+    const dark = stored === 'dark';
     setIsDark(dark);
     document.documentElement.classList.toggle('dark', dark);
   }, []);
