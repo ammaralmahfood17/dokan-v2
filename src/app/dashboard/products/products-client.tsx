@@ -18,12 +18,6 @@ type ProductWithAddons = Product & { product_addons: ProductAddon[] };
 /** Temporary addon line in the product form */
 type FormAddon = { key: string; name: string; price: string };
 
-let addonKeyCounter = 0;
-function nextAddonKey(): string {
-  addonKeyCounter += 1;
-  return `addon_${addonKeyCounter}`;
-}
-
 /** Per-field validation errors */
 type FieldErrors = {
   name?: string;
@@ -114,6 +108,11 @@ export function ProductsClient({
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const addonKeyRef = useRef(0);
+  const nextAddonKey = useCallback(() => {
+    addonKeyRef.current += 1;
+    return `addon_${addonKeyRef.current}`;
+  }, []);
 
   // Inline category quick-add
   const [showQuickCat, setShowQuickCat] = useState(false);
@@ -729,6 +728,7 @@ export function ProductsClient({
                 <input
                   className={`input ${fieldErrors.name ? 'input-error' : ''}`}
                   required
+                  maxLength={100}
                   value={name}
                   onChange={(e) => {
                     setName(e.target.value);
@@ -747,6 +747,7 @@ export function ProductsClient({
                 <input
                   className="input"
                   dir="ltr"
+                  maxLength={100}
                   value={nameEn}
                   onChange={(e) => setNameEn(e.target.value)}
                   placeholder="Arabic Coffee"
@@ -760,6 +761,7 @@ export function ProductsClient({
               <textarea
                 className="textarea"
                 rows={3}
+                maxLength={500}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="وصف مختصر للمنتج يظهر للعملاء في القائمة"
