@@ -391,7 +391,7 @@ export function MenuClient({
               key={p.id}
               type="button"
               onClick={() => quickAdd(p)}
-              className="card flex w-full items-start gap-3 p-3 text-start transition-all duration-150 hover:border-slate-300 active:scale-[0.98]"
+              className="card flex w-full items-start gap-3 p-3 text-start transition-transform duration-150 hover:border-slate-300 active:scale-[0.98]"
             >
               {p.image_url ? (
                 <Image

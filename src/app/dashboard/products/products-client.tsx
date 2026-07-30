@@ -399,8 +399,10 @@ export function ProductsClient({
     router.refresh();
   }
 
+  // Delete confirmation state
+  const [confirmDelete, setConfirmDelete] = useState<ProductWithAddons | null>(null);
+
   async function deleteProduct(id: string) {
-    if (!confirm('هل أنت متأكد من حذف هذا المنتج؟')) return;
     const supabase = createClient();
     const { error } = await supabase.from('products').delete().eq('id', id);
     if (error) {
@@ -571,7 +573,7 @@ export function ProductsClient({
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => deleteProduct(p.id)}
+                    onClick={() => setConfirmDelete(p)}
                   >
                     <Trash2 className="h-4 w-4 text-[var(--color-danger)]" />
                   </Button>
@@ -916,6 +918,42 @@ export function ProductsClient({
               </Button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {confirmDelete && (
+        <Modal
+          title="تأكيد الحذف"
+          onClose={() => setConfirmDelete(null)}
+        >
+          <div className="text-center">
+            <div className="mb-3 mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-danger-tint)]">
+              <Trash2 className="h-6 w-6 text-[var(--color-danger)]" />
+            </div>
+            <p className="mb-1 text-sm font-bold">{confirmDelete.name}</p>
+            <p className="mb-5 text-xs text-[var(--color-text-secondary)]">
+              هل أنت متأكد؟ هذا الإجراء لا يمكن التراجع عنه.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="danger"
+                block
+                onClick={() => {
+                  const p = confirmDelete;
+                  setConfirmDelete(null);
+                  deleteProduct(p.id);
+                }}
+              >
+                نعم، احذف
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => setConfirmDelete(null)}
+              >
+                إلغاء
+              </Button>
+            </div>
+          </div>
         </Modal>
       )}
     </div>
