@@ -119,10 +119,36 @@ export function ProductsClient({
   const [showQuickCat, setShowQuickCat] = useState(false);
   const [quickCatName, setQuickCatName] = useState('');
 
+  // Search + category filter
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeCat, setActiveCat] = useState<string | null>(null);
+
   const sortedProducts = useMemo(
     () => [...products].sort((a, b) => a.sort_order - b.sort_order),
     [products]
   );
+
+  const filteredProducts = useMemo(() => {
+    let list = sortedProducts;
+    if (activeCat) {
+      list = list.filter((p) => p.category_id === activeCat);
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      list = list.filter((p) => p.name.toLowerCase().includes(q));
+    }
+    return list;
+  }, [sortedProducts, activeCat, searchQuery]);
+
+  // Product count per category
+  const catCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const p of sortedProducts) {
+      const cid = p.category_id || '';
+      counts[cid] = (counts[cid] || 0) + 1;
+    }
+    return counts;
+  }, [sortedProducts]);
 
   function openCreate() {
     setEditing(null);
@@ -537,36 +563,83 @@ export function ProductsClient({
         </div>
       </div>
 
+      {/* Search bar */}
+      <div className="relative mb-4">
+        <input
+          className="input pl-9"
+          placeholder="🔍 ابحث عن منتج…"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+        {searchQuery && (
+          <button
+            type="button"
+            onClick={() => setSearchQuery('')}
+            className="absolute left-2 top-1/2 -translate-y-1/2 btn btn-ghost btn-sm"
+            aria-label="مسح البحث"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+
       {categories.length > 0 && (
-        <div className="mb-4 flex flex-wrap gap-2">
+        <div className="mb-4 flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            onClick={() => setActiveCat(null)}
+            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-all ${
+              !activeCat
+                ? 'bg-[var(--color-primary)] text-white shadow-sm'
+                : 'border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:border-[var(--color-primary)]'
+            }`}
+          >
+            <span>الكل</span>
+            <span className={`text-[10px] ${!activeCat ? 'text-white/70' : 'text-[var(--color-text-muted)]'}`}>
+              {sortedProducts.length}
+            </span>
+          </button>
           {categories.map((c) => (
-            <div key={c.id} className="group flex items-center gap-1 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] pl-3">
-              <span className="text-xs font-semibold">{c.name}</span>
-              <button
-                type="button"
-                onClick={() => { setEditingCat(c); setEditCatName(c.name); }}
-                className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--color-text-muted)] opacity-0 transition-opacity hover:bg-[var(--color-bg)] hover:text-[var(--color-text)] group-hover:opacity-100"
-                aria-label="تعديل التصنيف"
-              >
-                <Pencil className="h-3 w-3" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setConfirmDeleteCat(c)}
-                className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--color-text-muted)] opacity-0 transition-opacity hover:bg-[var(--color-danger-tint)] hover:text-[var(--color-danger)] group-hover:opacity-100"
-                aria-label="حذف التصنيف"
-              >
-                <Trash2 className="h-3 w-3" />
-              </button>
-            </div>
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => setActiveCat(activeCat === c.id ? null : c.id)}
+              className={`group flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-all ${
+                activeCat === c.id
+                  ? 'bg-[var(--color-primary)] text-white shadow-sm'
+                  : 'border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:border-[var(--color-primary)]'
+              }`}
+            >
+              <span>{c.name}</span>
+              <span className={`text-[10px] ${activeCat === c.id ? 'text-white/70' : 'text-[var(--color-text-muted)]'}`}>
+                {catCounts[c.id] || 0}
+              </span>
+              {/* Edit/delete on hover */}
+              <span className="mr-1 flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                <span
+                  onClick={(e) => { e.stopPropagation(); setEditingCat(c); setEditCatName(c.name); }}
+                  className="flex h-5 w-5 items-center justify-center rounded-full hover:bg-black/10"
+                  aria-label="تعديل التصنيف"
+                >
+                  <Pencil className="h-2.5 w-2.5" />
+                </span>
+                <span
+                  onClick={(e) => { e.stopPropagation(); setConfirmDeleteCat(c); }}
+                  className="flex h-5 w-5 items-center justify-center rounded-full hover:bg-[var(--color-danger-tint)]"
+                  aria-label="حذف التصنيف"
+                >
+                  <Trash2 className="h-2.5 w-2.5 text-[var(--color-danger)]" />
+                </span>
+              </span>
+            </button>
           ))}
         </div>
       )}
 
-      {!sortedProducts.length ? (
+      {!filteredProducts.length ? (
         <EmptyState
-          title="ما فيه منتجات حالياً"
-          description="أضف أول منتج وبيّن للعملاء قائمتك."
+          title={searchQuery || activeCat ? 'لا توجد نتائج' : 'ما فيه منتجات حالياً'}
+          description={searchQuery || activeCat ? 'جرب تغيير كلمات البحث أو إلغاء الفلتر.' : 'أضف أول منتج وبيّن للعملاء قائمتك.'}
           action={
             <Button onClick={openCreate}>
               <Plus className="h-4 w-4" />
@@ -576,7 +649,7 @@ export function ProductsClient({
         />
       ) : (
         <div className="space-y-3">
-          {sortedProducts.map((p) => (
+          {filteredProducts.map((p) => (
             <div key={p.id} className="dashboard-card card card-body">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex min-w-0 items-start gap-3">
@@ -598,6 +671,13 @@ export function ProductsClient({
                       <h3 className="text-sm font-bold">{p.name}</h3>
                       {!p.is_available && (
                         <span className="badge badge-cancelled">متوقف</span>
+                      )}
+                    </div>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                      {p.category_id && categories.find((c) => c.id === p.category_id) && (
+                        <span className="inline-flex items-center gap-0.5 rounded-full bg-[var(--color-primary-tint)] px-2 py-0.5 text-[10px] font-semibold text-[var(--color-primary)]">
+                          {categories.find((c) => c.id === p.category_id)!.name}
+                        </span>
                       )}
                     </div>
                     {p.description && (
