@@ -76,14 +76,15 @@ export function Modal({ title, children, onClose }: ModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 sm:items-center sm:p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
         ref={trapRef}
-        className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-t-[10px] bg-[var(--color-surface)] sm:rounded-[10px] animate-slide-up"
+        className="max-h-dvh w-full max-w-md overflow-y-auto rounded-b-none bg-[var(--color-surface)] sm:max-h-[85vh] sm:rounded-[10px] animate-slide-up pb-safe-bottom"
+        style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}
         role="dialog"
         aria-modal="true"
         aria-label={title}
