@@ -9,8 +9,6 @@ import {
   type OrderItem,
   type OrderStatus,
 } from '@/lib/types';
-import { Button } from '@/components/ui/button';
-import { EmptyState } from '@/components/ui/empty-state';
 import { toast } from 'sonner';
 
 type OrderRow = Order & {
@@ -18,105 +16,179 @@ type OrderRow = Order & {
   order_items?: OrderItem[];
 };
 
-const OVERDUE_MIN_PENDING = 15;  // red if pending > 15 min
-const OVERDUE_MIN_PREPARING = 30; // amber if preparing > 30 min
+const OVERDUE_MIN_PENDING = 15;
+const OVERDUE_MIN_PREPARING = 30;
 
+/* ========== Audio System ========== */
+
+let _audioCtx: AudioContext | null = null;
+let _chimeBuf: AudioBuffer | null = null;
+let _loadingChime = false;
+let _chimeQueue: (() => void)[] = [];
+
+function getAudioCtx(): AudioContext | null {
+  const Ctor = window.AudioContext || (window as any).webkitAudioContext;
+  if (!Ctor) return null;
+  if (!_audioCtx || _audioCtx.state === 'closed') {
+    _audioCtx = new Ctor();
+  }
+  return _audioCtx;
+}
+
+/** Try to resume a suspended AudioContext (autoplay policy). Returns true if ready. */
+function ensureAudioReady(): boolean {
+  const ctx = getAudioCtx();
+  if (!ctx) return false;
+  if (ctx.state === 'suspended') {
+    ctx.resume().catch(() => {});
+    return false; // not immediately ready
+  }
+  return ctx.state === 'running';
+}
+
+/** Preload the .wav file into a decoded AudioBuffer */
+function preloadChime() {
+  if (_chimeBuf || _loadingChime) return;
+  _loadingChime = true;
+  const ctx = getAudioCtx();
+  if (!ctx) { _loadingChime = false; return; }
+
+  const xhr = new XMLHttpRequest();
+  xhr.open('GET', '/sounds/notification.wav', true);
+  xhr.responseType = 'arraybuffer';
+  xhr.onload = () => {
+    ctx.decodeAudioData(xhr.response)
+      .then((buf) => {
+        _chimeBuf = buf;
+        _loadingChime = false;
+        // Flush queue
+        const q = _chimeQueue.slice();
+        _chimeQueue = [];
+        q.forEach((fn) => fn());
+      })
+      .catch(() => { _loadingChime = false; });
+  };
+  xhr.onerror = () => { _loadingChime = false; };
+  xhr.send();
+}
+
+/** Play a rich restaurant-style chime (ding-ding-ding) using the .wav or fallback oscillators */
 function playChime() {
   try {
-    const Ctx =
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext })
-        .webkitAudioContext;
-    if (!Ctx) return;
+    const ctx = getAudioCtx();
+    if (!ctx) return;
 
-    // Singleton AudioContext — reused, never created fresh
-    if (!playChime._ctx || playChime._ctx.state === 'closed') {
-      playChime._ctx = new Ctx();
-    }
-    const ctx = playChime._ctx;
-
-    // If suspended (autoplay policy), try to resume
+    // Try to resume if suspended
     if (ctx.state === 'suspended') {
-      void ctx.resume();
+      ctx.resume().catch(() => {});
     }
 
-    // Try loading the audio file first (nicer sound)
-    try {
-      if (!playChime._buf) {
-        playChime._loading = true;
-        const xhr = new XMLHttpRequest();
-        xhr.open('GET', '/sounds/notification.wav', true);
-        xhr.responseType = 'arraybuffer';
-        xhr.onload = () => {
-          ctx.decodeAudioData(xhr.response).then((buf) => {
-            playChime._buf = buf;
-            playChime._loading = false;
-            playFromBuffer(ctx, buf);
-          }).catch(() => { playChime._loading = false; });
-        };
-        xhr.onerror = () => { playChime._loading = false; };
-        xhr.send();
-      } else if (!playChime._loading) {
-        playFromBuffer(ctx, playChime._buf);
-      }
-    } catch {
-      // Fallback: oscillator beep
-      fallbackBeep(ctx);
+    // If we have the decoded buffer, play it
+    if (_chimeBuf) {
+      const source = ctx.createBufferSource();
+      source.buffer = _chimeBuf;
+      const gain = ctx.createGain();
+      gain.gain.value = 0.6;
+      source.connect(gain);
+      gain.connect(ctx.destination);
+      source.start();
+      return;
     }
+
+    // If still loading, queue this notification
+    if (_loadingChime) {
+      _chimeQueue.push(playChime);
+      return;
+    }
+
+    // Start preloading for next time
+    preloadChime();
+
+    // Fallback: 3-tone restaurant chime using oscillators — much louder
+    playFallbackChime(ctx);
   } catch {
-    // ignore audio failures
+    // ignore
   }
 }
 
-/** Cache for singleton AudioContext and decoded audio buffer */
-playChime._ctx = null as AudioContext | null;
-playChime._buf = null as AudioBuffer | null;
-playChime._loading = false as boolean;
+function playFallbackChime(ctx: AudioContext) {
+  const master = ctx.createGain();
+  master.gain.value = 0.15;
+  master.connect(ctx.destination);
 
-function playFromBuffer(ctx: AudioContext, buf: AudioBuffer) {
-  const source = ctx.createBufferSource();
-  source.buffer = buf;
-  const gain = ctx.createGain();
-  gain.gain.value = 0.5;
-  source.connect(gain);
-  gain.connect(ctx.destination);
-  source.start();
+  // Three ascending tones: ding ding ding!
+  const notes = [660, 880, 1100]; // Hz
+  const startTime = ctx.currentTime + 0.05;
+
+  notes.forEach((freq, i) => {
+    const osc = ctx.createOscillator();
+    const noteGain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    noteGain.gain.setValueAtTime(0, startTime + i * 0.12);
+    noteGain.gain.linearRampToValueAtTime(1, startTime + i * 0.12 + 0.02);
+    noteGain.gain.exponentialRampToValueAtTime(0.001, startTime + i * 0.12 + 0.15);
+    osc.connect(noteGain);
+    noteGain.connect(master);
+    osc.start(startTime + i * 0.12);
+    osc.stop(startTime + i * 0.12 + 0.15);
+  });
 }
 
-function fallbackBeep(ctx: AudioContext) {
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = 'sine';
-  osc.frequency.value = 880;
-  gain.gain.value = 0.08;
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  osc.start();
-  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-  osc.stop(ctx.currentTime + 0.4);
-}
-
-/** Resume AudioContext on first user interaction (solves autoplay block) */
-function resumeAudioCtxOnInteraction() {
+/** Try to resume AudioContext on ANY user interaction (fires repeatedly, not just once) */
+function attachAudioResumeOnInteraction() {
   const handler = () => {
-    const Ctx =
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext })
-        .webkitAudioContext;
-    if (!Ctx) return;
-    if (playChime._ctx?.state === 'suspended') {
-      void playChime._ctx.resume();
-    } else if (!playChime._ctx) {
-      playChime._ctx = new Ctx();
+    const ctx = getAudioCtx();
+    if (ctx?.state === 'suspended') {
+      ctx.resume().catch(() => {});
     }
+  };
+  document.addEventListener('click', handler);
+  document.addEventListener('touchstart', handler);
+  document.addEventListener('keydown', handler);
+  return () => {
     document.removeEventListener('click', handler);
     document.removeEventListener('touchstart', handler);
     document.removeEventListener('keydown', handler);
   };
-  document.addEventListener('click', handler, { once: true });
-  document.addEventListener('touchstart', handler, { once: true });
-  document.addEventListener('keydown', handler, { once: true });
 }
+
+/* ========== Page title flashing ========== */
+
+let originalTitle = '';
+let flashInterval: ReturnType<typeof setInterval> | null = null;
+
+function flashTitle(count: number) {
+  if (!originalTitle) originalTitle = document.title;
+  if (flashInterval) clearInterval(flashInterval);
+
+  let showAlert = true;
+  flashInterval = setInterval(() => {
+    document.title = showAlert
+      ? `🔔 ${count} طلب جديد | ${originalTitle}`
+      : originalTitle;
+    showAlert = !showAlert;
+  }, 1000);
+
+  // Stop flashing after 10 seconds
+  setTimeout(() => {
+    if (flashInterval) {
+      clearInterval(flashInterval);
+      flashInterval = null;
+    }
+    document.title = originalTitle;
+  }, 10000);
+}
+
+function clearFlash() {
+  if (flashInterval) {
+    clearInterval(flashInterval);
+    flashInterval = null;
+  }
+  if (originalTitle) document.title = originalTitle;
+}
+
+/* ========== Component ========== */
 
 export function KitchenClient({
   projectId,
@@ -130,11 +202,13 @@ export function KitchenClient({
   const [orders, setOrders] = useState(initialOrders);
   const knownIds = useRef(new Set(initialOrders.map((o) => o.id)));
   const [soundOn, setSoundOn] = useState(true);
+  const [newOrderCount, setNewOrderCount] = useState(0); // for flash badge
   const [time, setTime] = useState(() =>
     new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
   );
   const [now, setNow] = useState(() => Date.now());
 
+  // Clock + tick
   useEffect(() => {
     const id = setInterval(() => {
       setTime(new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }));
@@ -143,7 +217,34 @@ export function KitchenClient({
     return () => clearInterval(id);
   }, []);
 
-  // Full refresh fallback (kept in case realtime misses something)
+  // Preload chime on mount
+  useEffect(() => {
+    preloadChime();
+    return attachAudioResumeOnInteraction();
+  }, []);
+
+  // Flash title when new orders come in
+  useEffect(() => {
+    if (newOrderCount > 0) {
+      flashTitle(newOrderCount);
+    } else {
+      clearFlash();
+    }
+  }, [newOrderCount]);
+
+  // Notification helper
+  const notifyNewOrder = useCallback((orderNum: number) => {
+    if (soundOn) {
+      playChime();
+      try { navigator.vibrate?.(200); } catch {}
+    }
+    toast.message('🔔 طلب جديد', {
+      description: `#${orderNum}`,
+    });
+    setNewOrderCount((c) => c + 1);
+  }, [soundOn]);
+
+  // Full refresh fallback
   const fullRefresh = useCallback(async () => {
     const supabase = createClient();
     const { data } = await supabase
@@ -160,105 +261,63 @@ export function KitchenClient({
 
     for (const o of rows) {
       if (!knownIds.current.has(o.id) && o.status === 'pending') {
-        if (soundOn) {
-          playChime();
-          try { navigator.vibrate?.(200); } catch {}
-        }
-        toast.message('طلب جديد', { description: `order-${o.order_number}` });
+        notifyNewOrder(o.order_number ?? 0);
       }
       knownIds.current.add(o.id);
     }
     setOrders(rows);
-  }, [projectId, soundOn]);
+  }, [projectId, notifyNewOrder]);
 
-  // Fetch a single new order with its relations (faster than full re-fetch)
-  const fetchSingleOrder = useCallback(
-    async (orderId: string) => {
-      const supabase = createClient();
-      const { data } = await supabase
-        .from('orders')
-        .select('*, tables(number), order_items(*)')
-        .eq('id', orderId)
-        .single();
-      return data as OrderRow | null;
-    },
-    []
-  );
+  // Fetch single order
+  const fetchSingleOrder = useCallback(async (orderId: string) => {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from('orders')
+      .select('*, tables(number), order_items(*)')
+      .eq('id', orderId)
+      .single();
+    return data as OrderRow | null;
+  }, []);
 
-  // Realtime: listen for INSERT, UPDATE, DELETE on orders
+  // Realtime
   useEffect(() => {
-    resumeAudioCtxOnInteraction();
-
     const supabase = createClient();
 
     const channel = supabase
       .channel(`kds-${projectId}`)
       .on(
         'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'orders',
-          filter: `project_id=eq.${projectId}`,
-        },
+        { event: 'INSERT', schema: 'public', table: 'orders', filter: `project_id=eq.${projectId}` },
         async (payload) => {
           const newOrder = payload.new as Partial<OrderRow>;
           const newId = newOrder.id as string;
           if (!newId || knownIds.current.has(newId)) return;
-
-          // Skip service requests (waiter/bill calls)
           if ((newOrder as any).service_type) return;
 
-          // Fetch the full order with relations (fast single query)
           const fullOrder = await fetchSingleOrder(newId);
           if (!fullOrder) return;
 
           knownIds.current.add(newId);
-          if (soundOn) {
-            playChime();
-            // Subtle vibration if supported
-            try { navigator.vibrate?.(200); } catch {}
-          }
-          toast.message('طلب جديد', {
-            description: `order-${fullOrder.order_number}`,
-          });
-          // Prepend new order so it appears immediately in "جديد" column
+          notifyNewOrder(fullOrder.order_number ?? 0);
           setOrders((prev) => [fullOrder, ...prev]);
         }
       )
       .on(
         'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'orders',
-          filter: `project_id=eq.${projectId}`,
-        },
+        { event: 'UPDATE', schema: 'public', table: 'orders', filter: `project_id=eq.${projectId}` },
         (payload) => {
           const updated = payload.new as Partial<OrderRow>;
           setOrders((prev) => {
-            // If status changed to delivered/cancelled, remove card
-            if (
-              updated.status === 'delivered' ||
-              updated.status === 'cancelled'
-            ) {
+            if (updated.status === 'delivered' || updated.status === 'cancelled') {
               return prev.filter((o) => o.id !== updated.id);
             }
-            // Otherwise update in-place
-            return prev.map((o) =>
-              o.id === updated.id ? { ...o, ...updated } : o
-            );
+            return prev.map((o) => (o.id === updated.id ? { ...o, ...updated } : o));
           });
         }
       )
       .on(
         'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'orders',
-          filter: `project_id=eq.${projectId}`,
-        },
+        { event: 'DELETE', schema: 'public', table: 'orders', filter: `project_id=eq.${projectId}` },
         (payload) => {
           const deletedId = payload.old?.id as string;
           setOrders((prev) => prev.filter((o) => o.id !== deletedId));
@@ -266,17 +325,21 @@ export function KitchenClient({
       )
       .subscribe();
 
-    // Fallback polling every 30s (in case realtime drops events)
+    // Fallback polling every 30s
     const interval = setInterval(() => void fullRefresh(), 30000);
 
     return () => {
       void supabase.removeChannel(channel);
       clearInterval(interval);
     };
-  }, [projectId, fullRefresh, fetchSingleOrder, soundOn]);
+  }, [projectId, fullRefresh, fetchSingleOrder, notifyNewOrder]);
+
+  // Clear new order badge when user interacts with the page
+  const clearBadge = useCallback(() => {
+    setNewOrderCount(0);
+  }, []);
 
   async function setStatus(orderId: string, status: OrderStatus) {
-    // Cancellation goes through the server API for validation + audit
     if (status === 'cancelled') {
       try {
         const res = await fetch('/api/pos/cancel', {
@@ -297,7 +360,6 @@ export function KitchenClient({
       }
     }
 
-    // Normal status transitions via direct DB (RLS-protected)
     const supabase = createClient();
     const { error } = await supabase
       .from('orders')
@@ -321,20 +383,45 @@ export function KitchenClient({
   const ready = orders.filter((o) => o.status === 'ready');
 
   return (
-    <div className="kds-root">
+    <div className="kds-root" onClick={clearBadge}>
       {/* Topbar — مطابقة للتصميم */}
       <div className="flex items-center justify-between border-b border-[#1E2330] px-6 py-4">
-        <span className="text-sm font-bold text-white">
-          شاشة المطبخ — {projectName}
-        </span>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-bold text-white">
+            شاشة المطبخ — {projectName}
+          </span>
+          {newOrderCount > 0 && (
+            <span className="animate-pulse rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">
+              +{newOrderCount}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
           <span className="text-xs text-[#9CA3AF]">{time}</span>
           <button
             type="button"
-            onClick={() => setSoundOn((s) => !s)}
-            className="rounded-[8px] border border-[var(--color-kds-border)] bg-[var(--color-kds-surface)] px-3 py-1.5 text-xs font-semibold text-[#9CA3AF]"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSoundOn((s) => !s);
+            }}
+            className="rounded-[8px] border border-[var(--color-kds-border)] bg-[var(--color-kds-surface)] px-3 py-1.5 text-xs font-semibold text-[#9CA3AF] transition-colors hover:border-[#4F46E5] hover:text-white"
           >
-            الصوت: {soundOn ? 'تشغيل' : 'إيقاف'}
+            {soundOn ? '🔊' : '🔇'}
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              // Test sound
+              if (!soundOn) setSoundOn(true);
+              ensureAudioReady();
+              playChime();
+              toast.success('🔔 صوت التنبيه', { description: 'صوت الإشعار يعمل ✅' });
+            }}
+            title="اختبار الصوت"
+            className="rounded-[8px] border border-[var(--color-kds-border)] bg-[var(--color-kds-surface)] px-3 py-1.5 text-xs font-semibold text-[#9CA3AF] transition-colors hover:border-[#34D399] hover:text-white"
+          >
+            🔊 اختبار
           </button>
         </div>
       </div>
@@ -342,6 +429,12 @@ export function KitchenClient({
       {/* Kanban columns — مطابقة للتصميم */}
       <div className="flex gap-4 overflow-x-auto p-5 lg:grid lg:grid-cols-3">
         <KdsColumn title="جديد" count={pending.length}>
+          {pending.length === 0 && (
+            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[#232838] py-10 text-[#6B7280]">
+              <span className="text-2xl">✅</span>
+              <span className="mt-2 text-xs">لا توجد طلبات جديدة</span>
+            </div>
+          )}
           {pending.map((o) => (
             <KdsCard
               key={o.id}
@@ -354,6 +447,11 @@ export function KitchenClient({
           ))}
         </KdsColumn>
         <KdsColumn title="قيد التجهيز" count={preparing.length}>
+          {preparing.length === 0 && (
+            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[#232838] py-10 text-[#6B7280]">
+              <span className="text-xs">لا توجد طلبات قيد التجهيز</span>
+            </div>
+          )}
           {preparing.map((o) => (
             <KdsCard
               key={o.id}
@@ -366,6 +464,11 @@ export function KitchenClient({
           ))}
         </KdsColumn>
         <KdsColumn title="جاهز" count={ready.length}>
+          {ready.length === 0 && (
+            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[#232838] py-10 text-[#6B7280]">
+              <span className="text-xs">لا توجد طلبات جاهزة</span>
+            </div>
+          )}
           {ready.map((o) => (
             <KdsCard
               key={o.id}
@@ -378,6 +481,8 @@ export function KitchenClient({
           ))}
         </KdsColumn>
       </div>
+
+      {/* Loading overlay while preloading chime */}
     </div>
   );
 }
@@ -423,7 +528,6 @@ function KdsCard({
     (now - new Date(order.created_at).getTime()) / 60000
   );
 
-  // Overdue logic
   let overdueClass = '';
   if (order.status === 'pending' && mins >= OVERDUE_MIN_PENDING) {
     overdueClass = 'kds-overdue';
@@ -477,7 +581,7 @@ function KdsCard({
           {order.notes}
         </p>
       )}
-      {/* Touch targets ≥ 48px */}
+      {/* Touch targets ≥ 44px */}
       <div className="flex gap-2">
         <button
           type="button"
