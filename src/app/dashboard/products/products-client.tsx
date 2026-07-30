@@ -105,6 +105,11 @@ export function ProductsClient({
   const [catName, setCatName] = useState('');
   const [catError, setCatError] = useState('');
 
+  // Edit category
+  const [editingCat, setEditingCat] = useState<Category | null>(null);
+  const [editCatName, setEditCatName] = useState('');
+  const [confirmDeleteCat, setConfirmDeleteCat] = useState<Category | null>(null);
+
   // Image upload state
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -482,6 +487,35 @@ export function ProductsClient({
     toast.success('تم إنشاء التصنيف');
   }
 
+  async function updateCategory() {
+    const name = editCatName.trim();
+    if (!name || !editingCat) return;
+    setLoading(true);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('categories')
+      .update({ name })
+      .eq('id', editingCat.id);
+    setLoading(false);
+    if (error) { toast.error('فشل التحديث'); return; }
+    setCategories((prev) => prev.map((c) => c.id === editingCat.id ? { ...c, name } : c));
+    setEditingCat(null);
+    toast.success('تم تحديث التصنيف');
+  }
+
+  async function deleteCategory() {
+    if (!confirmDeleteCat) return;
+    setLoading(true);
+    const supabase = createClient();
+    const { error } = await supabase.from('categories').delete().eq('id', confirmDeleteCat.id);
+    setLoading(false);
+    if (error) { toast.error('فشل الحذف — تأكد من عدم وجود منتجات مرتبطة'); return; }
+    setCategories((prev) => prev.filter((c) => c.id !== confirmDeleteCat.id));
+    setConfirmDeleteCat(null);
+    toast.success('تم حذف التصنيف');
+  }
+
+
   const refresh = useCallback(async () => { router.refresh(); }, [router]);
 
   return (
@@ -506,12 +540,25 @@ export function ProductsClient({
       {categories.length > 0 && (
         <div className="mb-4 flex flex-wrap gap-2">
           {categories.map((c) => (
-            <span
-              key={c.id}
-              className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1 text-xs font-semibold"
-            >
-              {c.name}
-            </span>
+            <div key={c.id} className="group flex items-center gap-1 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] pl-3">
+              <span className="text-xs font-semibold">{c.name}</span>
+              <button
+                type="button"
+                onClick={() => { setEditingCat(c); setEditCatName(c.name); }}
+                className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--color-text-muted)] opacity-0 transition-opacity hover:bg-[var(--color-bg)] hover:text-[var(--color-text)] group-hover:opacity-100"
+                aria-label="تعديل التصنيف"
+              >
+                <Pencil className="h-3 w-3" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteCat(c)}
+                className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--color-text-muted)] opacity-0 transition-opacity hover:bg-[var(--color-danger-tint)] hover:text-[var(--color-danger)] group-hover:opacity-100"
+                aria-label="حذف التصنيف"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </div>
           ))}
         </div>
       )}
@@ -957,6 +1004,53 @@ export function ProductsClient({
                 variant="secondary"
                 onClick={() => setConfirmDelete(null)}
               >
+                إلغاء
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {editingCat && (
+        <Modal title="تعديل التصنيف" onClose={() => setEditingCat(null)}>
+          <form onSubmit={(e) => { e.preventDefault(); updateCategory(); }} className="space-y-4">
+            <div className="field">
+              <label className="label">اسم التصنيف</label>
+              <input
+                className="input"
+                required
+                value={editCatName}
+                onChange={(e) => setEditCatName(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button type="submit" block disabled={loading || !editCatName.trim()}>
+                {loading ? 'جاري…' : 'حفظ'}
+              </Button>
+              <Button type="button" variant="secondary" onClick={() => setEditingCat(null)}>
+                إلغاء
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {confirmDeleteCat && (
+        <Modal title="حذف التصنيف" onClose={() => setConfirmDeleteCat(null)}>
+          <div className="text-center">
+            <div className="mb-3 mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-danger-tint)]">
+              <Trash2 className="h-6 w-6 text-[var(--color-danger)]" />
+            </div>
+            <p className="mb-1 text-sm font-bold">{confirmDeleteCat.name}</p>
+            <p className="mb-5 text-xs text-[var(--color-text-secondary)]">
+              هل أنت متأكد؟ المنتجات المرتبطة بهذا التصنيف ستبقى بدون تصنيف.
+            </p>
+            <div className="flex gap-2">
+              <Button variant="danger" block disabled={loading} onClick={deleteCategory}>
+                {loading ? 'جاري…' : 'نعم، احذف'}
+              </Button>
+              <Button variant="secondary" onClick={() => setConfirmDeleteCat(null)}>
                 إلغاء
               </Button>
             </div>
