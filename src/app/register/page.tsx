@@ -25,9 +25,6 @@ export default function RegisterPage() {
 
     const supabase = createClient();
 
-    console.log('[REGISTER] Calling server /api/auth/signup');
-    console.log('[REGISTER] Email:', email.trim());
-
     try {
       const apiRes = await fetch('/api/auth/signup', {
         method: 'POST',
@@ -40,9 +37,6 @@ export default function RegisterPage() {
       });
 
       const apiJson = await apiRes.json();
-
-      console.log('[REGISTER] /api/auth/signup status:', apiRes.status);
-      console.log('[REGISTER] /api/auth/signup body:', JSON.stringify(apiJson, null, 2));
 
       if (!apiRes.ok) {
         const fullErr = JSON.stringify(apiJson, null, 2);
@@ -57,8 +51,6 @@ export default function RegisterPage() {
         password,
       });
 
-      console.log('[REGISTER] signInWithPassword error:', signInErr);
-
       setLoading(false);
 
       if (signInErr) {
@@ -70,7 +62,6 @@ export default function RegisterPage() {
       router.push('/onboarding');
       router.refresh();
     } catch (err: any) {
-      console.log('[REGISTER] Exception calling API:', err);
       setError('حدث خطأ غير متوقع أثناء إنشاء الحساب.');
       setLoading(false);
     }

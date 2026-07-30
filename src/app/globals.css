@@ -467,6 +467,33 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* ==========================================================================
+   Missing classes (restored from previous design)
+   ========================================================================== */
+.dashboard-card:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
+  box-shadow: var(--shadow-card-hover);
+}
+.dashboard-stat {
+  position: relative; overflow: hidden;
+}
+.dashboard-stat::after {
+  content: "";
+  position: absolute;
+  inset-inline-end: -1.5rem;
+  bottom: -2rem;
+  width: 5rem;
+  height: 5rem;
+  border-radius: 999px;
+  background: var(--color-primary-tint);
+  opacity: 0.6;
+}
+.checklist-item-pulse:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 20%, transparent);
+  box-shadow: 0 0 0 2px var(--color-primary-tint);
+  transition: all 0.15s;
+}
+
+/* ==========================================================================
    Landing page (keep existing)
    ========================================================================== */
 .landing-shell { background: radial-gradient(circle at 85% 7%, rgba(99, 102, 241, 0.16), transparent 25rem), radial-gradient(circle at 12% 25%, rgba(20, 184, 166, 0.10), transparent 20rem), var(--color-bg); }

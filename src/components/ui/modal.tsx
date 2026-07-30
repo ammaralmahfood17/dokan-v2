@@ -61,12 +61,16 @@ export function Modal({ title, children, onClose }: ModalProps) {
   // Keydown listener + body scroll prevention
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    const pageEl =
+      (trapRef.current?.closest('.page') as HTMLElement | null) ||
+      (document.querySelector('.page') as HTMLElement | null);
+    const scrollTarget = pageEl || document.body;
+    const prevOverflow = scrollTarget.style.overflow;
+    scrollTarget.style.overflow = 'hidden';
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = prevOverflow;
+      scrollTarget.style.overflow = prevOverflow;
     };
   }, [handleKeyDown]);
 

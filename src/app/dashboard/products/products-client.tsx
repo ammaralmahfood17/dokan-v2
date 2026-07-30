@@ -601,6 +601,8 @@ export function ProductsClient({
         </div>
       )}
 
+      </PullToRefresh>
+
       {/* ======== PRODUCT FORM MODAL ======== */}
       {showProductForm && (
         <Modal
@@ -916,7 +918,6 @@ export function ProductsClient({
           </form>
         </Modal>
       )}
-      </PullToRefresh>
     </div>
   );
 }

@@ -234,8 +234,9 @@ export function TablesClient({
           </div>
         )}
       </section>
+      </PullToRefresh>
 
-      {/* Create Table Modal */}
+      {/* Create Table Modal — sibling of PullToRefresh */}
       {showTable && (
         <Modal title="طاولة جديدة" onClose={() => setShowTable(false)}>
           <form onSubmit={createTable}>
@@ -283,7 +284,7 @@ export function TablesClient({
         </Modal>
       )}
 
-      {/* QR Preview Modal */}
+      {/* QR Preview Modal — sibling of PullToRefresh */}
       {qrPreview && (
         <Modal title={`QR — ${qrPreview.label}`} onClose={() => setQrPreview(null)}>
           <div className="text-center">
@@ -291,7 +292,7 @@ export function TablesClient({
             <img
               src={qrPreview.dataUrl}
               alt="QR Code"
-              className="mx-auto rounded-[8px] border border-[var(--color-border)]"
+              className="mx-auto max-w-full rounded-[8px] border border-[var(--color-border)]"
             />
             <p className="mt-3 break-all text-xs text-[var(--color-text-secondary)]" dir="ltr">
               {qrPreview.url}
@@ -312,7 +313,6 @@ export function TablesClient({
           </div>
         </Modal>
       )}
-      </PullToRefresh>
     </div>
   );
 }

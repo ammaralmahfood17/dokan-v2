@@ -139,7 +139,7 @@ export function AppSidebar({
       {/* Backdrop — mobile */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden animate-fade-in"
+          className="fixed inset-0 z-[55] bg-black/50 backdrop-blur-sm lg:hidden animate-fade-in"
           onClick={() => setIsOpen(false)}
         />
       )}
@@ -147,7 +147,7 @@ export function AppSidebar({
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed right-0 top-0 z-50 flex h-dvh w-[270px] flex-col border-l border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl transition-transform duration-300',
+          'fixed right-0 top-0 z-[60] flex h-dvh w-[270px] flex-col border-l border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl transition-transform duration-300',
           isOpen ? 'translate-x-0' : 'translate-x-full',
           'lg:static lg:z-auto lg:h-auto lg:w-56 lg:translate-x-0 lg:shadow-none lg:border-l'
         )}

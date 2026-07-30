@@ -83,8 +83,6 @@ export async function POST(request: NextRequest) {
       console.warn('[Audit] Failed to write order audit log', auditErr);
     }
 
-    console.log('[Public Order] Order created', { orderId: result.order.id, projectId: project.id });
-
     // Non-blocking push notification to all staff
     sendPushToProject(project.id, {
       title: '🔔 طلب جديد',

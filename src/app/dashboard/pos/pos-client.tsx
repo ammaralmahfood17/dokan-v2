@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Minus, Plus, Trash2 } from 'lucide-react';
+import { Minus, Plus, Trash2, X } from 'lucide-react';
 import { formatMoney, money } from '@/lib/utils';
 import type { OrderType, Product, ProductAddon } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -136,13 +136,6 @@ export function PosClient({
         toast.error(data.error || 'فشل إنشاء الطلب');
         return;
       }
-      console.log('[POS] Order created successfully', {
-        orderId: data.order?.id,
-        orderNumber: data.order?.orderNumber,
-        type,
-        total: data.order?.totalAmount,
-        durationMs: Date.now() - startTime,
-      });
       toast.success(
         `تم الطلب order-${data.order?.orderNumber} — ${formatMoney(
           data.order?.totalAmount ?? total,
@@ -305,9 +298,22 @@ export function PosClient({
       </div>
 
       {picker && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4">
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setPicker(null); }}
+        >
           <div className="w-full max-w-md rounded-t-[10px] bg-[var(--color-surface)] p-4 sm:rounded-[10px]">
-            <h3 className="mb-1 text-sm font-bold">{picker.name}</h3>
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-bold">{picker.name}</h3>
+              <button
+                type="button"
+                onClick={() => setPicker(null)}
+                className="btn btn-ghost btn-sm"
+                aria-label="إغلاق"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
             <p className="mb-3 text-xs text-[var(--color-text-secondary)]">
               اختر الإضافات
             </p>
