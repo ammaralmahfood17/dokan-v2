@@ -18,11 +18,7 @@ create policy "orders_staff_insert"
 create policy "orders_staff_update_status"
   on public.orders for update
   using (public.is_project_member(project_id))
-  with check (
-    public.is_project_member(project_id)
-    and old.total_amount = new.total_amount
-    and old.order_number = new.order_number
-  );
+  with check (public.is_project_member(project_id));
 
 -- 3. Trigger as belt-and-suspenders protection
 create or replace function public.orders_protect_amounts()
