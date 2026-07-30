@@ -212,6 +212,7 @@ export function KitchenClient({
     new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
   );
   const [now, setNow] = useState(() => Date.now());
+  const [confirmCancel, setConfirmCancel] = useState<string | null>(null);
 
   // Clock + tick
   useEffect(() => {
@@ -457,9 +458,9 @@ export function KitchenClient({
               now={now}
               onAdvance={() => setStatus(o.id, 'preparing')}
               advanceLabel="بدء التجهيز"
-              onCancel={() => setStatus(o.id, 'cancelled')}
+              onCancel={() => setConfirmCancel(o.id)}
             />
-          ))}
+          ) )}
         </KdsColumn>
         <KdsColumn title="قيد التجهيز" count={preparing.length}>
           {preparing.length === 0 && (
@@ -474,9 +475,9 @@ export function KitchenClient({
               now={now}
               onAdvance={() => setStatus(o.id, 'ready')}
               advanceLabel="تم التجهيز"
-              onCancel={() => setStatus(o.id, 'cancelled')}
+              onCancel={() => setConfirmCancel(o.id)}
             />
-          ))}
+          ) )}
         </KdsColumn>
         <KdsColumn title="جاهز" count={ready.length}>
           {ready.length === 0 && (
@@ -491,13 +492,41 @@ export function KitchenClient({
               now={now}
               onAdvance={() => setStatus(o.id, 'delivered')}
               advanceLabel="تسليم"
-              onCancel={() => setStatus(o.id, 'cancelled')}
+              onCancel={() => setConfirmCancel(o.id)}
             />
-          ))}
+          ) )}
         </KdsColumn>
       </div>
 
       {/* Loading overlay while preloading chime */}
+
+      {confirmCancel && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setConfirmCancel(null)}>
+          <div className="w-full max-w-xs rounded-xl bg-[#161B26] p-5 text-center shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-3 mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[#EF4444]/20">
+              <span className="text-lg font-bold text-[#EF4444]">!</span>
+            </div>
+            <p className="mb-1 text-sm font-bold text-white">تأكيد الإلغاء</p>
+            <p className="mb-5 text-xs text-[#9CA3AF]">هل أنت متأكد من إلغاء هذا الطلب؟</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => { setStatus(confirmCancel, 'cancelled'); setConfirmCancel(null); }}
+                className="min-h-[44px] flex-1 rounded-lg bg-[#EF4444] px-4 text-sm font-bold text-white transition-colors hover:bg-[#DC2626]"
+              >
+                نعم، إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmCancel(null)}
+                className="min-h-[44px] flex-1 rounded-lg border border-[#323A4D] bg-[#232838] px-4 text-sm font-bold text-[#9CA3AF] transition-colors hover:bg-[#2a3040]"
+              >
+                رجوع
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
