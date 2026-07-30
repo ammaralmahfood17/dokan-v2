@@ -322,61 +322,57 @@ export function KitchenClient({
 
   return (
     <div className="kds-root">
-      <header className="flex items-center justify-between gap-3 border-b border-[#1E2330] px-4 py-3">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500">
-            شاشة المطبخ
-          </p>
-          <h1 className="text-base font-bold text-white">{projectName}</h1>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-slate-500">{time}</span>
+      {/* Topbar — مطابقة للتصميم */}
+      <div className="flex items-center justify-between border-b border-[#1E2330] px-6 py-4">
+        <span className="text-sm font-bold text-white">
+          شاشة المطبخ — {projectName}
+        </span>
+        <div className="flex items-center gap-4">
+          <span className="text-xs text-[#9CA3AF]">{time}</span>
           <button
             type="button"
             onClick={() => setSoundOn((s) => !s)}
-            className="min-h-[44px] rounded-[8px] border border-[var(--color-kds-border)] bg-[var(--color-kds-surface)] px-3 text-xs font-semibold text-slate-300"
+            className="rounded-[8px] border border-[var(--color-kds-border)] bg-[var(--color-kds-surface)] px-3 py-1.5 text-xs font-semibold text-[#9CA3AF]"
           >
             الصوت: {soundOn ? 'تشغيل' : 'إيقاف'}
           </button>
-          <span className="rounded bg-slate-800 px-2 py-0.5 text-xs font-bold text-slate-300">
-            {orders.length}
-          </span>
         </div>
-      </header>
+      </div>
 
-      <div className="grid gap-4 p-4 lg:grid-cols-3">
-        <KdsColumn title="جديد" count={pending.length} accent="#F59E0B">
+      {/* Kanban columns — مطابقة للتصميم */}
+      <div className="flex gap-4 overflow-x-auto p-5 lg:grid lg:grid-cols-3">
+        <KdsColumn title="جديد" count={pending.length}>
           {pending.map((o) => (
             <KdsCard
               key={o.id}
               order={o}
               now={now}
               onAdvance={() => setStatus(o.id, 'preparing')}
-              advanceLabel="بدء التحضير"
+              advanceLabel="بدء التجهيز"
               onCancel={() => setStatus(o.id, 'cancelled')}
             />
           ))}
         </KdsColumn>
-        <KdsColumn title="قيد التحضير" count={preparing.length} accent="#818CF8">
+        <KdsColumn title="قيد التجهيز" count={preparing.length}>
           {preparing.map((o) => (
             <KdsCard
               key={o.id}
               order={o}
               now={now}
               onAdvance={() => setStatus(o.id, 'ready')}
-              advanceLabel="جاهز"
+              advanceLabel="تم التجهيز"
               onCancel={() => setStatus(o.id, 'cancelled')}
             />
           ))}
         </KdsColumn>
-        <KdsColumn title="جاهز" count={ready.length} accent="#34D399">
+        <KdsColumn title="جاهز" count={ready.length}>
           {ready.map((o) => (
             <KdsCard
               key={o.id}
               order={o}
               now={now}
               onAdvance={() => setStatus(o.id, 'delivered')}
-              advanceLabel="تم التسليم"
+              advanceLabel="تسليم"
               onCancel={() => setStatus(o.id, 'cancelled')}
             />
           ))}
@@ -389,27 +385,23 @@ export function KitchenClient({
 function KdsColumn({
   title,
   count,
-  accent,
   children,
 }: {
   title: string;
   count: number;
-  accent: string;
   children: React.ReactNode;
 }) {
   return (
-    <section>
-      <div className="mb-3 flex items-center justify-between border-b border-[#1E2330] pb-2">
-        <h2 className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500">
+    <section className="min-w-[260px] flex-1">
+      <div className="mb-3 flex items-center justify-between px-1">
+        <h2 className="text-[11.5px] font-bold uppercase tracking-[0.5px] text-[#9CA3AF]">
           {title}
         </h2>
-        <span
-          className="rounded-full bg-slate-800 px-2.5 py-0.5 text-xs font-bold text-slate-300"
-        >
+        <span className="rounded-full bg-[#1E2330] px-2 py-0.5 text-xs font-bold text-white">
           {count}
         </span>
       </div>
-      <div className="space-y-3">{children}</div>
+      <div className="space-y-2.5">{children}</div>
     </section>
   );
 }
@@ -443,37 +435,37 @@ function KdsCard({
     <article className={`kds-card p-3 ${order.status} ${overdueClass}`}>
       <div className="mb-2 flex items-start justify-between gap-2">
         <div>
-          <p className="text-sm font-bold text-white" dir="ltr">
+          <p className="text-[15px] font-extrabold text-white" dir="ltr">
             #{order.order_number}
           </p>
-          <p className="text-xs text-slate-500">
+          <p className="mt-0.5 text-[11px] text-[#9CA3AF]">
             {order.tables
               ? `طاولة ${order.tables.number}`
               : ORDER_TYPE_LABELS[order.type]}{' '}
-            · <span className={overdueClass ? 'text-red-400' : 'text-slate-500'}>{mins} د</span>
+            · <span className={overdueClass ? 'font-bold text-[#EF4444]' : 'text-[#9CA3AF]'}>{mins} د</span>
             {overdueClass && (
-              <span className="mr-1 font-bold text-red-400">متأخر!</span>
+              <span className="mr-1 font-bold text-[#EF4444]">متأخر!</span>
             )}
           </p>
         </div>
-        <span className="rounded bg-slate-800 px-2 py-0.5 text-[10px] font-bold text-slate-400">
+        <span className="rounded bg-[#1E2330] px-2 py-0.5 text-[10px] font-bold text-[#9CA3AF]">
           {ORDER_STATUS_LABELS[order.status]}
         </span>
       </div>
-      <ul className="mb-3 space-y-1.5">
+      <ul className="mb-3 space-y-1">
         {(order.order_items ?? []).map((item) => (
-          <li key={item.id} className="text-sm text-slate-200">
+          <li key={item.id} className="text-[12px] leading-[1.9] text-[#C6CAD3]">
             <strong className="text-white">{item.quantity}×</strong>{' '}
             {item.product_name}
             {Array.isArray(item.addons) && item.addons.length > 0 && (
-              <span className="block text-xs text-slate-500">
+              <span className="block text-[11px] text-[#6B7280]">
                 {(item.addons as { name: string }[])
                   .map((a) => a.name)
                   .join(' · ')}
               </span>
             )}
             {item.notes && (
-              <span className="block text-xs text-amber-300/90">
+              <span className="block text-[11px] text-[#F59E0B]/80">
                 {item.notes}
               </span>
             )}
@@ -481,7 +473,7 @@ function KdsCard({
         ))}
       </ul>
       {order.notes && (
-        <p className="mb-3 rounded bg-slate-800/50 px-2 py-1 text-xs text-amber-200/90">
+        <p className="mb-3 rounded bg-[#1E2330]/50 px-2 py-1 text-[11px] text-[#F59E0B]/80">
           {order.notes}
         </p>
       )}
@@ -490,14 +482,14 @@ function KdsCard({
         <button
           type="button"
           onClick={onAdvance}
-          className="min-h-[48px] flex-1 rounded-[8px] bg-white px-4 text-sm font-bold text-slate-900 transition-colors hover:bg-slate-100"
+          className="min-h-[44px] flex-1 rounded-[7px] border border-[#323A4D] bg-[#232838] px-4 text-[11.5px] font-bold text-white transition-colors hover:bg-[#2a3040]"
         >
           {advanceLabel}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="min-h-[48px] min-w-[80px] rounded-[8px] border border-[#323A4D] bg-[#232838] px-4 text-sm font-semibold text-slate-300 transition-colors hover:bg-[#2a3040]"
+          className="min-h-[44px] min-w-[80px] rounded-[7px] border border-[#323A4D] bg-[#232838] px-4 text-[11.5px] font-semibold text-[#9CA3AF] transition-colors hover:bg-[#2a3040]"
         >
           إلغاء
         </button>
