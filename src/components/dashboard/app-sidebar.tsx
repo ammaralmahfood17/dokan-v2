@@ -10,6 +10,7 @@ import {
   ChefHat,
   Monitor,
   QrCode,
+  BarChart3,
   Settings,
   LogOut,
   Store,
@@ -29,6 +30,7 @@ type NavItem = {
 
 const NAV_MAIN: NavItem[] = [
   { href: '/dashboard', label: 'الرئيسية', shortLabel: 'الرئيسية', icon: LayoutDashboard },
+  { href: '/dashboard/analytics', label: 'الإحصائيات', shortLabel: 'إحصائيات', icon: BarChart3 },
   { href: '/dashboard/products', label: 'المنتجات', shortLabel: 'منتجات', icon: Package },
   { href: '/dashboard/orders', label: 'الطلبات', shortLabel: 'طلبات', icon: ClipboardList },
   { href: '/dashboard/kitchen', label: 'شاشة المطبخ', shortLabel: 'مطبخ', icon: ChefHat },
