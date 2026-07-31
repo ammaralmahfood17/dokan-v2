@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 type OrderRow = Order & {
   tables?: { number: number } | null;
   order_items?: OrderItem[];
+  service_type?: string | null;
 };
 
 const OVERDUE_MIN_PENDING = 15;
@@ -297,6 +298,11 @@ export function KitchenClient({
       }
       knownIds.current.add(o.id);
     }
+    // Bound the dedupe set — drop ids of delivered/cancelled/old orders once
+    // it grows too large (realtime ids are re-added on INSERT).
+    if (knownIds.current.size > 300) {
+      knownIds.current = new Set(rows.map((o) => o.id));
+    }
     setOrders(rows);
   }, [projectId, notifyNewOrder]);
 
@@ -324,7 +330,7 @@ export function KitchenClient({
           const newOrder = payload.new as Partial<OrderRow>;
           const newId = newOrder.id as string;
           if (!newId || knownIds.current.has(newId)) return;
-          if ((newOrder as any).service_type) return;
+          if (newOrder.service_type) return;
 
           const fullOrder = await fetchSingleOrder(newId);
           if (!fullOrder) return;
@@ -370,6 +376,16 @@ export function KitchenClient({
   const clearBadge = useCallback(() => {
     setNewOrderCount(0);
   }, []);
+
+  // Close the cancel-confirm dialog with ESC
+  useEffect(() => {
+    if (!confirmCancel) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setConfirmCancel(null);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [confirmCancel]);
 
   async function setStatus(orderId: string, status: OrderStatus) {
     if (status === 'cancelled') {
@@ -436,9 +452,11 @@ export function KitchenClient({
               e.stopPropagation();
               setSoundOn((s) => !s);
             }}
-            className="rounded-[8px] border border-[var(--color-kds-border)] bg-[var(--color-kds-surface)] px-3 py-1.5 text-xs font-semibold text-[#9CA3AF] transition-colors hover:border-[#4F46E5] hover:text-white"
+            aria-label={soundOn ? 'كتم الصوت' : 'تفعيل الصوت'}
+            aria-pressed={soundOn}
+            className="flex min-h-[44px] items-center rounded-[8px] border border-[var(--color-kds-border)] bg-[var(--color-kds-surface)] px-3 text-xs font-semibold text-[#9CA3AF] transition-colors hover:border-[#4F46E5] hover:text-white"
           >
-            {soundOn ? '🔊' : '🔇'}
+            <span aria-hidden="true">{soundOn ? '🔊' : '🔇'}</span>
           </button>
           <button
             type="button"
@@ -449,9 +467,9 @@ export function KitchenClient({
               toast.success('🔔 صوت التنبيه', { description: 'صوت الإشعار يعمل ✅' });
             }}
             title="اختبار الصوت"
-            className="rounded-[8px] border border-[var(--color-kds-border)] bg-[var(--color-kds-surface)] px-3 py-1.5 text-xs font-semibold text-[#9CA3AF] transition-colors hover:border-[#34D399] hover:text-white"
+            className="flex min-h-[44px] items-center rounded-[8px] border border-[var(--color-kds-border)] bg-[var(--color-kds-surface)] px-3 text-xs font-semibold text-[#9CA3AF] transition-colors hover:border-[#34D399] hover:text-white"
           >
-            🔊 اختبار
+            <span aria-hidden="true">🔊</span> اختبار
           </button>
         </div>
       </div>
@@ -513,7 +531,13 @@ export function KitchenClient({
       </div>
 
       {confirmCancel && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setConfirmCancel(null)}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="تأكيد إلغاء الطلب"
+          onClick={() => setConfirmCancel(null)}
+        >
           <div className="w-full max-w-xs rounded-xl bg-[#161B26] p-5 text-center shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="mb-3 mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[#EF4444]/20">
               <span className="text-lg font-bold text-[#EF4444]">!</span>
@@ -555,7 +579,7 @@ function KdsColumn({
   return (
     <section className="min-w-[260px] flex-1">
       <div className="mb-3 flex items-center justify-between px-1">
-        <h2 className="text-[11.5px] font-bold uppercase tracking-[0.5px] text-[#9CA3AF]">
+        <h2 className="text-[11.5px] font-bold uppercase text-[#9CA3AF]">
           {title}
         </h2>
         <span className="rounded-full bg-[#1E2330] px-2 py-0.5 text-xs font-bold text-white">
@@ -580,8 +604,9 @@ function KdsCard({
   advanceLabel: string;
   onCancel: () => void;
 }) {
-  const mins = Math.floor(
-    (now - new Date(order.created_at).getTime()) / 60000
+  const mins = Math.max(
+    0,
+    Math.floor((now - new Date(order.created_at).getTime()) / 60000)
   );
 
   let overdueClass = '';
