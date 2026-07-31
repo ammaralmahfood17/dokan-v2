@@ -5,7 +5,6 @@ import { Minus, Plus, Trash2, X } from 'lucide-react';
 import { formatMoney, money } from '@/lib/utils';
 import type { OrderType, Product, ProductAddon } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { EmptyState } from '@/components/ui/empty-state';
 import { toast } from 'sonner';
 
 type ProductWithAddons = Product & { product_addons: ProductAddon[] };
@@ -80,7 +79,8 @@ export function PosClient({
   );
 
   function openProduct(p: ProductWithAddons) {
-    if (p.product_addons?.length) {
+    // Open the picker only when there are AVAILABLE addons; otherwise quick-add
+    if (p.product_addons?.some((a) => a.is_available)) {
       setPicker(p);
       setSelectedAddons([]);
     } else {
@@ -99,7 +99,7 @@ export function PosClient({
         .reduce((s, a) => s + Number(a.price), 0)
     );
     const unitPrice = money(Number(p.price) + addonTotal);
-    const key = `${p.id}:${addonIds.sort().join(',')}`;
+    const key = `${p.id}:${[...addonIds].sort().join(',')}`;
     setLines((prev) => {
       const existing = prev.find((l) => l.key === key);
       if (existing) {
@@ -147,7 +147,6 @@ export function PosClient({
       return;
     }
     setSubmitting(true);
-    const startTime = Date.now();
     try {
       const res = await fetch('/api/pos/order', {
         method: 'POST',
@@ -313,8 +312,9 @@ export function PosClient({
               <input
                 className="input"
                 value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                onChange={(e) => { if (e.target.value.length <= 500) setNotes(e.target.value); }}
                 placeholder="اختياري"
+                maxLength={500}
               />
             </div>
 

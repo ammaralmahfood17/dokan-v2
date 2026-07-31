@@ -50,6 +50,11 @@ export async function createSecureOrder(
     return { ok: false, error: 'عدد الأصناف كبير جداً', status: 400 };
   }
 
+  // Order-level notes share the menu's 500-char limit (item notes: 200)
+  if (notes && notes.length > 500) {
+    return { ok: false, error: 'ملاحظات الطلب طويلة جداً (الحد 500 حرف)', status: 400 };
+  }
+
   const validated: ValidatedOrderLine[] = [];
   let totalAmount = 0;
 
