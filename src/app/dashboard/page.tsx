@@ -15,8 +15,17 @@ export default async function DashboardPage() {
   const allDone = doneCount === checklist.length;
 
   const supabase = await createClient();
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // "Today" = Bahrain midnight (UTC+3). The server clock is UTC, so naive
+  // setHours(0,0,0,0) would drop orders between 00:00–03:00 Bahrain time.
+  // Mirrors the analytics screen's Asia/Bahrain bucketing.
+  const TZ = 'Asia/Bahrain';
+  const dayFmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  const today = new Date(Date.parse(`${dayFmt.format(new Date())}T00:00:00+03:00`));
 
   const [
     { count: todayOrders },
@@ -48,6 +57,7 @@ export default async function DashboardPage() {
       .select('total_amount')
       .eq('project_id', ctx.project.id)
       .is('service_type', null)
+      .not('status', 'eq', 'cancelled')
       .gte('created_at', today.toISOString()),
   ]);
 
@@ -103,7 +113,14 @@ export default async function DashboardPage() {
               {doneCount} / {checklist.length}
             </span>
           </div>
-          <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-[var(--color-border)]">
+          <div
+            role="progressbar"
+            aria-label="تقدم قائمة الإعداد"
+            aria-valuemin={0}
+            aria-valuemax={checklist.length}
+            aria-valuenow={doneCount}
+            className="mb-3 h-1.5 overflow-hidden rounded-full bg-[var(--color-border)]"
+          >
             <div
               className="h-full rounded-full bg-[var(--color-primary)] transition-all"
               style={{ width: `${(doneCount / checklist.length) * 100}%` }}

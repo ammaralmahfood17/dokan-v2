@@ -36,7 +36,7 @@ export default async function DashboardLayout({
               {ctx.project.name}
             </span>
           </div>
-          <span className="text-[11px] font-medium text-[var(--color-text-muted)] tracking-wider">
+          <span className="text-[11px] font-medium text-[var(--color-text-muted)]">
             دكان
           </span>
         </header>

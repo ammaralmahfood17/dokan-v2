@@ -86,6 +86,8 @@ export default function DashboardError({
           <button
             type="button"
             onClick={() => setShowDetails((s) => !s)}
+            aria-expanded={showDetails}
+            aria-controls="error-details"
             className="flex w-full items-center justify-between rounded-lg bg-slate-100/70 px-3 py-2 text-xs font-semibold text-[var(--color-text-secondary)] transition-colors hover:bg-slate-100 hover:text-[var(--color-text)]"
           >
             <span className="flex items-center gap-1.5">
@@ -100,7 +102,10 @@ export default function DashboardError({
           </button>
 
           {showDetails && (
-            <div className="mt-2 space-y-2 overflow-x-auto rounded-xl bg-slate-900 p-3 text-[11px] font-mono text-slate-200">
+            <div
+              id="error-details"
+              className="mt-2 space-y-2 overflow-x-auto rounded-xl bg-slate-900 p-3 text-[11px] font-mono text-slate-200"
+            >
               <div className="flex items-center justify-between border-b border-slate-800 pb-1.5 text-[10px] text-slate-400">
                 <span>الوقت: {new Date().toISOString()}</span>
                 <button
