@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
 
 // Temporary: push_subscriptions not yet in generated types
-const db = () => createAdminClient() as unknown as ReturnType<typeof createClient> as any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function db() {
+  return (await createClient()) as any;
+}
 
 /**
  * POST /api/push/subscribe
@@ -26,7 +28,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'بيانات ناقصة' }, { status: 400 });
     }
 
-    const { error } = await db()
+    const { error } = await (await db())
       .from('push_subscriptions')
       .insert({
         project_id: body.projectId,
