@@ -121,6 +121,7 @@ export function AnalyticsClient({
             key={r.value}
             type="button"
             onClick={() => setRange(r.value)}
+            aria-pressed={range === r.value}
             className={`min-h-[44px] rounded-full px-4 py-1.5 text-xs font-bold transition-colors ${
               range === r.value
                 ? 'bg-[var(--color-primary)] text-white'

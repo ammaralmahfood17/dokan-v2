@@ -103,23 +103,39 @@ export default async function AnalyticsPage({
   const { todayUTCms, startUTC, prevEnd, prevStart } = getRangeBounds(count, range);
 
   const supabase = await createClient();
+
+  // Fetch ALL orders in range, paged — a plain limit(2000) would silently
+  // undercount busy 30-day windows (revenue + top products truncated, no warning).
+  const PAGE = 1000;
+  const collectOrders = async (select: string, start: Date, end?: Date) => {
+    const all: Record<string, unknown>[] = [];
+    let from = 0;
+    for (;;) {
+      let q = supabase
+        .from('orders')
+        .select(select)
+        .eq('project_id', ctx.project.id)
+        .is('service_type', null)
+        .gte('created_at', start.toISOString())
+        .order('created_at', { ascending: false })
+        .range(from, from + PAGE - 1);
+      if (end) q = q.lt('created_at', end.toISOString());
+      const { data, error } = await q;
+      if (error) return { data: null, error };
+      if (!data || data.length === 0) break;
+      all.push(...(data as unknown as Record<string, unknown>[]));
+      if (data.length < PAGE) break;
+      from += PAGE;
+    }
+    return { data: all, error: null };
+  };
+
   const [{ data, error }, { data: prevData, error: prevError }] = await Promise.all([
-    supabase
-      .from('orders')
-      .select('id, status, total_amount, type, created_at, order_items(product_name, quantity)')
-      .eq('project_id', ctx.project.id)
-      .is('service_type', null) // null = real order (not waiter/bill)
-      .gte('created_at', startUTC.toISOString())
-      .order('created_at', { ascending: false })
-      .limit(2000),
-    supabase
-      .from('orders')
-      .select('id, status, total_amount')
-      .eq('project_id', ctx.project.id)
-      .is('service_type', null)
-      .gte('created_at', prevStart.toISOString())
-      .lt('created_at', prevEnd.toISOString())
-      .limit(2000),
+    collectOrders(
+      'id, status, total_amount, type, created_at, order_items(product_name, quantity)',
+      startUTC
+    ),
+    collectOrders('id, status, total_amount', prevStart, prevEnd),
   ]);
 
   const orders = (data ?? []) as unknown as OrderRow[];
