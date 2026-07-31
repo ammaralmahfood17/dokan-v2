@@ -132,8 +132,8 @@ export function MenuClient({
     });
     setPicker(null);
 
-    // Visual feedback: flash badge + toast
-    setLastAddedKey(key);
+    // Visual feedback: flash badge on the product card + toast
+    setLastAddedKey(picker.id);
     if (lastAddedTimer.current) clearTimeout(lastAddedTimer.current);
     lastAddedTimer.current = setTimeout(() => setLastAddedKey(null), 800);
     toast.success(alreadyInCart ? 'زادت الكمية' : 'أُضيف إلى السلة', { duration: 1200 });
@@ -314,7 +314,7 @@ export function MenuClient({
         key={p.id}
         type="button"
         onClick={() => quickAdd(p)}
-        className="card flex w-full items-start gap-3 p-3 text-start transition-transform duration-150 hover:border-slate-300 active:scale-[0.98]"
+        className="card flex w-full items-start gap-3 p-3 text-start transition-transform duration-150 active:scale-[0.98]"
       >
         {p.image_url ? (
           <Image
@@ -457,18 +457,31 @@ export function MenuClient({
           <>
             {activeCategory === 'all' ? (
               /* All categories: group products under each category */
-              categories.filter((c) => products.some((p) => p.category_id === c.id)).map((cat, catIdx) => {
-                const catProducts = filtered.filter((p) => p.category_id === cat.id);
-                if (!catProducts.length) return null;
-                return (
-                  <section key={cat.id} className="mb-6">
-                    <h2 className="mb-3 text-sm font-bold text-[var(--color-text-secondary)]">{cat.name}</h2>
+              <>
+                {categories.filter((c) => products.some((p) => p.category_id === c.id)).map((cat, catIdx) => {
+                  const catProducts = filtered.filter((p) => p.category_id === cat.id);
+                  if (!catProducts.length) return null;
+                  return (
+                    <section key={cat.id} className="mb-6">
+                      <h2 className="mb-3 text-sm font-bold text-[var(--color-text-secondary)]">{cat.name}</h2>
+                      <div className="space-y-3">
+                        {catProducts.map((p, idx) => renderProduct(p, idx === 0 && catIdx === 0))}
+                      </div>
+                    </section>
+                  );
+                })}
+                {/* Uncategorized products (category deleted → SET NULL): keep them visible */}
+                {products.some((p) => !p.category_id) && (
+                  <section className="mb-6">
+                    <h2 className="mb-3 text-sm font-bold text-[var(--color-text-secondary)]">بدون تصنيف</h2>
                     <div className="space-y-3">
-                      {catProducts.map((p, idx) => renderProduct(p, idx === 0 && catIdx === 0))}
+                      {products
+                        .filter((p) => !p.category_id)
+                        .map((p, idx) => renderProduct(p, idx === 0 && categories.length === 0))}
                     </div>
                   </section>
-                );
-              })
+                )}
+              </>
             ) : (
               /* Single category: flat list */
               <div className="space-y-3">
@@ -599,6 +612,7 @@ export function MenuClient({
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
+                    aria-label="إنقاص الكمية"
                     className="min-h-[44px] min-w-[44px] rounded-lg border border-[var(--color-border)] text-sm font-bold transition-colors hover:bg-[var(--color-bg)]"
                     onClick={() => updateQty(l.key, -1)}
                   >
@@ -609,6 +623,7 @@ export function MenuClient({
                   </span>
                   <button
                     type="button"
+                    aria-label="زيادة الكمية"
                     className="min-h-[44px] min-w-[44px] rounded-lg border border-[var(--color-border)] text-sm font-bold transition-colors hover:bg-[var(--color-bg)]"
                     onClick={() => updateQty(l.key, 1)}
                   >
@@ -771,6 +786,7 @@ function Sheet({
           </div>
           <button
             type="button"
+            aria-label="إغلاق"
             onClick={onClose}
             className="min-h-[44px] min-w-[44px] rounded-[8px] transition-colors hover:bg-[var(--color-bg)]"
           >
