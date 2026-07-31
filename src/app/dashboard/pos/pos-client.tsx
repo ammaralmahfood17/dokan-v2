@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Minus, Plus, Trash2, X } from 'lucide-react';
 import { formatMoney, money } from '@/lib/utils';
 import type { OrderType, Product, ProductAddon } from '@/lib/types';
@@ -33,6 +33,41 @@ export function PosClient({
   const [submitting, setSubmitting] = useState(false);
   const [picker, setPicker] = useState<ProductWithAddons | null>(null);
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
+  const pickerRef = useRef<HTMLDivElement>(null);
+
+  const pickerKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape') { setPicker(null); return; }
+    if (e.key !== 'Tab') return;
+    const el = pickerRef.current;
+    if (!el) return;
+    const focusable = el.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+  }, []);
+
+  // Scroll lock + keyboard trap when picker is open
+  useEffect(() => {
+    if (!picker) return;
+    document.addEventListener('keydown', pickerKeyDown);
+    const scrollY = window.scrollY;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+    document.body.style.overflowY = 'scroll';
+    return () => {
+      document.removeEventListener('keydown', pickerKeyDown);
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      document.body.style.overflowY = '';
+      window.scrollTo(0, scrollY);
+    };
+  }, [picker, pickerKeyDown]);
 
   const available = useMemo(
     () => products.filter((p) => p.is_available),
@@ -300,9 +335,14 @@ export function PosClient({
       {picker && (
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`إضافات — ${picker.name}`}
           onClick={(e) => { if (e.target === e.currentTarget) setPicker(null); }}
         >
-          <div className="w-full max-w-md max-h-[85dvh] overflow-y-auto rounded-t-2xl bg-[var(--color-surface)] p-4 pb-safe-bottom sm:max-h-[85vh] sm:rounded-[10px] animate-slide-up">
+          <div
+            ref={pickerRef}
+            className="w-full max-w-md max-h-[85dvh] overflow-y-auto rounded-t-2xl bg-[var(--color-surface)] p-4 pb-safe-bottom sm:max-h-[85vh] sm:rounded-[10px] animate-slide-up">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-bold">{picker.name}</h3>
               <button

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Minus, Plus, ShoppingBag, X, Check, Bell, FileText, GripHorizontal } from 'lucide-react';
 import Image from 'next/image';
 import { formatMoney, money } from '@/lib/utils';
@@ -666,6 +666,48 @@ function Sheet({
   const startY = useRef(0);
   const currentY = useRef(0);
 
+  // Focus trap
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { onClose(); return; }
+      if (e.key !== 'Tab') return;
+      const el = sheetRef.current;
+      if (!el) return;
+      const focusable = el.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last?.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first?.focus();
+      }
+    },
+    [onClose]
+  );
+
+  // Scroll lock + keyboard listener
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown);
+    const scrollY = window.scrollY;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+    document.body.style.overflowY = 'scroll';
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      document.body.style.overflowY = '';
+      window.scrollTo(0, scrollY);
+    };
+  }, [handleKeyDown]);
+
   function onTouchStart(e: React.TouchEvent) {
     startY.current = e.touches[0].clientY;
     currentY.current = 0;
@@ -673,7 +715,7 @@ function Sheet({
 
   function onTouchMove(e: React.TouchEvent) {
     const dy = e.touches[0].clientY - startY.current;
-    if (dy < 0) return; // don't push up
+    if (dy < 0) return;
     currentY.current = dy;
     if (sheetRef.current) {
       sheetRef.current.style.transform = `translateY(${dy}px)`;
@@ -682,9 +724,7 @@ function Sheet({
   }
 
   function onTouchEnd() {
-    if (currentY.current > 80) {
-      onClose();
-    }
+    if (currentY.current > 80) onClose();
     if (sheetRef.current) {
       sheetRef.current.style.transform = '';
       sheetRef.current.style.transition = '';
@@ -693,7 +733,13 @@ function Sheet({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
       <div
         ref={sheetRef}
         className="max-h-dvh w-full max-w-lg overflow-y-auto rounded-t-[12px] bg-[var(--color-surface)] pb-safe-bottom shadow-xl transition-transform duration-300 sm:max-h-[85vh] sm:rounded-[12px] animate-slide-up"

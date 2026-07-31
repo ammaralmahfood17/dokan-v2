@@ -782,6 +782,7 @@ export function ProductsClient({
                     min="0"
                     required
                     dir="ltr"
+                    inputMode="decimal"
                     value={price}
                     onChange={(e) => {
                       setPrice(e.target.value);
@@ -952,6 +953,7 @@ export function ProductsClient({
                       step="0.001"
                       min="0"
                       dir="ltr"
+                      inputMode="decimal"
                       placeholder="0.000"
                       value={addon.price}
                       onChange={(e) => updateFormAddon(addon.key, 'price', e.target.value)}

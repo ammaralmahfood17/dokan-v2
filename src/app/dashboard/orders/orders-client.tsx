@@ -13,6 +13,7 @@ import {
 } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Modal } from '@/components/ui/modal';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { toast } from 'sonner';
 
@@ -239,12 +240,11 @@ export function OrdersClient({
       </PullToRefresh>
 
       {confirmCancel && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setConfirmCancel(null)}>
-          <div className="w-full max-w-xs rounded-[10px] bg-[var(--color-surface)] p-5 text-center shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-3 mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[var(--color-warn-tint)]">
-              <AlertTriangle className="h-5 w-5 text-[var(--color-warn)]" />
+        <Modal title="تأكيد الإلغاء" onClose={() => setConfirmCancel(null)}>
+          <div className="text-center">
+            <div className="mb-3 mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[var(--color-danger-tint)]">
+              <AlertTriangle className="h-5 w-5 text-[var(--color-danger)]" />
             </div>
-            <p className="mb-1 text-sm font-bold">تأكيد الإلغاء</p>
             <p className="mb-5 text-xs text-[var(--color-text-secondary)]">هل أنت متأكد من إلغاء هذا الطلب؟</p>
             <div className="flex gap-2">
               <Button variant="danger" block disabled={updating === confirmCancel} onClick={() => { setStatus(confirmCancel, 'cancelled'); setConfirmCancel(null); }}>
@@ -255,7 +255,7 @@ export function OrdersClient({
               </Button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );
