@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { TrendingUp, ShoppingBag, Banknote, ReceiptText, XCircle, Printer } from 'lucide-react';
+import { TrendingUp, ShoppingBag, Banknote, ReceiptText, XCircle, Printer, RefreshCcw } from 'lucide-react';
 import { formatMoney } from '@/lib/utils';
 import type { AnalyticsData, Range } from './page';
 
@@ -67,11 +67,13 @@ export function AnalyticsClient({
   currency,
   data,
   projectName,
+  fetchError,
 }: {
   range: Range;
   currency: string;
   data: AnalyticsData;
   projectName: string;
+  fetchError: string | null;
 }) {
   const router = useRouter();
   const { kpi, prevKpi, byDay, byHour, topProducts, byType } = data;
@@ -162,7 +164,22 @@ export function AnalyticsClient({
         />
       </div>
 
-      {kpi.orders === 0 ? (
+      {fetchError ? (
+        <div className="card card-body py-10 text-center">
+          <RefreshCcw className="mx-auto mb-3 h-8 w-8 text-[var(--color-danger)]" />
+          <h3 className="text-sm font-bold text-[var(--color-danger)]">{fetchError}</h3>
+          <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+            تحقق من اتصالك ثم أعد المحاولة.
+          </p>
+          <button
+            type="button"
+            onClick={() => router.refresh()}
+            className="btn btn-secondary btn-sm mt-4"
+          >
+            إعادة المحاولة
+          </button>
+        </div>
+      ) : kpi.orders === 0 ? (
         <div className="card card-body py-10 text-center">
           <TrendingUp className="mx-auto mb-3 h-8 w-8 text-[var(--color-text-muted)]" />
           <h3 className="text-sm font-bold">ما فيه بيانات في هذه الفترة</h3>
@@ -175,7 +192,12 @@ export function AnalyticsClient({
           {/* Revenue by day */}
           <section className="mb-6 card card-body">
             <h2 className="mb-4 text-sm font-bold">الإيراد اليومي</h2>
-            <div className="flex h-36 items-end gap-1.5" dir="ltr">
+            <div
+              className="flex h-36 items-end gap-1.5"
+              dir="ltr"
+              role="img"
+              aria-label={`الإيراد اليومي — ${byDay.map((d) => `${d.label} ${formatMoney(d.revenue, currency)}`).join('، ')}`}
+            >
               {byDay.map((d, idx) => (
                 <div key={d.key} className="group relative flex flex-1 flex-col items-center gap-1" title={`${d.label} — ${formatMoney(d.revenue, currency)}`}>
                   {/* Value: only on the top bar (always) or on hover (desktop) */}
@@ -209,7 +231,12 @@ export function AnalyticsClient({
             {/* Peak hours */}
             <section className="card card-body">
               <h2 className="mb-4 text-sm font-bold">ذروة الساعات</h2>
-              <div className="flex h-28 items-end gap-[3px]" dir="ltr">
+              <div
+                className="flex h-28 items-end gap-[3px]"
+                dir="ltr"
+                role="img"
+                aria-label={`ذروة الساعات — ${byHour.map((h, i) => (h.count > 0 ? `ساعة ${i} عدد ${h.count}` : '')).filter(Boolean).join('، ') || 'لا توجد طلبات'}`}
+              >
                 {byHour.map((h) => (
                   <div key={h.label} className="group relative flex flex-1 flex-col justify-end">
                     <div

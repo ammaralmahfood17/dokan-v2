@@ -72,6 +72,7 @@ export function AppSidebar({
   useEffect(() => {
     try { router.prefetch('/dashboard/settings'); } catch {}
     try { router.prefetch('/dashboard/tables'); } catch {}
+    try { router.prefetch('/dashboard/analytics'); } catch {}
   }, [router]);
 
   async function logout() {

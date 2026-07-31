@@ -89,7 +89,7 @@ export default async function AnalyticsPage({
       : new Date(startUTC.getTime() - count * 86400000);
 
   const supabase = await createClient();
-  const [{ data }, { data: prevData }] = await Promise.all([
+  const [{ data, error }, { data: prevData, error: prevError }] = await Promise.all([
     supabase
       .from('orders')
       .select('id, status, total_amount, type, created_at, order_items(product_name, quantity)')
@@ -110,6 +110,7 @@ export default async function AnalyticsPage({
 
   const orders = (data ?? []) as unknown as OrderRow[];
   const prevOrders = (prevData ?? []) as unknown as OrderRow[];
+  const fetchError = error || prevError ? 'تعذر تحميل البيانات' : null;
 
   // ---- KPI helper ----
   const computeKpi = (list: OrderRow[]) => {
@@ -179,6 +180,7 @@ export default async function AnalyticsPage({
       currency={ctx.project.currency}
       data={data_}
       projectName={ctx.project.name}
+      fetchError={fetchError}
     />
   );
 }
