@@ -26,6 +26,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'بيانات ناقصة' }, { status: 400 });
     }
 
+    // Verify the user is a staff member of the target project — otherwise any
+    // authenticated user could subscribe to any project's notifications.
+    const { data: membership } = await supabase
+      .from('staff_members')
+      .select('project_id')
+      .eq('user_id', user.id)
+      .eq('project_id', body.projectId)
+      .maybeSingle();
+
+    if (!membership) {
+      return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+    }
+
     const { error } = await (await db())
       .from('push_subscriptions')
       .insert({

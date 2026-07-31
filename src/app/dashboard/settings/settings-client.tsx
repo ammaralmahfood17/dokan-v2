@@ -43,6 +43,9 @@ export function SettingsClient({
   const [isActive, setIsActive] = useState(project.is_active);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
+  // Guards the store-disable toggle — turning the store off instantly closes
+  // the customer menu (menu route filters is_active = true), so confirm first.
+  const [confirmDeactivate, setConfirmDeactivate] = useState(false);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -152,13 +155,61 @@ export function SettingsClient({
           <label htmlFor="store-active" className="text-sm font-semibold">
             المتجر نشط (القائمة العامة متاحة)
           </label>
-          <Toggle id="store-active" checked={isActive} onChange={setIsActive} />
+          <Toggle
+            id="store-active"
+            checked={isActive}
+            onChange={(v) => {
+              if (!v) {
+                setConfirmDeactivate(true);
+              } else {
+                setIsActive(true);
+              }
+            }}
+          />
         </div>
 
         <Button type="submit" disabled={loading}>
           {loading ? 'جاري الحفظ…' : 'حفظ التغييرات'}
         </Button>
       </form>
+
+      {confirmDeactivate && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="إيقاف المتجر"
+          onClick={() => setConfirmDeactivate(false)}
+        >
+          <div
+            className="w-full max-w-xs rounded-xl bg-[var(--color-surface)] p-5 text-center shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[var(--color-danger-tint)]">
+              <span className="text-lg font-bold text-[var(--color-danger)]">!</span>
+            </div>
+            <p className="mb-1 text-sm font-bold">إيقاف المتجر؟</p>
+            <p className="mb-5 text-xs text-[var(--color-text-secondary)]">
+              القائمة العامة ستتوقف عن العملاء — روابط الطاولات و QR ما راح يفتحون المنيو حتى تعيد التشغيل.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="danger"
+                block
+                onClick={() => {
+                  setIsActive(false);
+                  setConfirmDeactivate(false);
+                }}
+              >
+                نعم، إيقاف
+              </Button>
+              <Button variant="secondary" onClick={() => setConfirmDeactivate(false)}>
+                رجوع
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -110,11 +110,14 @@ export function PushNotificationManager({
       setState('loading');
 
       // Remove from server
-      await fetch('/api/push/unsubscribe', {
+      const res = await fetch('/api/push/unsubscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ endpoint: sub.endpoint }),
       });
+      if (!res.ok) {
+        throw new Error('Server rejected unsubscribe');
+      }
 
       // Unsubscribe from browser
       await sub.unsubscribe();
