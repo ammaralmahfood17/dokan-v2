@@ -281,12 +281,14 @@ export function TablesClient({
                   }
                 }}
               />
+              <p className="hint">رقم الطاولة بين 1 و 999</p>
             </div>
             <div className="field">
               <label className="label">معرّف الرابط (slug)</label>
               <input
                 className="input"
                 required
+                maxLength={60}
                 dir="ltr"
                 value={tableSlug}
                 onChange={(e) => setTableSlug(e.target.value)}

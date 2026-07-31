@@ -207,7 +207,8 @@ export function PosClient({
             key={value}
             type="button"
             onClick={() => setType(value)}
-            className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-bold transition-all min-h-[44px] ${type === value ? 'bg-[var(--color-primary)] text-white shadow-sm' : 'border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] hover:bg-[var(--color-bg)]'}`}
+            disabled={submitting}
+            className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-bold transition-all min-h-[44px] ${type === value ? 'bg-[var(--color-primary)] text-white shadow-sm' : 'border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] hover:bg-[var(--color-bg)]'} ${submitting ? 'opacity-50' : ''}`}
             aria-pressed={type === value}
           >
             {label}
@@ -276,6 +277,7 @@ export function PosClient({
                         type="button"
                         className="btn btn-ghost btn-sm"
                         onClick={() => updateQty(l.key, -1)}
+                        aria-label="تقليل الكمية"
                       >
                         <Minus className="h-3 w-3" />
                       </button>
@@ -286,6 +288,7 @@ export function PosClient({
                         type="button"
                         className="btn btn-ghost btn-sm"
                         onClick={() => updateQty(l.key, 1)}
+                        aria-label="زيادة الكمية"
                       >
                         <Plus className="h-3 w-3" />
                       </button>
@@ -295,6 +298,7 @@ export function PosClient({
                         onClick={() =>
                           setLines((prev) => prev.filter((x) => x.key !== l.key))
                         }
+                        aria-label="حذف الصنف"
                       >
                         <Trash2 className="h-3 w-3 text-[var(--color-danger)]" />
                       </button>

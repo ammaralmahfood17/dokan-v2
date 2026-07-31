@@ -50,6 +50,13 @@ export function MenuClient({
   const [lastAddedKey, setLastAddedKey] = useState<string | null>(null);
   const lastAddedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Cleanup lastAddedTimer on unmount
+  useEffect(() => {
+    return () => {
+      if (lastAddedTimer.current) clearTimeout(lastAddedTimer.current);
+    };
+  }, []);
+
   // Ref for smooth-scrolling to products section
   const productsRef = useRef<HTMLDivElement>(null);
 
@@ -101,6 +108,8 @@ export function MenuClient({
       .sort()
       .join(',')}:${itemNotes.trim()}`;
 
+    const alreadyInCart = cart.some((l) => l.key === key);
+
     setCart((prev) => {
       const existing = prev.find((l) => l.key === key);
       if (existing) {
@@ -127,7 +136,7 @@ export function MenuClient({
     setLastAddedKey(key);
     if (lastAddedTimer.current) clearTimeout(lastAddedTimer.current);
     lastAddedTimer.current = setTimeout(() => setLastAddedKey(null), 800);
-    toast.success('أُضيف إلى السلة', { duration: 1200 });
+    toast.success(alreadyInCart ? 'زادت الكمية' : 'أُضيف إلى السلة', { duration: 1200 });
   }
 
   // Quick-Add: add directly without addon picker
@@ -137,6 +146,7 @@ export function MenuClient({
       return;
     }
     const key = `${p.id}::`;
+    const alreadyInCart = cart.some((l) => l.key === key);
     setCart((prev) => {
       const existing = prev.find((l) => l.key === key);
       if (existing) {
@@ -161,7 +171,7 @@ export function MenuClient({
     setLastAddedKey(p.id);
     if (lastAddedTimer.current) clearTimeout(lastAddedTimer.current);
     lastAddedTimer.current = setTimeout(() => setLastAddedKey(null), 800);
-    toast.success('أُضيف إلى السلة', { duration: 1200 });
+    toast.success(alreadyInCart ? 'زادت الكمية' : 'أُضيف إلى السلة', { duration: 1200 });
   }
 
   function updateQty(key: string, delta: number) {

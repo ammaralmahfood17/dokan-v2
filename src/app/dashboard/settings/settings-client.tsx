@@ -89,6 +89,7 @@ export function SettingsClient({
           <input
             className={`input ${errors.name ? 'input-error' : ''}`}
             required
+            maxLength={80}
             value={name}
             onChange={(e) => {
               setName(e.target.value);

@@ -435,7 +435,6 @@ export function KitchenClient({
             onClick={(e) => {
               e.stopPropagation();
               if (!soundOn) setSoundOn(true);
-              ensureAudioReady();
               playChime();
               toast.success('🔔 صوت التنبيه', { description: 'صوت الإشعار يعمل ✅' });
             }}

@@ -317,7 +317,7 @@ export function ProductsClient({
         }
         return {
           name: a.name.trim(),
-          price: money(addonPrice || 0),
+          price: money(addonPrice ?? 0),
         };
       })
       .filter(Boolean) as { name: string; price: number }[];
@@ -829,6 +829,7 @@ export function ProductsClient({
                     <input
                       className="input flex-1 border-0 bg-white text-sm"
                       placeholder="اسم التصنيف الجديد"
+                      maxLength={50}
                       value={quickCatName}
                       onChange={(e) => setQuickCatName(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addQuickCategory(); } }}
@@ -941,6 +942,7 @@ export function ProductsClient({
                   <input
                     className="input flex-1 text-sm"
                     placeholder="اسم الإضافة"
+                    maxLength={50}
                     value={addon.name}
                     onChange={(e) => updateFormAddon(addon.key, 'name', e.target.value)}
                   />
@@ -1078,6 +1080,7 @@ export function ProductsClient({
               <input
                 className="input"
                 required
+                maxLength={50}
                 value={editCatName}
                 onChange={(e) => setEditCatName(e.target.value)}
                 autoFocus
