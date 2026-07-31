@@ -77,8 +77,16 @@ export default async function AnalyticsPage({
   const startUTC = new Date(todayUTCms - (count - 1) * 86400000);
 
   // Previous period (for comparison): same length, immediately before `startUTC`
-  const prevEnd = new Date(startUTC.getTime() - 1);
-  const prevStart = new Date(startUTC.getTime() - count * 86400000);
+  // For 'today': compare with the SAME TIME WINDOW of yesterday (00:00 → now-24h),
+  // otherwise at 11AM today vs full yesterday always looks like a crash.
+  const prevEnd =
+    range === 'today'
+      ? new Date(Date.now() - 24 * 3600000)
+      : new Date(startUTC.getTime() - 1);
+  const prevStart =
+    range === 'today'
+      ? new Date(todayUTCms - 86400000)
+      : new Date(startUTC.getTime() - count * 86400000);
 
   const supabase = await createClient();
   const [{ data }, { data: prevData }] = await Promise.all([

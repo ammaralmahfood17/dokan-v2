@@ -176,16 +176,30 @@ export function AnalyticsClient({
           <section className="mb-6 card card-body">
             <h2 className="mb-4 text-sm font-bold">الإيراد اليومي</h2>
             <div className="flex h-36 items-end gap-1.5" dir="ltr">
-              {byDay.map((d) => (
-                <div key={d.key} className="group flex flex-1 flex-col items-center gap-1">
-                  <span className="text-[9px] font-semibold text-[var(--color-text-muted)]">
+              {byDay.map((d, idx) => (
+                <div key={d.key} className="group relative flex flex-1 flex-col items-center gap-1" title={`${d.label} — ${formatMoney(d.revenue, currency)}`}>
+                  {/* Value: only on the top bar (always) or on hover (desktop) */}
+                  <span
+                    className={`text-[9px] font-semibold text-[var(--color-text-muted)] ${
+                      d.revenue === maxDayRevenue
+                        ? 'opacity-100'
+                        : 'opacity-0 transition-opacity group-hover:opacity-100'
+                    }`}
+                  >
                     {d.revenue > 0 ? formatMoney(d.revenue, currency).split(' ')[0] : ''}
                   </span>
                   <div
                     className="w-full rounded-t-[4px] bg-[var(--color-primary)] transition-all group-hover:opacity-80"
                     style={{ height: `${Math.max((d.revenue / maxDayRevenue) * 100, d.revenue > 0 ? 4 : 2)}%` }}
                   />
-                  <span className="text-[10px] text-[var(--color-text-secondary)]">{d.label}</span>
+                  {/* Weekday label: all for ≤7d, every 5th for 30d (fits on mobile) */}
+                  <span
+                    className={`text-[10px] text-[var(--color-text-secondary)] ${
+                      byDay.length > 7 && idx % 5 !== 0 && idx !== byDay.length - 1 ? 'invisible' : ''
+                    }`}
+                  >
+                    {d.label}
+                  </span>
                 </div>
               ))}
             </div>
