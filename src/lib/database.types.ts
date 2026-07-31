@@ -205,7 +205,7 @@ export type Database = {
           created_at: string
           id: string
           notes: string | null
-          order_number: string
+          order_number: number
           project_id: string
           service_type: string | null
           status: Database["public"]["Enums"]["order_status"]
@@ -217,7 +217,7 @@ export type Database = {
           created_at?: string
           id?: string
           notes?: string | null
-          order_number?: string
+          order_number?: number
           project_id: string
           service_type?: string | null
           status?: Database["public"]["Enums"]["order_status"]
@@ -229,7 +229,7 @@ export type Database = {
           created_at?: string
           id?: string
           notes?: string | null
-          order_number?: string
+          order_number?: number
           project_id?: string
           service_type?: string | null
           status?: Database["public"]["Enums"]["order_status"]
@@ -538,55 +538,13 @@ export type Database = {
     }
     Functions: {
       generate_basic_slug: { Args: { input: string }; Returns: string }
-      get_menu_by_qr: { Args: { qr_code: string }; Returns: Json }
-      get_menu_by_table_slug: {
-        Args: { p_project_slug: string; p_table_slug: string }
-        Returns: Json
-      }
-      get_order_status_by_qr: {
-        Args: { p_order_id: string; p_qr_code: string }
-        Returns: Json
-      }
-      get_order_status_public: {
-        Args: {
-          p_order_id: string
-          p_project_slug: string
-          p_table_slug: string
-        }
-        Returns: Json
-      }
       is_project_member: { Args: { p_project_id: string }; Returns: boolean }
       is_project_owner: { Args: { p_project_id: string }; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
       next_order_number: { Args: { p_project_id: string }; Returns: number }
-      place_order: {
-        Args: {
-          customer_name?: string
-          customer_note?: string
-          items: Json
-          qr_code: string
-        }
-        Returns: Json
-      }
       project_has_no_members: {
         Args: { p_project_id: string }
         Returns: boolean
-      }
-      request_bill: {
-        Args: { p_order_id?: string; qr_code: string }
-        Returns: undefined
-      }
-      request_call_staff: {
-        Args: { p_order_id?: string; qr_code: string }
-        Returns: undefined
-      }
-      subscription_is_valid: {
-        Args: { p_business_id: string }
-        Returns: boolean
-      }
-      table_order_count_recent: {
-        Args: { p_project_id: string; p_seconds?: number; p_table_id: string }
-        Returns: number
       }
       unaccent: { Args: { "": string }; Returns: string }
     }
@@ -742,4 +700,3 @@ export const Constants = {
     },
   },
 } as const
-

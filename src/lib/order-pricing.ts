@@ -158,7 +158,7 @@ export async function createSecureOrder(
       status: 'pending',
       total_amount: totalAmount,
       notes: notes?.trim() || null,
-      order_number: String(numData),
+      order_number: numData,
     })
     .select('id, status, total_amount, order_number')
     .single();
