@@ -9,6 +9,7 @@ import {
   ORDER_TYPE_LABELS,
   type Order,
   type OrderItem,
+  type OrderItemAddon,
   type OrderStatus,
 } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -67,8 +68,12 @@ export function OrdersClient({
     if (data) setOrders(data as unknown as OrderRow[]);
   }, [projectId]);
 
+  // Realtime — debounced full refresh (rapid status changes would otherwise
+  // fire parallel fetches that can resolve out of order and clobber state)
   useEffect(() => {
     const supabase = createClient();
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+
     const channel = supabase
       .channel(`orders-${projectId}`)
       .on(
@@ -80,12 +85,14 @@ export function OrdersClient({
           filter: `project_id=eq.${projectId}`,
         },
         () => {
-          void refresh();
+          if (refreshTimer) clearTimeout(refreshTimer);
+          refreshTimer = setTimeout(() => void refresh(), 500);
         }
       )
       .subscribe();
 
     return () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
       void supabase.removeChannel(channel);
     };
   }, [projectId, refresh]);
@@ -94,6 +101,31 @@ export function OrdersClient({
     if (filter === 'all') return orders;
     return orders.filter((o) => o.status === filter);
   }, [orders, filter]);
+
+  // Cancel through the server API — same path as the KDS: validates the order
+  // can still be cancelled and writes the audit trail (order_audit_logs).
+  async function cancelOrder(orderId: string) {
+    setUpdating(orderId);
+    try {
+      const res = await fetch('/api/pos/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId }),
+      });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        toast.error(data.error || 'فشل إلغاء الطلب');
+        return;
+      }
+      setOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, status: 'cancelled' } : o))
+      );
+    } catch {
+      toast.error('تعذّر الاتصال');
+    } finally {
+      setUpdating(null);
+    }
+  }
 
   async function setStatus(orderId: string, status: OrderStatus) {
     setUpdating(orderId);
@@ -129,6 +161,7 @@ export function OrdersClient({
             key={f.value}
             type="button"
             onClick={() => setFilter(f.value)}
+            aria-pressed={filter === f.value}
             className={`min-h-[44px] rounded-full px-3 py-1 text-xs font-bold transition-colors ${
               filter === f.value
                 ? 'bg-[var(--color-primary)] text-white'
@@ -179,6 +212,13 @@ export function OrdersClient({
                       <li key={item.id} className="flex justify-between gap-2">
                         <span>
                           <strong>{item.quantity}×</strong> {item.product_name}
+                          {Array.isArray(item.addons) && item.addons.length > 0 && (
+                            <span className="block text-xs text-[var(--color-text-muted)]">
+                              {(item.addons as OrderItemAddon[])
+                                .map((a) => a.name)
+                                .join(' · ')}
+                            </span>
+                          )}
                           {item.notes && (
                             <span className="block text-xs text-[var(--color-text-muted)]">
                               {item.notes}
@@ -221,16 +261,6 @@ export function OrdersClient({
                         إلغاء
                       </Button>
                     )}
-                  {order.status === 'ready' && (
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      disabled={updating === order.id}
-                      onClick={() => setStatus(order.id, 'delivered')}
-                    >
-                      تم التسليم
-                    </Button>
-                  )}
                 </div>
               </article>
             );
@@ -247,7 +277,7 @@ export function OrdersClient({
             </div>
             <p className="mb-5 text-xs text-[var(--color-text-secondary)]">هل أنت متأكد من إلغاء هذا الطلب؟</p>
             <div className="flex gap-2">
-              <Button variant="danger" block disabled={updating === confirmCancel} onClick={() => { setStatus(confirmCancel, 'cancelled'); setConfirmCancel(null); }}>
+              <Button variant="danger" block disabled={updating === confirmCancel} onClick={() => { cancelOrder(confirmCancel); setConfirmCancel(null); }}>
                 {updating === confirmCancel ? 'جاري…' : 'نعم، إلغاء'}
               </Button>
               <Button variant="secondary" onClick={() => setConfirmCancel(null)}>
