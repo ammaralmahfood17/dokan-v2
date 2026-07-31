@@ -58,19 +58,13 @@ function tzHour(d: Date): number {
   return Number(hourFmt.format(d)) % 24;
 }
 
-export default async function AnalyticsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ range?: string }>;
-}) {
-  const { range: rangeParam } = await searchParams;
-  const range: Range = rangeParam === 'today' || rangeParam === '30d' ? rangeParam : '7d';
-
-  const ctx = await getCurrentProject();
-  if (!ctx) redirect('/onboarding');
-
-  const count = range === 'today' ? 1 : range === '7d' ? 7 : 30;
-
+/**
+ * Compute the current + previous period boundaries.
+ * Lives OUTSIDE the component so the impure `new Date()`/`Date.now()` calls
+ * stay out of the render body (react-hooks purity rule) — safe here because
+ * this is a force-dynamic server component re-rendered per request.
+ */
+function getRangeBounds(count: number, range: Range) {
   // "Today" at Asia/Bahrain midnight → UTC instant, then walk back N days.
   const [y, m, d] = tzDayKey(new Date()).split('-').map(Number);
   const todayUTCms = Date.UTC(y, m - 1, d);
@@ -87,6 +81,26 @@ export default async function AnalyticsPage({
     range === 'today'
       ? new Date(todayUTCms - 86400000)
       : new Date(startUTC.getTime() - count * 86400000);
+
+  return { todayUTCms, startUTC, prevEnd, prevStart };
+}
+
+export default async function AnalyticsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string }>;
+}) {
+  const { range: rangeParam } = await searchParams;
+  const range: Range = rangeParam === 'today' || rangeParam === '30d' ? rangeParam : '7d';
+
+  const ctx = await getCurrentProject();
+  if (!ctx) redirect('/onboarding');
+
+  const count = range === 'today' ? 1 : range === '7d' ? 7 : 30;
+
+  // Date-range bounds computed in a plain helper (keeps impure Date calls
+  // out of the render body).
+  const { todayUTCms, startUTC, prevEnd, prevStart } = getRangeBounds(count, range);
 
   const supabase = await createClient();
   const [{ data, error }, { data: prevData, error: prevError }] = await Promise.all([

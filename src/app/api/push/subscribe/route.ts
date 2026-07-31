@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
-// Temporary: push_subscriptions not yet in generated types
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function db() {
-  return (await createClient()) as any;
+  return await createClient();
 }
 
 /**

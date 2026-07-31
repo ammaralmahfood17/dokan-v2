@@ -26,6 +26,9 @@ function useAudioSystem() {
   const chimeBufRef = useRef<AudioBuffer | null>(null);
   const loadingChimeRef = useRef(false);
   const chimeQueueRef = useRef<(() => void)[]>([]);
+  // Holds the latest playChime — lets the chime queue call it without the
+  // callback self-referencing its own const (TDZ lint).
+  const playChimeRef = useRef<() => void>(() => {});
 
   const getAudioCtx = useCallback((): AudioContext | null => {
     const Ctor = window.AudioContext || (window as any).webkitAudioContext;
@@ -115,9 +118,10 @@ function useAudioSystem() {
         return;
       }
 
-      // If still loading, queue for retry
+      // If still loading, queue for retry — via playChimeRef to avoid
+      // self-referencing the const inside its own initializer (TDZ lint).
       if (loadingChimeRef.current) {
-        chimeQueueRef.current.push(playChime);
+        chimeQueueRef.current.push(() => playChimeRef.current());
         return;
       }
 
@@ -130,6 +134,12 @@ function useAudioSystem() {
       // ignore
     }
   }, [getAudioCtx, preloadChime, playFallbackChime]);
+
+  // Keep the ref pointing at the latest playChime so queued retries (pushed
+  // while the .wav was still loading) always invoke the current closure.
+  useEffect(() => {
+    playChimeRef.current = playChime;
+  });
 
   const attachAudioResumeOnInteraction = useCallback(() => {
     const handler = () => {

@@ -52,15 +52,22 @@ export function AppSidebar({
   const pathname = usePathname();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
-  const [isDark, setIsDark] = useState(false);
+  // Init dark mode lazily from localStorage (default light). Reading in the
+  // initializer avoids setState-inside-effect; the blocking script in
+  // layout.tsx already applied the class before paint.
+  const [isDark, setIsDark] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return localStorage.getItem('dokan-theme') === 'dark';
+    } catch {
+      return false;
+    }
+  });
 
-  // Init dark mode from localStorage on mount (default light)
+  // Keep <html> class in sync with state (no setState in this effect).
   useEffect(() => {
-    const stored = localStorage.getItem('dokan-theme');
-    const dark = stored === 'dark';
-    setIsDark(dark);
-    document.documentElement.classList.toggle('dark', dark);
-  }, []);
+    document.documentElement.classList.toggle('dark', isDark);
+  }, [isDark]);
 
   function toggleDark() {
     const next = !isDark;
