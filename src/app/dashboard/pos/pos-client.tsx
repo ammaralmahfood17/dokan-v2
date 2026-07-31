@@ -330,7 +330,14 @@ export function PosClient({
               disabled={!lines.length || submitting}
               onClick={submit}
             >
-              {submitting ? 'جاري الإرسال…' : 'تأكيد الطلب'}
+              {submitting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white motion-reduce:hidden" />
+                  جاري الإرسال…
+                </span>
+              ) : (
+                'تأكيد الطلب'
+              )}
             </Button>
           </div>
         </div>

@@ -4,6 +4,7 @@ import { FormEvent, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { CURRENCIES, DEFAULT_PRIMARY_COLOR, type Project } from '@/lib/types';
 import { Button } from '@/components/ui/button';
+import { Toggle } from '@/components/ui/toggle';
 import { PushNotificationManager } from '@/components/push-notification-manager';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
@@ -147,14 +148,12 @@ export function SettingsClient({
           {errors.color && <p className="error-text">{errors.color}</p>}
         </div>
 
-        <label className="mb-4 flex items-center gap-2 text-sm font-semibold">
-          <input
-            type="checkbox"
-            checked={isActive}
-            onChange={(e) => setIsActive(e.target.checked)}
-          />
-          المتجر نشط (القائمة العامة متاحة)
-        </label>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <label htmlFor="store-active" className="text-sm font-semibold">
+            المتجر نشط (القائمة العامة متاحة)
+          </label>
+          <Toggle id="store-active" checked={isActive} onChange={setIsActive} />
+        </div>
 
         <Button type="submit" disabled={loading}>
           {loading ? 'جاري الحفظ…' : 'حفظ التغييرات'}
