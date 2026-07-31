@@ -74,13 +74,12 @@ export function AnalyticsClient({
   projectName: string;
 }) {
   const router = useRouter();
-  const { kpi, prevKpi, byDay, byHour, topProducts, byType, byStatus } = data;
+  const { kpi, prevKpi, byDay, byHour, topProducts, byType } = data;
 
   const maxDayRevenue = Math.max(...byDay.map((d) => d.revenue), 1);
   const maxHourCount = Math.max(...byHour.map((h) => h.count), 1);
   const maxProductQty = Math.max(...topProducts.map((p) => p.quantity), 1);
   const totalByType = byType.reduce((s, t) => s + t.count, 0) || 1;
-  const totalByStatus = byStatus.reduce((s, t) => s + t.count, 0) || 1;
 
   function setRange(r: Range) {
     router.push(r === '7d' ? '/dashboard/analytics' : `/dashboard/analytics?range=${r}`);
@@ -260,27 +259,6 @@ export function AnalyticsClient({
                       <div
                         className="h-full rounded-full bg-[var(--color-primary)]"
                         style={{ width: `${(t.count / totalByType) * 100}%` }}
-                      />
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </section>
-
-            {/* By status */}
-            <section className="card card-body">
-              <h2 className="mb-4 text-sm font-bold">حسب الحالة</h2>
-              <ul className="space-y-2.5">
-                {byStatus.map((s) => (
-                  <li key={s.status}>
-                    <div className="mb-1 flex items-center justify-between text-xs">
-                      <span className="font-semibold">{s.status}</span>
-                      <span className="text-[var(--color-text-secondary)]">{s.count}</span>
-                    </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-[var(--color-border)]">
-                      <div
-                        className="h-full rounded-full bg-[var(--color-primary)]"
-                        style={{ width: `${(s.count / totalByStatus) * 100}%` }}
                       />
                     </div>
                   </li>

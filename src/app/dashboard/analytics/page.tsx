@@ -33,17 +33,9 @@ export type AnalyticsData = {
   byHour: { label: string; count: number }[];
   topProducts: { name: string; quantity: number }[];
   byType: { type: string; count: number }[];
-  byStatus: { status: string; count: number }[];
 };
 
 const WEEKDAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-const STATUS_AR: Record<string, string> = {
-  pending: 'قيد الانتظار',
-  preparing: 'قيد التحضير',
-  ready: 'جاهز',
-  delivered: 'تم التسليم',
-  cancelled: 'ملغي',
-};
 const TYPE_AR: Record<string, string> = {
   walkin: 'سفري',
   drivethru: 'سيارة',
@@ -169,16 +161,7 @@ export default async function AnalyticsPage({
     .map(([type, count]) => ({ type: TYPE_AR[type] ?? type, count }))
     .sort((a, b) => b.count - a.count);
 
-  // ---- By status ----
-  const statusMap = new Map<string, number>();
-  for (const o of orders) {
-    statusMap.set(o.status, (statusMap.get(o.status) ?? 0) + 1);
-  }
-  const byStatus = [...statusMap.entries()]
-    .map(([status, count]) => ({ status: STATUS_AR[status] ?? status, count }))
-    .sort((a, b) => b.count - a.count);
-
-  const data_: AnalyticsData = { kpi, prevKpi, byDay, byHour, topProducts, byType, byStatus };
+  const data_: AnalyticsData = { kpi, prevKpi, byDay, byHour, topProducts, byType };
 
   return (
     <AnalyticsClient
