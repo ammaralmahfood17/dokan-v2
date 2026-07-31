@@ -131,7 +131,7 @@ export function TablesClient({
         <meta charset="utf-8">
         <title>QR الطاولات — ${projectSlug}</title>
         <style>
-          body { font-family: 'Cairo', sans-serif; padding: 20px; background: #fff; }
+          body { font-family: system-ui, sans-serif; padding: 20px; background: #fff; }
           h1 { font-size: 18px; color: #0F172A; margin-bottom: 16px; text-align: center; }
           .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
           .card { border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px; text-align: center; break-inside: avoid; }

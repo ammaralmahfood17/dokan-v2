@@ -1,7 +1,7 @@
 'use client';
 
 import { FormEvent, useMemo, useRef, useState, useCallback } from 'react';
-import { Plus, Pencil, Trash2, X, ImageIcon, GripVertical } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, ImageIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { formatMoney, money } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -938,8 +938,6 @@ export function ProductsClient({
                   key={addon.key}
                   className="mb-2 flex items-center gap-2 rounded-[8px] bg-[var(--color-surface)] p-2"
                 >
-                  {/* Drag handle visual */}
-                  <GripVertical className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
                   <input
                     className="input flex-1 text-sm"
                     placeholder="اسم الإضافة"
