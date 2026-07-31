@@ -90,6 +90,7 @@ export function ProductsClient({
   const [categoryId, setCategoryId] = useState('');
   const [isAvailable, setIsAvailable] = useState(true);
   const [imageUrl, setImageUrl] = useState('');
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null); // Fix 6
   const [formAddons, setFormAddons] = useState<FormAddon[]>([]);
 
   // Validation errors
@@ -148,6 +149,7 @@ export function ProductsClient({
     setCategoryId(categories[0]?.id ?? '');
     setIsAvailable(true);
     setImageUrl('');
+    setPreviewUrl(null); // Fix 6
     setFormAddons([]);
     setFieldErrors({});
     setShowQuickCat(false);
@@ -164,6 +166,7 @@ export function ProductsClient({
     setCategoryId(p.category_id ?? '');
     setIsAvailable(p.is_available);
     setImageUrl(p.image_url ?? '');
+    setPreviewUrl(null); // Fix 6
     setFormAddons(
       (p.product_addons || []).map((a) => ({
         key: nextAddonKey(),
@@ -206,6 +209,8 @@ export function ProductsClient({
     }
 
     setUploading(true);
+    const objectUrl = URL.createObjectURL(file); // Fix 6: instant preview from File object
+    setPreviewUrl(objectUrl);
     try {
       const supabase = createClient();
       const ext = file.name.split('.').pop() || 'jpg';
@@ -231,6 +236,8 @@ export function ProductsClient({
     } catch {
       toast.error('خطأ في رفع الصورة');
     } finally {
+      URL.revokeObjectURL(objectUrl); // Fix 6: cleanup object URL
+      setPreviewUrl(null); // Fix 6
       setUploading(false);
     }
   }
@@ -260,6 +267,7 @@ export function ProductsClient({
 
   function removeImage() {
     setImageUrl('');
+    setPreviewUrl(null); // Fix 6
   }
 
   // ----- Inline Quick Category -----
@@ -875,6 +883,20 @@ export function ProductsClient({
                   </button>
                   <p className="mt-1.5 text-[11px] text-[var(--color-text-muted)]">JPG أو PNG، حد 5MB</p>
                 </div>
+              ) : uploading && previewUrl ? (
+                // Fix 6: instant preview while uploading
+                <div className="relative inline-block">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={previewUrl}
+                    alt="معاينة الصورة"
+                    className="h-28 w-28 rounded-[10px] border border-[var(--color-border)] object-cover shadow-sm"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center rounded-[10px] bg-black/40">
+                    <span className="h-6 w-6 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  </div>
+                  <p className="mt-1.5 text-[11px] text-[var(--color-text-muted)]">جاري رفع الصورة…</p>
+                </div>
               ) : (
                 <div
                   onDrop={onDrop}
@@ -904,12 +926,6 @@ export function ProductsClient({
                     disabled={uploading}
                     className="hidden"
                   />
-                </div>
-              )}
-              {uploading && (
-                <div className="mt-2 flex items-center gap-2 text-xs text-[var(--color-text-secondary)]">
-                  <span className="h-3 w-3 animate-spin rounded-full border-2 border-[var(--color-primary)] border-t-transparent" />
-                  جاري رفع الصورة…
                 </div>
               )}
             </div>
