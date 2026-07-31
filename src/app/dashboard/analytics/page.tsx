@@ -164,6 +164,8 @@ export default async function AnalyticsPage({
     .slice(0, 8);
 
   // ---- By type ----
+  // NOTE: counts ALL orders (including cancelled) — intentionally consistent
+  // with the "الطلبات" KPI total. Revenue/avg/top-products exclude cancelled.
   const typeMap = new Map<string, number>();
   for (const o of orders) {
     typeMap.set(o.type, (typeMap.get(o.type) ?? 0) + 1);

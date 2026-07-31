@@ -540,7 +540,6 @@ a { color: inherit; text-decoration: none; }
    Print — analytics report (hide app chrome, show only content)
    ========================================================================== */
 @media print {
-  .app-sidebar,
   header[class*="sticky"],
   .print-hidden {
     display: none !important;
