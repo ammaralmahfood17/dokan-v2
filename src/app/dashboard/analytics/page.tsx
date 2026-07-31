@@ -23,6 +23,12 @@ export type AnalyticsData = {
     avgOrder: number;
     cancelled: number;
   };
+  prevKpi: {
+    orders: number;
+    revenue: number;
+    avgOrder: number;
+    cancelled: number;
+  };
   byDay: { label: string; revenue: number; count: number }[];
   byHour: { label: string; count: number }[];
   topProducts: { name: string; quantity: number }[];
@@ -65,27 +71,57 @@ export default async function AnalyticsPage({
   if (range === '7d') start.setDate(now.getDate() - 6);
   if (range === '30d') start.setDate(now.getDate() - 29);
 
+  // Previous period (for comparison): same length, immediately before `start`
+  const prevEnd = new Date(start);
+  prevEnd.setMilliseconds(-1);
+  const prevStart = new Date(start);
+  if (range === 'today') {
+    prevStart.setDate(start.getDate() - 1);
+  } else if (range === '7d') {
+    prevStart.setDate(start.getDate() - 7);
+  } else {
+    prevStart.setDate(start.getDate() - 30);
+  }
+  prevStart.setHours(0, 0, 0, 0);
+
   const supabase = await createClient();
-  const { data } = await supabase
-    .from('orders')
-    .select('id, status, total_amount, type, created_at, order_items(product_name, quantity)')
-    .eq('project_id', ctx.project.id)
-    .is('service_type', null) // null = real order (not waiter/bill)
-    .gte('created_at', start.toISOString())
-    .order('created_at', { ascending: false })
-    .limit(2000);
+  const [{ data }, { data: prevData }] = await Promise.all([
+    supabase
+      .from('orders')
+      .select('id, status, total_amount, type, created_at, order_items(product_name, quantity)')
+      .eq('project_id', ctx.project.id)
+      .is('service_type', null) // null = real order (not waiter/bill)
+      .gte('created_at', start.toISOString())
+      .order('created_at', { ascending: false })
+      .limit(2000),
+    supabase
+      .from('orders')
+      .select('id, status, total_amount')
+      .eq('project_id', ctx.project.id)
+      .is('service_type', null)
+      .gte('created_at', prevStart.toISOString())
+      .lt('created_at', prevEnd.toISOString())
+      .limit(2000),
+  ]);
 
   const orders = (data ?? []) as unknown as OrderRow[];
+  const prevOrders = (prevData ?? []) as unknown as OrderRow[];
 
-  // ---- KPIs (exclude cancelled from revenue) ----
-  const active = orders.filter((o) => o.status !== 'cancelled');
-  const revenue = active.reduce((s, o) => s + Number(o.total_amount || 0), 0);
-  const kpi = {
-    orders: orders.length,
-    revenue,
-    avgOrder: active.length ? revenue / active.length : 0,
-    cancelled: orders.length - active.length,
+  // ---- KPI helper ----
+  const computeKpi = (list: OrderRow[]) => {
+    const active = list.filter((o) => o.status !== 'cancelled');
+    const revenue = active.reduce((s, o) => s + Number(o.total_amount || 0), 0);
+    return {
+      orders: list.length,
+      revenue,
+      avgOrder: active.length ? revenue / active.length : 0,
+      cancelled: list.length - active.length,
+    };
   };
+
+  const kpi = computeKpi(orders);
+  const prevKpi = computeKpi(prevOrders);
+  const active = orders.filter((o) => o.status !== 'cancelled');
 
   // ---- Revenue by day ----
   const dayMap = new Map<string, { label: string; revenue: number; count: number }>();
@@ -142,7 +178,7 @@ export default async function AnalyticsPage({
     .map(([status, count]) => ({ status: STATUS_AR[status] ?? status, count }))
     .sort((a, b) => b.count - a.count);
 
-  const data_: AnalyticsData = { kpi, byDay, byHour, topProducts, byType, byStatus };
+  const data_: AnalyticsData = { kpi, prevKpi, byDay, byHour, topProducts, byType, byStatus };
 
   return (
     <AnalyticsClient

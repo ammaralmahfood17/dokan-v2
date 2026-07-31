@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { TrendingUp, ShoppingBag, Banknote, ReceiptText, XCircle } from 'lucide-react';
+import { TrendingUp, ShoppingBag, Banknote, ReceiptText, XCircle, Printer } from 'lucide-react';
 import { formatMoney } from '@/lib/utils';
 import type { AnalyticsData, Range } from './page';
 
@@ -10,6 +10,57 @@ const RANGES: { value: Range; label: string }[] = [
   { value: '7d', label: '٧ أيام' },
   { value: '30d', label: '٣٠ يوم' },
 ];
+
+/** Percent change vs previous period; null when there's no baseline */
+function pctChange(curr: number, prev: number): number | null {
+  if (prev === 0 && curr === 0) return null;
+  if (prev === 0) return 100;
+  return Math.round(((curr - prev) / prev) * 100);
+}
+
+/** Comparison badge: green up / red down (inverted for cancelled) */
+function DeltaBadge({ curr, prev, invert = false }: { curr: number; prev: number; invert?: boolean }) {
+  const pct = pctChange(curr, prev);
+  if (pct === null) return null;
+  const up = pct >= 0;
+  const good = invert ? !up : up;
+  const cls = good
+    ? 'bg-[var(--color-success-tint)] text-[var(--color-success)]'
+    : 'bg-[var(--color-danger-tint)] text-[var(--color-danger)]';
+  const arrow = up ? '▲' : '▼';
+  return (
+    <span className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${cls}`}>
+      {arrow} {Math.abs(pct)}%
+    </span>
+  );
+}
+
+function KpiCard({
+  icon,
+  iconCls,
+  label,
+  value,
+  delta,
+}: {
+  icon: React.ReactNode;
+  iconCls: string;
+  label: string;
+  value: string;
+  delta: React.ReactNode;
+}) {
+  return (
+    <div className="dashboard-stat card card-body">
+      <div className={`mb-2 flex h-8 w-8 items-center justify-center rounded-lg ${iconCls}`}>
+        {icon}
+      </div>
+      <p className="text-2xl font-bold">{value}</p>
+      <div className="flex items-center gap-1.5">
+        <p className="section-title mb-0">{label}</p>
+        {delta}
+      </div>
+    </div>
+  );
+}
 
 export function AnalyticsClient({
   range,
@@ -23,7 +74,7 @@ export function AnalyticsClient({
   projectName: string;
 }) {
   const router = useRouter();
-  const { kpi, byDay, byHour, topProducts, byType, byStatus } = data;
+  const { kpi, prevKpi, byDay, byHour, topProducts, byType, byStatus } = data;
 
   const maxDayRevenue = Math.max(...byDay.map((d) => d.revenue), 1);
   const maxHourCount = Math.max(...byHour.map((h) => h.count), 1);
@@ -37,15 +88,33 @@ export function AnalyticsClient({
 
   return (
     <div className="page">
-      <div className="page-header">
+      <div className="page-header print-hidden">
         <div>
           <h1>الإحصائيات</h1>
           <p>أداء {projectName} — {RANGES.find((r) => r.value === range)?.label}</p>
         </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="btn btn-secondary btn-sm print-hidden"
+          >
+            <Printer className="h-4 w-4" />
+            طباعة
+          </button>
+        </div>
+      </div>
+
+      {/* Print-only header */}
+      <div className="hidden print:block mb-4">
+        <h1 className="text-lg font-bold">تقرير الإحصائيات — {projectName}</h1>
+        <p className="text-xs text-[var(--color-text-secondary)]">
+          {RANGES.find((r) => r.value === range)?.label} · {new Date().toLocaleDateString('ar-BH')}
+        </p>
       </div>
 
       {/* Range tabs */}
-      <div className="mb-5 flex gap-1.5">
+      <div className="mb-5 flex gap-1.5 print-hidden">
         {RANGES.map((r) => (
           <button
             key={r.value}
@@ -64,34 +133,34 @@ export function AnalyticsClient({
 
       {/* KPI cards */}
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="dashboard-stat card card-body">
-          <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-primary-tint)] text-[var(--color-primary)]">
-            <ShoppingBag className="h-4 w-4" />
-          </div>
-          <p className="text-2xl font-bold">{kpi.orders}</p>
-          <p className="section-title mb-0">الطلبات</p>
-        </div>
-        <div className="dashboard-stat card card-body">
-          <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-success-tint)] text-[var(--color-success)]">
-            <Banknote className="h-4 w-4" />
-          </div>
-          <p className="text-2xl font-bold">{formatMoney(kpi.revenue, currency)}</p>
-          <p className="section-title mb-0">الإيراد</p>
-        </div>
-        <div className="dashboard-stat card card-body">
-          <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-warn-tint)] text-[var(--color-warn)]">
-            <ReceiptText className="h-4 w-4" />
-          </div>
-          <p className="text-2xl font-bold">{formatMoney(kpi.avgOrder, currency)}</p>
-          <p className="section-title mb-0">متوسط الطلب</p>
-        </div>
-        <div className="dashboard-stat card card-body">
-          <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-danger-tint)] text-[var(--color-danger)]">
-            <XCircle className="h-4 w-4" />
-          </div>
-          <p className="text-2xl font-bold">{kpi.cancelled}</p>
-          <p className="section-title mb-0">ملغى</p>
-        </div>
+        <KpiCard
+          icon={<ShoppingBag className="h-4 w-4" />}
+          iconCls="bg-[var(--color-primary-tint)] text-[var(--color-primary)]"
+          label="الطلبات"
+          value={String(kpi.orders)}
+          delta={<DeltaBadge curr={kpi.orders} prev={prevKpi.orders} />}
+        />
+        <KpiCard
+          icon={<Banknote className="h-4 w-4" />}
+          iconCls="bg-[var(--color-success-tint)] text-[var(--color-success)]"
+          label="الإيراد"
+          value={formatMoney(kpi.revenue, currency)}
+          delta={<DeltaBadge curr={kpi.revenue} prev={prevKpi.revenue} />}
+        />
+        <KpiCard
+          icon={<ReceiptText className="h-4 w-4" />}
+          iconCls="bg-[var(--color-warn-tint)] text-[var(--color-warn)]"
+          label="متوسط الطلب"
+          value={formatMoney(kpi.avgOrder, currency)}
+          delta={<DeltaBadge curr={kpi.avgOrder} prev={prevKpi.avgOrder} />}
+        />
+        <KpiCard
+          icon={<XCircle className="h-4 w-4" />}
+          iconCls="bg-[var(--color-danger-tint)] text-[var(--color-danger)]"
+          label="ملغى"
+          value={String(kpi.cancelled)}
+          delta={<DeltaBadge curr={kpi.cancelled} prev={prevKpi.cancelled} invert />}
+        />
       </div>
 
       {kpi.orders === 0 ? (
