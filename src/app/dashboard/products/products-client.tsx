@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Modal } from '@/components/ui/modal';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
+import { Toggle } from '@/components/ui/toggle';
 import type { Category, Product, ProductAddon } from '@/lib/types';
 import type { Database } from '@/lib/database.types';
 import { useRouter } from 'next/navigation';
@@ -16,8 +17,8 @@ import { toast } from 'sonner';
 
 type ProductWithAddons = Product & { product_addons: ProductAddon[] };
 
-/** Temporary addon line in the product form */
-type FormAddon = { key: string; name: string; price: string };
+/** Temporary addon line in the product form — id is set for existing (persisted) addons */
+type FormAddon = { key: string; id?: string; name: string; price: string };
 
 /** Per-field validation errors */
 type FieldErrors = {
@@ -39,29 +40,6 @@ function validateProduct(name: string, price: string): FieldErrors {
     errors.price = 'السعر غير صالح — أدخل رقماً صحيحاً';
   }
   return errors;
-}
-
-/** Toggle switch component */
-function Toggle({ checked, onChange, label }: {
-  checked: boolean;
-  onChange: (v: boolean) => void;
-  label: string;
-}) {
-  return (
-    <label className="flex cursor-pointer items-center gap-3 text-sm font-semibold">
-      <div className="relative">
-        <input
-          type="checkbox"
-          className="peer sr-only"
-          checked={checked}
-          onChange={(e) => onChange(e.target.checked)}
-        />
-        <div className="h-6 w-10 rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] transition-colors peer-checked:border-[var(--color-success)] peer-checked:bg-[var(--color-success)]" />
-        <div className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-4" />
-      </div>
-      <span>{label}</span>
-    </label>
-  );
 }
 
 export function ProductsClient({
@@ -136,7 +114,11 @@ export function ProductsClient({
     }
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
-      list = list.filter((p) => p.name.toLowerCase().includes(q));
+      list = list.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          (p.name_en ?? '').toLowerCase().includes(q)
+      );
     }
     return list;
   }, [sortedProducts, activeCat, searchQuery]);
@@ -171,6 +153,7 @@ export function ProductsClient({
     setFormAddons(
       (p.product_addons || []).map((a) => ({
         key: nextAddonKey(),
+        id: a.id,
         name: a.name,
         price: String(a.price),
       }))
@@ -204,6 +187,11 @@ export function ProductsClient({
       toast.error('الملف يجب أن يكون صورة');
       return;
     }
+    // Whitelist: JPG/PNG/WebP only (SVG can carry scripts in some contexts)
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      toast.error('الصيغة غير مدعومة — JPG أو PNG أو WebP فقط');
+      return;
+    }
     if (file.size > 5 * 1024 * 1024) {
       toast.error('الحد الأقصى لحجم الصورة 5MB');
       return;
@@ -214,7 +202,8 @@ export function ProductsClient({
     setPreviewUrl(objectUrl);
     try {
       const supabase = createClient();
-      const ext = file.name.split('.').pop() || 'jpg';
+      const extMap: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+      const ext = extMap[file.type] || 'jpg';
       const path = `${projectId}/products/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
       const { data, error } = await supabase.storage
@@ -302,6 +291,16 @@ export function ProductsClient({
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
+    // Validate addon prices FIRST — abort on any invalid one (no silent drops)
+    for (const a of formAddons) {
+      if (!a.name.trim()) continue;
+      const addonPrice = Number(a.price);
+      if (!Number.isFinite(addonPrice) || addonPrice < 0) {
+        toast.error(`سعر الإضافة «${a.name.trim()}» غير صالح`);
+        return;
+      }
+    }
+
     const parsedPrice = Number(price);
     setLoading(true);
     const supabase = createClient();
@@ -316,20 +315,14 @@ export function ProductsClient({
       image_url: imageUrl.trim() || null,
     };
 
-    const processedAddons = formAddons
-      .filter((a) => a.name.trim().length > 0)
-      .map((a) => {
-        const addonPrice = Number(a.price);
-        if (!Number.isFinite(addonPrice) || addonPrice < 0) {
-          toast.error(`سعر الإضافة «${a.name}» غير صالح`);
-          return null;
-        }
-        return {
+    const processedAddons: { id?: string; name: string; price: number }[] =
+      formAddons
+        .filter((a) => a.name.trim().length > 0)
+        .map((a) => ({
+          id: a.id,
           name: a.name.trim(),
-          price: money(addonPrice ?? 0),
-        };
-      })
-      .filter(Boolean) as { name: string; price: number }[];
+          price: money(Number(a.price)),
+        }));
 
     if (editing) {
       const { data, error } = await supabase
@@ -345,28 +338,51 @@ export function ProductsClient({
         return;
       }
 
-      // Delete existing addons, then insert new ones — with error handling
-      const { error: deleteAddonErr } = await supabase.from('product_addons').delete().eq('product_id', editing.id);
-      if (deleteAddonErr) {
-        console.error('[Products] Failed to delete old addons:', deleteAddonErr);
-        toast.error('فشل تحديث الإضافات');
-        setLoading(false);
-        return;
+      // Upsert addons: update in place (keeps id + is_available), insert new, delete removed
+      const currentAddons = editing.product_addons || [];
+      const keptIds = new Set(
+        processedAddons.filter((a): a is { id: string; name: string; price: number } => !!a.id).map((a) => a.id)
+      );
+      const removedAddons = currentAddons.filter((a) => !keptIds.has(a.id));
+
+      if (removedAddons.length > 0) {
+        const { error: deleteAddonErr } = await supabase
+          .from('product_addons')
+          .delete()
+          .in('id', removedAddons.map((a) => a.id));
+        if (deleteAddonErr) {
+          console.error('[Products] Failed to delete removed addons:', deleteAddonErr);
+          toast.error('فشل تحديث الإضافات');
+          setLoading(false);
+          return;
+        }
       }
-      if (processedAddons.length > 0) {
-        const { error: insertAddonErr } = await supabase.from('product_addons').insert(
-          processedAddons.map((a) => ({
+
+      for (const a of processedAddons) {
+        if (a.id) {
+          const { error: updErr } = await supabase
+            .from('product_addons')
+            .update({ name: a.name, price: a.price })
+            .eq('id', a.id);
+          if (updErr) {
+            console.error('[Products] Failed to update addon:', updErr);
+            toast.error('فشل تحديث الإضافات');
+            setLoading(false);
+            return;
+          }
+        } else {
+          const { error: insErr } = await supabase.from('product_addons').insert({
             product_id: editing.id,
             name: a.name,
             price: a.price,
             is_available: true,
-          }))
-        );
-        if (insertAddonErr) {
-          console.error('[Products] Failed to insert new addons:', insertAddonErr);
-          toast.error('فشل إضافة الإضافات');
-          setLoading(false);
-          return;
+          });
+          if (insErr) {
+            console.error('[Products] Failed to insert new addon:', insErr);
+            toast.error('فشل إضافة الإضافات');
+            setLoading(false);
+            return;
+          }
         }
       }
 
@@ -437,6 +453,8 @@ export function ProductsClient({
 
   // Delete confirmation state
   const [confirmDelete, setConfirmDelete] = useState<ProductWithAddons | null>(null);
+  // Guards against double-tap on the availability toggle (two rapid requests would flip twice)
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   async function deleteProduct(id: string) {
     const supabase = createClient();
@@ -450,11 +468,14 @@ export function ProductsClient({
   }
 
   async function toggleAvailable(p: ProductWithAddons) {
+    if (togglingId) return;
+    setTogglingId(p.id);
     const supabase = createClient();
     const { error } = await supabase
       .from('products')
       .update({ is_available: !p.is_available })
       .eq('id', p.id);
+    setTogglingId(null);
     if (error) {
       toast.error('فشل التحديث — حاول مرة ثانية');
       return;
@@ -582,11 +603,12 @@ export function ProductsClient({
       </div>
 
       {categories.length > 0 && (
-        <div className="mb-4 flex flex-wrap gap-1.5">
+        <div className="mb-4 flex flex-wrap items-center gap-1.5">
           <button
             type="button"
             onClick={() => setActiveCat(null)}
-            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-all ${
+            aria-pressed={!activeCat}
+            className={`flex min-h-[44px] items-center rounded-full px-4 text-xs font-bold transition-all ${
               !activeCat
                 ? 'bg-[var(--color-primary)] text-white shadow-sm'
                 : 'border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:border-[var(--color-primary)]'
@@ -595,35 +617,40 @@ export function ProductsClient({
             <span>الكل</span>
           </button>
           {categories.map((c) => (
-            <button
+            <div
               key={c.id}
-              type="button"
-              onClick={() => setActiveCat(activeCat === c.id ? null : c.id)}
-              className={`group flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-all ${
+              className={`flex min-h-[44px] items-center gap-0.5 rounded-full py-1 pe-1 ps-3 text-xs font-bold transition-all ${
                 activeCat === c.id
                   ? 'bg-[var(--color-primary)] text-white shadow-sm'
-                  : 'border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:border-[var(--color-primary)]'
+                  : 'border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)]'
               }`}
             >
-              <span>{c.name}</span>
-              {/* Edit/delete on hover */}
-              <span className="mr-1 flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-                <span
-                  onClick={(e) => { e.stopPropagation(); setEditingCat(c); setEditCatName(c.name); }}
-                  className="flex h-5 w-5 items-center justify-center rounded-full hover:bg-black/10"
-                  aria-label="تعديل التصنيف"
-                >
-                  <Pencil className="h-2.5 w-2.5" />
-                </span>
-                <span
-                  onClick={(e) => { e.stopPropagation(); setConfirmDeleteCat(c); }}
-                  className="flex h-5 w-5 items-center justify-center rounded-full hover:bg-[var(--color-danger-tint)]"
-                  aria-label="حذف التصنيف"
-                >
-                  <Trash2 className="h-2.5 w-2.5 text-[var(--color-danger)]" />
-                </span>
-              </span>
-            </button>
+              <button
+                type="button"
+                onClick={() => setActiveCat(activeCat === c.id ? null : c.id)}
+                aria-pressed={activeCat === c.id}
+                className="rounded-full py-1.5"
+              >
+                {c.name}
+              </button>
+              {/* Edit/delete — real buttons, always visible (touch + keyboard) */}
+              <button
+                type="button"
+                onClick={() => { setEditingCat(c); setEditCatName(c.name); }}
+                aria-label={`تعديل التصنيف ${c.name}`}
+                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full transition-opacity hover:opacity-70"
+              >
+                <Pencil className="h-3 w-3" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteCat(c)}
+                aria-label={`حذف التصنيف ${c.name}`}
+                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full transition-opacity hover:opacity-70"
+              >
+                <Trash2 className="h-3 w-3 text-[var(--color-danger)]" />
+              </button>
+            </div>
           ))}
         </div>
       )}
@@ -681,9 +708,10 @@ export function ProductsClient({
                   <Button
                     variant="secondary"
                     size="sm"
+                    disabled={togglingId === p.id}
                     onClick={() => toggleAvailable(p)}
                   >
-                    {p.is_available ? 'إيقاف' : 'تفعيل'}
+                    {togglingId === p.id ? '…' : p.is_available ? 'إيقاف' : 'تفعيل'}
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => openEdit(p)} aria-label="تعديل">
                     <Pencil className="h-4 w-4" />
@@ -856,6 +884,7 @@ export function ProductsClient({
                     <button
                       type="button"
                       onClick={() => setShowQuickCat(false)}
+                      aria-label="إلغاء إضافة تصنيف"
                       className="btn btn-ghost btn-sm"
                     >
                       <X className="h-4 w-4" />
@@ -880,11 +909,14 @@ export function ProductsClient({
                   <button
                     type="button"
                     onClick={removeImage}
-                    className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-[var(--color-danger)] text-white shadow-sm transition-transform hover:scale-110"
+                    aria-label="إزالة الصورة"
+                    className="absolute -right-3 -top-3 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full"
                   >
-                    <X className="h-3.5 w-3.5" />
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--color-danger)] text-white shadow-sm transition-transform hover:scale-110">
+                      <X className="h-3.5 w-3.5" />
+                    </span>
                   </button>
-                  <p className="mt-1.5 text-[11px] text-[var(--color-text-muted)]">JPG أو PNG، حد 5MB</p>
+                  <p className="mt-1.5 text-[11px] text-[var(--color-text-muted)]">JPG أو PNG أو WebP، حد 5MB</p>
                 </div>
               ) : uploading && previewUrl ? (
                 // Fix 6: instant preview while uploading
@@ -919,12 +951,12 @@ export function ProductsClient({
                     اسحب الصورة هنا أو اضغط للاختيار
                   </p>
                   <p className="mt-0.5 text-[11px] text-[var(--color-text-muted)]">
-                    JPG أو PNG، حد أقصى 5MB
+                    JPG أو PNG أو WebP، حد أقصى 5MB
                   </p>
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp"
                     onChange={onFileChange}
                     disabled={uploading}
                     className="hidden"
@@ -981,6 +1013,7 @@ export function ProductsClient({
                   <button
                     type="button"
                     onClick={() => removeFormAddon(addon.key)}
+                    aria-label={`حذف الإضافة ${addon.name || ''}`.trim()}
                     className="btn btn-ghost btn-sm shrink-0 text-[var(--color-danger)]"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -990,11 +1023,17 @@ export function ProductsClient({
             </div>
 
             {/* ======== AVAILABLE TOGGLE ======== */}
-            <Toggle
-              checked={isAvailable}
-              onChange={setIsAvailable}
-              label="المنتج متاح للطلب"
-            />
+            <div className="flex items-center gap-3">
+              <Toggle
+                id="product-available"
+                checked={isAvailable}
+                onChange={setIsAvailable}
+                aria-label="المنتج متاح للطلب"
+              />
+              <label htmlFor="product-available" className="cursor-pointer text-sm font-semibold">
+                المنتج متاح للطلب
+              </label>
+            </div>
 
             {/* ======== BUTTONS ======== */}
             <div className="flex gap-2">
@@ -1026,6 +1065,7 @@ export function ProductsClient({
               <input
                 className={`input ${catError ? 'input-error' : ''}`}
                 required
+                maxLength={50}
                 value={catName}
                 onChange={(e) => {
                   setCatName(e.target.value);
