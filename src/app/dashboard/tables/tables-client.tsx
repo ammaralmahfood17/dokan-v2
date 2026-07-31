@@ -2,7 +2,6 @@
 
 import { FormEvent, useState, useCallback } from 'react';
 import { Plus, Copy, ExternalLink, Printer, Trash2 } from 'lucide-react';
-import QRCode from 'qrcode';
 import { createClient } from '@/lib/supabase/client';
 import {
   generateQrToken,
@@ -79,6 +78,8 @@ export function TablesClient({
     const path = menuPath(projectSlug, table.slug);
     const url = `${siteUrl}${path}`;
     try {
+      // Lazy-load qrcode lib — keeps the tables page chunk small
+      const QRCode = (await import('qrcode')).default;
       const dataUrl = await QRCode.toDataURL(url, {
         width: 280,
         margin: 2,
@@ -109,6 +110,8 @@ export function TablesClient({
       const path = menuPath(projectSlug, t.slug);
       const url = `${siteUrl}${path}`;
       try {
+        // Lazy-load qrcode lib (shared chunk with showQr)
+        const QRCode = (await import('qrcode')).default;
         const dataUrl = await QRCode.toDataURL(url, {
           width: 180,
           margin: 1,

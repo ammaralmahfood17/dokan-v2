@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useMemo, useRef, useState, useCallback } from 'react';
+import Image from 'next/image';
 import { Plus, Pencil, Trash2, X, ImageIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { formatMoney, money } from '@/lib/utils';
@@ -644,12 +645,13 @@ export function ProductsClient({
             <div key={p.id} className="dashboard-card card card-body">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex min-w-0 items-start gap-3">
-                  {/* Product thumbnail */}
+                  {/* Product thumbnail — next/image: srcset + lazy + zero CLS */}
                   {p.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <Image
                       src={p.image_url}
                       alt={p.name}
+                      width={48}
+                      height={48}
                       className="mt-0.5 h-12 w-12 shrink-0 rounded-[8px] border border-[var(--color-border)] object-cover"
                     />
                   ) : (
@@ -868,10 +870,11 @@ export function ProductsClient({
               <label className="label">صورة المنتج</label>
               {imageUrl ? (
                 <div className="relative inline-block">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <Image
                     src={imageUrl}
                     alt=""
+                    width={112}
+                    height={112}
                     className="h-28 w-28 rounded-[10px] border border-[var(--color-border)] object-cover shadow-sm"
                   />
                   <button

@@ -1,7 +1,8 @@
-// Dokan Service Worker v5 — Push notifications + Offline-first + Image caching
-const CACHE_SHELL = 'dokan-shell-v1';
-const CACHE_IMAGES = 'dokan-images-v1';
-const CACHE_STATIC = 'dokan-static-v1';
+// Dokan Service Worker v6 — Precache build assets + RSC caching + Push + Offline-first
+const CACHE_SHELL = 'dokan-shell-v2';
+const CACHE_IMAGES = 'dokan-images-v2';
+const CACHE_STATIC = 'dokan-static-v2';
+const CACHE_PAGES = 'dokan-pages-v2';
 
 const SHELL_ASSETS = [
   '/',
@@ -15,10 +16,36 @@ const SHELL_ASSETS = [
 /* ========== INSTALL ========== */
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_SHELL).then((cache) => cache.addAll(SHELL_ASSETS)).catch(() => {})
+    (async () => {
+      // 1. Cache the static shell
+      try {
+        const cache = await caches.open(CACHE_SHELL);
+        await cache.addAll(SHELL_ASSETS);
+      } catch (e) {}
+
+      // 2. Precache Next.js build assets discovered from the home page HTML.
+      //    This makes the app fully offline after the first visit (no dep on serwist).
+      try {
+        const res = await fetch('/');
+        const html = await res.text();
+        const assetUrls = [
+          ...html.matchAll(/\/_next\/static\/[^"']+\.(?:js|css)/g),
+        ].map((m) => m[0]);
+        const unique = [...new Set(assetUrls)];
+        if (unique.length) {
+          const staticCache = await caches.open(CACHE_STATIC);
+          await Promise.allSettled(
+            unique.map((u) =>
+              fetch(u).then((r) => {
+                if (r.ok) staticCache.put(u, r);
+              })
+            )
+          );
+        }
+      } catch (e) {}
+    })()
   );
-  // Don't skipWaiting — let the user control the update
-  // self.skipWaiting();
+  // No skipWaiting — user controls the update via SKIP_WAITING message
 });
 
 /* ========== ACTIVATE ========== */
@@ -27,7 +54,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) =>
       Promise.all(
         keys.map((k) => {
-          if (k === CACHE_SHELL || k === CACHE_IMAGES || k === CACHE_STATIC) return;
+          if (k === CACHE_SHELL || k === CACHE_IMAGES || k === CACHE_STATIC || k === CACHE_PAGES) return;
           return caches.delete(k);
         })
       )
@@ -90,40 +117,42 @@ self.addEventListener('message', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // 1. Skip non-GET and API/Supabase requests
-  if (
-    event.request.method !== 'GET' ||
-    url.pathname.startsWith('/api/') ||
-    url.hostname.includes('supabase')
-  ) {
-    // But cache API responses that aren't supabase-bound
-    if (event.request.method === 'GET' && url.pathname.startsWith('/api/')) {
-      event.respondWith(networkFirst(event.request, CACHE_SHELL));
-    }
+  // 1. Skip non-GET and Supabase requests
+  if (event.request.method !== 'GET' || url.hostname.includes('supabase')) {
+    return;
+  }
+
+  // API routes: network-first (fresh data), fall back to cache if available
+  if (url.pathname.startsWith('/api/')) {
+    event.respondWith(networkFirst(event.request, CACHE_PAGES));
     return;
   }
 
   // 2. Image caching (icons, storage images, etc.)
-  if (
-    url.pathname.match(/\.(png|jpg|jpeg|gif|svg|webp|avif|ico)(\?.*)?$/i)
-  ) {
+  if (url.pathname.match(/\.(png|jpg|jpeg|gif|svg|webp|avif|ico)(\?.*)?$/i)) {
     event.respondWith(cacheFirst(event.request, CACHE_IMAGES));
     return;
   }
 
-  // 3. Next.js static chunks (_next/static/)
+  // 3. Next.js static chunks (_next/static/) — cache-first, never stale
   if (url.pathname.startsWith('/_next/static/')) {
     event.respondWith(cacheFirst(event.request, CACHE_STATIC));
     return;
   }
 
-  // 4. Navigation requests — network first with offline fallback
+  // 4. RSC payloads (?_rsc=...) — network-first so client navigations work offline
+  if (url.searchParams.has('_rsc')) {
+    event.respondWith(networkFirst(event.request, CACHE_PAGES));
+    return;
+  }
+
+  // 5. Navigation requests — network first with offline fallback
   if (event.request.mode === 'navigate') {
     event.respondWith(networkFirst(event.request, CACHE_SHELL));
     return;
   }
 
-  // 5. Everything else — stale-while-revalidate
+  // 6. Everything else — stale-while-revalidate
   event.respondWith(
     caches.match(event.request).then((cached) => {
       const fetchPromise = fetch(event.request).then((response) => {

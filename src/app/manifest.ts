@@ -38,5 +38,22 @@ export default function manifest(): MetadataRoute.Manifest {
         purpose: 'maskable',
       },
     ],
+    // Rich install UI: shown by Chrome/Edge in the install dialog
+    screenshots: [
+      {
+        src: '/screenshots/light.png',
+        sizes: '750x1334',
+        type: 'image/png',
+        form_factor: 'narrow',
+        label: 'دكان — لوحة التحكم',
+      },
+      {
+        src: '/screenshots/dark.png',
+        sizes: '750x1334',
+        type: 'image/png',
+        form_factor: 'narrow',
+        label: 'دكان — الوضع الليلي',
+      },
+    ],
   };
 }

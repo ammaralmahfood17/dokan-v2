@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import { Cairo, Tajawal } from 'next/font/google';
 import { Toaster } from 'sonner';
+import { ServiceWorkerRegister } from '@/components/service-worker-register';
+import { WebVitals } from '@/components/web-vitals';
 import './globals.css';
 
 const cairo = Cairo({
@@ -88,6 +90,8 @@ export default function RootLayout({
       <body>
         {children}
         <Toaster position="top-center" richColors dir="rtl" />
+        <ServiceWorkerRegister />
+        <WebVitals />
       </body>
     </html>
   );

@@ -307,8 +307,8 @@ export function MenuClient({
   // ======== CART BAR BADGE ========
   const cartBadge = itemCount > 0;
 
-  /** Render a single product card */
-  function renderProduct(p: ProductWithAddons) {
+  /** Render a single product card — isFirst gets priority (LCP) */
+  function renderProduct(p: ProductWithAddons, isFirst = false) {
     return (
       <button
         key={p.id}
@@ -322,6 +322,7 @@ export function MenuClient({
             alt={p.name}
             width={64}
             height={64}
+            priority={isFirst}
             placeholder="blur"
             blurDataURL={BLUR_PLACEHOLDER}
             className="h-16 w-16 shrink-0 rounded-[8px] object-cover"
@@ -456,14 +457,14 @@ export function MenuClient({
           <>
             {activeCategory === 'all' ? (
               /* All categories: group products under each category */
-              categories.filter((c) => products.some((p) => p.category_id === c.id)).map((cat) => {
+              categories.filter((c) => products.some((p) => p.category_id === c.id)).map((cat, catIdx) => {
                 const catProducts = filtered.filter((p) => p.category_id === cat.id);
                 if (!catProducts.length) return null;
                 return (
                   <section key={cat.id} className="mb-6">
                     <h2 className="mb-3 text-sm font-bold text-[var(--color-text-secondary)]">{cat.name}</h2>
                     <div className="space-y-3">
-                      {catProducts.map((p) => renderProduct(p))}
+                      {catProducts.map((p, idx) => renderProduct(p, idx === 0 && catIdx === 0))}
                     </div>
                   </section>
                 );
@@ -471,7 +472,7 @@ export function MenuClient({
             ) : (
               /* Single category: flat list */
               <div className="space-y-3">
-                {filtered.map((p) => renderProduct(p))}
+                {filtered.map((p, idx) => renderProduct(p, idx === 0))}
               </div>
             )}
           </>
