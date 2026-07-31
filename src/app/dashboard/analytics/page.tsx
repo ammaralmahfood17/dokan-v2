@@ -29,21 +29,33 @@ export type AnalyticsData = {
     avgOrder: number;
     cancelled: number;
   };
-  byDay: { label: string; revenue: number; count: number }[];
+  byDay: { key: string; label: string; revenue: number; count: number }[];
   byHour: { label: string; count: number }[];
   topProducts: { name: string; quantity: number }[];
   byType: { type: string; count: number }[];
 };
 
-const WEEKDAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 const TYPE_AR: Record<string, string> = {
   walkin: 'سفري',
   drivethru: 'سيارة',
   dinein: 'طاولة',
 };
 
-function dayKey(d: Date): string {
-  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+// ── Gulf timezone bucketing ────────────────────────────────────────────────
+// Supabase stores timestamptz (UTC). Bucketing with the server's local time
+// (Vercel = UTC) would put a 1AM Bahrain order on the PREVIOUS day and shift
+// peak-hour stats by 3 hours. Bucket by Asia/Bahrain (UTC+3) instead.
+// Multi-Gulf per-project timezone support = future enhancement.
+const TZ = 'Asia/Bahrain';
+const dayFmt = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
+const hourFmt = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hour: 'numeric', hour12: false });
+const arWeekdayFmt = new Intl.DateTimeFormat('ar', { timeZone: TZ, weekday: 'long' });
+
+function tzDayKey(d: Date): string {
+  return dayFmt.format(d); // YYYY-MM-DD in Asia/Bahrain
+}
+function tzHour(d: Date): number {
+  return Number(hourFmt.format(d)) % 24;
 }
 
 export default async function AnalyticsPage({
@@ -57,24 +69,16 @@ export default async function AnalyticsPage({
   const ctx = await getCurrentProject();
   if (!ctx) redirect('/onboarding');
 
-  const now = new Date();
-  const start = new Date(now);
-  start.setHours(0, 0, 0, 0);
-  if (range === '7d') start.setDate(now.getDate() - 6);
-  if (range === '30d') start.setDate(now.getDate() - 29);
+  const count = range === 'today' ? 1 : range === '7d' ? 7 : 30;
 
-  // Previous period (for comparison): same length, immediately before `start`
-  const prevEnd = new Date(start);
-  prevEnd.setMilliseconds(-1);
-  const prevStart = new Date(start);
-  if (range === 'today') {
-    prevStart.setDate(start.getDate() - 1);
-  } else if (range === '7d') {
-    prevStart.setDate(start.getDate() - 7);
-  } else {
-    prevStart.setDate(start.getDate() - 30);
-  }
-  prevStart.setHours(0, 0, 0, 0);
+  // "Today" at Asia/Bahrain midnight → UTC instant, then walk back N days.
+  const [y, m, d] = tzDayKey(new Date()).split('-').map(Number);
+  const todayUTCms = Date.UTC(y, m - 1, d);
+  const startUTC = new Date(todayUTCms - (count - 1) * 86400000);
+
+  // Previous period (for comparison): same length, immediately before `startUTC`
+  const prevEnd = new Date(startUTC.getTime() - 1);
+  const prevStart = new Date(startUTC.getTime() - count * 86400000);
 
   const supabase = await createClient();
   const [{ data }, { data: prevData }] = await Promise.all([
@@ -83,7 +87,7 @@ export default async function AnalyticsPage({
       .select('id, status, total_amount, type, created_at, order_items(product_name, quantity)')
       .eq('project_id', ctx.project.id)
       .is('service_type', null) // null = real order (not waiter/bill)
-      .gte('created_at', start.toISOString())
+      .gte('created_at', startUTC.toISOString())
       .order('created_at', { ascending: false })
       .limit(2000),
     supabase
@@ -115,16 +119,15 @@ export default async function AnalyticsPage({
   const prevKpi = computeKpi(prevOrders);
   const active = orders.filter((o) => o.status !== 'cancelled');
 
-  // ---- Revenue by day ----
-  const dayMap = new Map<string, { label: string; revenue: number; count: number }>();
-  for (let i = 0; i < (range === '30d' ? 30 : range === '7d' ? 7 : 1); i++) {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
-    dayMap.set(dayKey(d), { label: WEEKDAYS[d.getDay()], revenue: 0, count: 0 });
+  // ---- Revenue by day (Asia/Bahrain buckets, oldest → newest) ----
+  const dayMap = new Map<string, { key: string; label: string; revenue: number; count: number }>();
+  for (let i = count - 1; i >= 0; i--) {
+    const t = new Date(todayUTCms - i * 86400000);
+    const k = tzDayKey(t);
+    dayMap.set(k, { key: k, label: arWeekdayFmt.format(t), revenue: 0, count: 0 });
   }
   for (const o of active) {
-    const d = new Date(o.created_at);
-    const bucket = dayMap.get(dayKey(d));
+    const bucket = dayMap.get(tzDayKey(new Date(o.created_at)));
     if (bucket) {
       bucket.revenue += Number(o.total_amount || 0);
       bucket.count += 1;
@@ -132,11 +135,10 @@ export default async function AnalyticsPage({
   }
   const byDay = [...dayMap.values()];
 
-  // ---- Orders by hour (0-23) ----
+  // ---- Orders by hour (0-23, Asia/Bahrain) ----
   const hourBuckets = Array.from({ length: 24 }, (_, h) => ({ label: String(h), count: 0 }));
   for (const o of active) {
-    const h = new Date(o.created_at).getHours();
-    hourBuckets[h].count += 1;
+    hourBuckets[tzHour(new Date(o.created_at))].count += 1;
   }
   const byHour = hourBuckets;
 

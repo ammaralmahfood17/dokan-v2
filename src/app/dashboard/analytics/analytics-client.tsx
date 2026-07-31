@@ -53,7 +53,7 @@ function KpiCard({
       <div className={`mb-2 flex h-8 w-8 items-center justify-center rounded-lg ${iconCls}`}>
         {icon}
       </div>
-      <p className="text-2xl font-bold">{value}</p>
+      <p className="truncate text-xl font-bold sm:text-2xl" dir="ltr">{value}</p>
       <div className="flex items-center gap-1.5">
         <p className="section-title mb-0">{label}</p>
         {delta}
@@ -177,7 +177,7 @@ export function AnalyticsClient({
             <h2 className="mb-4 text-sm font-bold">الإيراد اليومي</h2>
             <div className="flex h-36 items-end gap-1.5" dir="ltr">
               {byDay.map((d) => (
-                <div key={d.label + d.count + d.revenue} className="group flex flex-1 flex-col items-center gap-1">
+                <div key={d.key} className="group flex flex-1 flex-col items-center gap-1">
                   <span className="text-[9px] font-semibold text-[var(--color-text-muted)]">
                     {d.revenue > 0 ? formatMoney(d.revenue, currency).split(' ')[0] : ''}
                   </span>
