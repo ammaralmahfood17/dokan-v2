@@ -46,9 +46,17 @@ export function TablesClient({
 
   async function createTable(e: FormEvent) {
     e.preventDefault();
-    setLoading(true);
     const number = Number(tableNumber);
-    const slug = tableSlug.trim() || tableSlugFromNumber(number);
+    // Normalize + validate the slug: lowercase, spaces→dashes, [a-z0-9-] only.
+    // Unvalidated slugs (Arabic, uppercase, "/") break the menu URL (case-sensitive
+    // route → QR 404) and would be interpolated unescaped into the print window HTML.
+    const rawSlug = tableSlug.trim().toLowerCase().replace(/\s+/g, '-');
+    if (!/^[a-z0-9-]{1,60}$/.test(rawSlug)) {
+      toast.error('المعرّف يجب أن يكون أحرف إنجليزية وأرقام وشرطات فقط');
+      return;
+    }
+    const slug = rawSlug || tableSlugFromNumber(number);
+    setLoading(true);
     const supabase = createClient();
 
     const { data, error } = await supabase
@@ -96,8 +104,10 @@ export function TablesClient({
   }
 
   function copyUrl(url: string) {
-    void navigator.clipboard.writeText(url);
-    toast.success('تم نسخ الرابط');
+    navigator.clipboard
+      .writeText(url)
+      .then(() => toast.success('تم نسخ الرابط'))
+      .catch(() => toast.error('تعذّر النسخ — انسخ الرابط يدويًا'));
   }
 
   async function printAllQrs() {
@@ -233,6 +243,7 @@ export function TablesClient({
                       variant="ghost"
                       size="sm"
                       onClick={() => copyUrl(url)}
+                      aria-label="نسخ رابط المنيو"
                     >
                       <Copy className="h-3.5 w-3.5" />
                     </Button>
@@ -240,6 +251,7 @@ export function TablesClient({
                       href={path}
                       target="_blank"
                       rel="noreferrer"
+                      aria-label="فتح المنيو في تبويب جديد"
                       className="btn btn-ghost btn-sm"
                     >
                       <ExternalLink className="h-3.5 w-3.5" />
