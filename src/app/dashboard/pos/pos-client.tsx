@@ -201,7 +201,6 @@ export function PosClient({
       <div className="page-header">
         <div>
           <h1>نقطة البيع</h1>
-          <p>طلبات سفري / سيارة — تسعير من السيرفر</p>
         </div>
       </div>
 
