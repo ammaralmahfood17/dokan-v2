@@ -103,12 +103,13 @@ export async function POST(request: NextRequest) {
     }).catch((e) => ({ sent: 0, failed: 0, cleaned: 0, configured: false, error: String(e) }));
 
     // Debug: persist push outcome so delivery can be verified from the DB
+    // (event='created' — the column check only allows the 3 status events)
     try {
       await supabase.from('order_audit_logs').insert({
         order_id: result.order.id,
         project_id: project.id,
-        event: 'push_debug',
-        metadata: pushResult,
+        event: 'created',
+        metadata: { push_debug: true, ...pushResult },
       });
     } catch (auditErr) {
       console.warn('[Audit] Failed to write push debug log', auditErr);
