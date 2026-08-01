@@ -109,6 +109,7 @@ export function MenuClient({
       .join(',')}:${itemNotes.trim()}`;
 
     const alreadyInCart = cart.some((l) => l.key === key);
+    const wasEmpty = cart.length === 0;
 
     setCart((prev) => {
       const existing = prev.find((l) => l.key === key);
@@ -132,6 +133,10 @@ export function MenuClient({
     });
     setPicker(null);
 
+    // Auto-open the cart on the FIRST item so the customer can review + send.
+    // Later adds only toast (don't interrupt multi-item ordering).
+    if (wasEmpty) setCartOpen(true);
+
     // Visual feedback: flash badge on the product card + toast
     setLastAddedKey(picker.id);
     if (lastAddedTimer.current) clearTimeout(lastAddedTimer.current);
@@ -147,6 +152,7 @@ export function MenuClient({
     }
     const key = `${p.id}::`;
     const alreadyInCart = cart.some((l) => l.key === key);
+    const wasEmpty = cart.length === 0;
     setCart((prev) => {
       const existing = prev.find((l) => l.key === key);
       if (existing) {
@@ -167,6 +173,8 @@ export function MenuClient({
         },
       ];
     });
+    // Auto-open the cart on the FIRST item (same UX as confirmAdd)
+    if (wasEmpty) setCartOpen(true);
     // Visual feedback
     setLastAddedKey(p.id);
     if (lastAddedTimer.current) clearTimeout(lastAddedTimer.current);
