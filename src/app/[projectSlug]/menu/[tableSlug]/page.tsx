@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { createAnonClient } from '@/lib/supabase/anon';
 import { MenuClient } from './menu-client';
 import type { Category, Product, ProductAddon, Project, Table } from '@/lib/types';
 
@@ -9,7 +9,9 @@ export default async function PublicMenuPage({
   params: Promise<{ projectSlug: string; tableSlug: string }>;
 }) {
   const { projectSlug, tableSlug } = await params;
-  const supabase = await createClient();
+  // anon client (no user cookies) → RLS anon role → public menu data,
+  // so signed-in users see other restaurants' menus too
+  const supabase = createAnonClient();
 
   // Resolve active project by slug
   const { data: project } = await supabase

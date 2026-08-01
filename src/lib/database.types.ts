@@ -621,6 +621,18 @@ export type Database = {
         Args: { p_project_id: string }
         Returns: boolean
       }
+      rate_limit_check: {
+        Args: {
+          p_key: string
+          p_limit: number
+          p_window_ms: number
+        }
+        Returns: {
+          allowed: boolean
+          remaining: number
+          reset_in: number
+        }
+      }
       unaccent: { Args: { "": string }; Returns: string }
     }
     Enums: {

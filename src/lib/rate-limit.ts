@@ -1,9 +1,11 @@
 /**
  * Rate limiter for Dokan API routes.
- * Uses Vercel KV (Redis) when available, falls back to in-memory Map.
+ * Priority: Vercel KV (Redis) → Supabase Postgres (production default) → in-memory Map.
  *
- * Vercel KV: production-grade, shared across serverless instances.
- * In-memory fallback: local development only (resets on cold starts).
+ * Vercel KV: shared across serverless instances when KV_URL is configured.
+ * Supabase: atomic counter via SECURITY DEFINER RPC (rate_limit_check) — works on
+ *   serverless without extra services. This is the production path.
+ * In-memory: local development only (per-instance, resets on cold starts).
  */
 
 type RateLimitRecord = {
@@ -57,17 +59,49 @@ async function kvRateLimit(
   }
 }
 
+/**
+ * Supabase Postgres rate limiter — atomic counter via SECURITY DEFINER RPC.
+ * Works on serverless (shared DB, no per-instance state).
+ */
+async function supabaseRateLimit(
+  key: string,
+  options: RateLimitOptions
+): Promise<RateLimitResult | null> {
+  try {
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return null;
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    const admin = createAdminClient();
+    const { data, error } = await admin.rpc('rate_limit_check', {
+      p_key: key,
+      p_limit: options.limit,
+      p_window_ms: options.windowMs,
+    });
+    if (error) return null;
+    return {
+      allowed: data.allowed,
+      remaining: data.remaining,
+      resetIn: Math.round(data.reset_in),
+    };
+  } catch {
+    return null; // Fall through to in-memory
+  }
+}
+
 export async function rateLimit(
   identifier: string,
   options: RateLimitOptions = { limit: 10, windowMs: 60 * 1000 }
 ): Promise<RateLimitResult> {
   const key = options.keyPrefix ? `${options.keyPrefix}:${identifier}` : identifier;
 
-  // Try Vercel KV first
+  // 1. Vercel KV if configured
   const kvResult = await kvRateLimit(key, options);
   if (kvResult) return kvResult;
 
-  // Fallback: in-memory Map
+  // 2. Supabase Postgres (production path)
+  const supabaseResult = await supabaseRateLimit(key, options);
+  if (supabaseResult) return supabaseResult;
+
+  // 3. Fallback: in-memory Map (local dev only)
   const now = Date.now();
   const record = store.get(key);
 
