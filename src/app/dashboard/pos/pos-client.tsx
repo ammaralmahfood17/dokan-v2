@@ -1,24 +1,23 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Minus, Plus, Trash2, X } from 'lucide-react';
+import { ShoppingBag, X } from 'lucide-react';
 import { formatMoney, money, currencyDecimals } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 import type { OrderType, Product, ProductAddon } from '@/lib/types';
 import { Button } from '@/components/ui/button';
+import { CartPanel } from '@/components/pos/cart-panel';
+import { ProductCard } from '@/components/pos/product-card';
+import type { PosLine } from '@/components/pos/types';
 import { toast } from 'sonner';
 
 type ProductWithAddons = Product & { product_addons: ProductAddon[] };
 
-type Line = {
-  key: string;
-  productId: string;
-  productName: string;
-  unitPrice: number;
-  quantity: number;
-  addonIds: string[];
-  addonLabels: string[];
-};
+const ORDER_TYPES: [OrderType, string][] = [
+  ['walkin', 'سفري'],
+  ['drivethru', 'سيارة'],
+  ['dinein', 'طاولة'],
+];
 
 export function PosClient({
   projectId,
@@ -30,11 +29,12 @@ export function PosClient({
   products: ProductWithAddons[];
 }) {
   const [type, setType] = useState<OrderType>('walkin');
-  const [lines, setLines] = useState<Line[]>([]);
+  const [lines, setLines] = useState<PosLine[]>([]);
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [picker, setPicker] = useState<ProductWithAddons | null>(null);
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
+  const [cartOpen, setCartOpen] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
 
   const pickerKeyDown = useCallback((e: KeyboardEvent) => {
@@ -52,9 +52,9 @@ export function PosClient({
     else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
   }, []);
 
-  // Scroll lock + keyboard trap when picker is open
+  // Scroll lock + keyboard trap while ANY overlay (addon picker, cart sheet) is open
   useEffect(() => {
-    if (!picker) return;
+    if (!picker && !cartOpen) return;
     document.addEventListener('keydown', pickerKeyDown);
     const scrollY = window.scrollY;
     document.body.style.position = 'fixed';
@@ -69,7 +69,7 @@ export function PosClient({
       document.body.style.overflowY = '';
       window.scrollTo(0, scrollY);
     };
-  }, [picker, pickerKeyDown]);
+  }, [picker, cartOpen, pickerKeyDown]);
 
   const available = useMemo(
     () => products.filter((p) => p.is_available),
@@ -87,7 +87,7 @@ export function PosClient({
       setPicker(p);
       setSelectedAddons([]);
     } else {
-      addLine(p, [], []);
+      addLine(p, [], [], 1, false);
     }
   }
 
@@ -95,7 +95,8 @@ export function PosClient({
     p: ProductWithAddons,
     addonIds: string[],
     addonLabels: string[],
-    qty = 1
+    qty = 1,
+    silent = false
   ) {
     const addonTotal = money(
       (p.product_addons || [])
@@ -125,6 +126,7 @@ export function PosClient({
         },
       ];
     });
+    if (!silent) toast.success('تمت الإضافة إلى السلة');
     setPicker(null);
   }
 
@@ -227,7 +229,7 @@ export function PosClient({
       if (!p) continue;
       const addonIds = (it.addons ?? []).map((a) => a.id);
       const labels = (it.addons ?? []).map((a) => a.name);
-      addLine(p, addonIds, labels, it.quantity);
+      addLine(p, addonIds, labels, it.quantity, true);
       added += 1;
     }
     setShowQuick(false);
@@ -283,6 +285,7 @@ export function PosClient({
       );
       setLines([]);
       setNotes('');
+      setCartOpen(false);
     } catch {
       toast.error('تعذّر الاتصال');
     } finally {
@@ -290,8 +293,10 @@ export function PosClient({
     }
   }
 
+  const itemCount = lines.reduce((s, l) => s + l.quantity, 0);
+
   return (
-    <div className="page">
+    <div className="page md:max-w-[1440px]">
       <div className="page-header">
         <div>
           <h1>نقطة البيع</h1>
@@ -299,190 +304,149 @@ export function PosClient({
         </div>
       </div>
 
-      <div className="mb-4 flex gap-2">
-        {(
-          [
-            ['walkin', 'سفري'],
-            ['drivethru', 'سيارة'],
-            ['dinein', 'طاولة'],
-          ] as const
-        ).map(([value, label]) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => setType(value)}
-            disabled={submitting}
-            className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-bold transition-all min-h-[44px] ${type === value ? 'bg-[var(--color-primary)] text-white shadow-sm' : 'border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] hover:bg-[var(--color-bg)]'} ${submitting ? 'opacity-50' : ''}`}
-            aria-pressed={type === value}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <div className="md:grid md:grid-cols-[minmax(0,1fr)_380px] md:items-start md:gap-4">
+        {/* ── Left: product grid ─────────────────────────────────────── */}
+        <div className="min-w-0">
+          {/* Mobile order type — desktop keeps it in the cart header */}
+          <div className="mb-3 flex gap-1 rounded-[8px] bg-[var(--pos-bg)] p-1 md:hidden" role="tablist" aria-label="نوع الطلب">
+            {ORDER_TYPES.map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                role="tab"
+                aria-selected={type === value}
+                onClick={() => setType(value)}
+                disabled={submitting}
+                className={`min-h-[44px] flex-1 rounded-[6px] text-sm font-semibold transition-colors ${type === value ? 'bg-[var(--pos-surface)] text-[var(--pos-text-primary)] shadow-sm' : 'text-[var(--pos-text-subdued)] hover:text-[var(--pos-text-primary)]'}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
 
-      {/* Quick actions — top sellers + repeat last order */}
-      <div className="mb-3 flex gap-2">
-        <button
-          type="button"
-          onClick={openQuick}
-          disabled={submitting}
-          className="flex-1 min-h-[44px] rounded-lg border border-[var(--color-primary)] bg-[var(--color-primary-tint)] px-4 text-sm font-bold text-[var(--color-primary)] transition-colors hover:opacity-90"
-        >
-          ⚡ الأكثر مبيعًا
-        </button>
-        <button
-          type="button"
-          onClick={openQuick}
-          disabled={submitting}
-          className="flex-1 min-h-[44px] rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 text-sm font-bold text-[var(--color-text)] transition-colors hover:bg-[var(--color-bg)]"
-        >
-          🔄 آخر طلب
-        </button>
-      </div>
+          {/* Quick actions — top sellers + repeat last order */}
+          <div className="mb-3 flex gap-2">
+            <button
+              type="button"
+              onClick={openQuick}
+              disabled={submitting}
+              className="flex-1 min-h-[44px] rounded-[8px] border border-[var(--pos-border)] bg-[var(--pos-surface)] px-4 text-sm font-semibold text-[var(--pos-text-primary)] transition-colors hover:bg-[var(--pos-bg)]"
+            >
+              ⚡ الأكثر مبيعًا
+            </button>
+            <button
+              type="button"
+              onClick={openQuick}
+              disabled={submitting}
+              className="flex-1 min-h-[44px] rounded-[8px] border border-[var(--pos-border)] bg-[var(--pos-surface)] px-4 text-sm font-semibold text-[var(--pos-text-primary)] transition-colors hover:bg-[var(--pos-bg)]"
+            >
+              🔄 آخر طلب
+            </button>
+          </div>
 
-      <div className="grid gap-4 lg:grid-cols-5">
-        <div className="lg:col-span-3">
           {!available.length ? (
             <div className="card empty">
               <h3>ما فيه منتجات متاحة حالياً</h3>
               <p className="text-sm">أضف منتجاتك من صفحة المنتجات.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3">
               {available.map((p) => (
-                <button
+                <ProductCard
                   key={p.id}
-                  type="button"
-                  onClick={() => openProduct(p)}
-                  className="card card-body flex items-center gap-3 text-start transition-colors hover:border-[var(--color-primary)]"
-                >
-                  {p.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={p.image_url}
-                      alt={p.name}
-                      className="h-12 w-12 shrink-0 rounded-lg object-cover"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[var(--color-primary-tint)] text-[var(--color-primary)]">
-                      🍽️
-                    </span>
-                  )}
-                  <span className="min-w-0">
-                    <p className="truncate text-sm font-bold">{p.name}</p>
-                    <p className="mt-1 text-xs font-semibold text-[var(--color-primary)]">
-                      {formatMoney(Number(p.price), currency)}
-                    </p>
-                  </span>
-                </button>
+                  product={p}
+                  currency={currency}
+                  onSelect={(prod) => openProduct(prod as ProductWithAddons)}
+                />
               ))}
             </div>
           )}
         </div>
 
-        <div className="card lg:col-span-2">
-          <div className="card-header">
-            <h3 className="text-sm font-bold">السلة</h3>
-            <span className="text-xs text-[var(--color-text-secondary)]">
-              {lines.length} صنف
-            </span>
+        {/* ── Right: cart panel (desktop, sticky full-height) ─────────── */}
+        <aside className="hidden md:block">
+          <div className="md:sticky md:top-[57px] md:h-[calc(100dvh-57px)] lg:top-0 lg:h-dvh">
+            <CartPanel
+              lines={lines}
+              products={products}
+              currency={currency}
+              type={type}
+              onTypeChange={setType}
+              notes={notes}
+              onNotesChange={setNotes}
+              onClear={() => setLines([])}
+              onIncrement={(key) => updateQty(key, 1)}
+              onDecrement={(key) => updateQty(key, -1)}
+              onRemove={(key) => setLines((prev) => prev.filter((x) => x.key !== key))}
+              onSubmit={submit}
+              submitting={submitting}
+              className="rounded-[10px] border border-[var(--pos-border)] shadow-sm"
+            />
           </div>
-          <div className="card-body space-y-3">
-            {!lines.length ? (
-              <p className="text-center text-sm text-[var(--color-text-muted)]">
-                اختر منتجات من القائمة
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                {lines.map((l) => (
-                  <li
-                    key={l.key}
-                    className="flex items-start justify-between gap-2 border-b border-[var(--color-border)] pb-2"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold">{l.productName}</p>
-                      {l.addonLabels.length > 0 && (
-                        <p className="text-xs text-[var(--color-text-muted)]">
-                          {l.addonLabels.join(' · ')}
-                        </p>
-                      )}
-                      <p className="text-xs text-[var(--color-text-secondary)]">
-                        {formatMoney(l.unitPrice, currency)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        className="btn btn-ghost btn-sm"
-                        onClick={() => updateQty(l.key, -1)}
-                        aria-label="تقليل الكمية"
-                      >
-                        <Minus className="h-3 w-3" />
-                      </button>
-                      <span className="w-6 text-center text-sm font-bold">
-                        {l.quantity}
-                      </span>
-                      <button
-                        type="button"
-                        className="btn btn-ghost btn-sm"
-                        onClick={() => updateQty(l.key, 1)}
-                        aria-label="زيادة الكمية"
-                      >
-                        <Plus className="h-3 w-3" />
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-ghost btn-sm"
-                        onClick={() =>
-                          setLines((prev) => prev.filter((x) => x.key !== l.key))
-                        }
-                        aria-label="حذف الصنف"
-                      >
-                        <Trash2 className="h-3 w-3 text-[var(--color-danger)]" />
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            <div className="field mb-0">
-              <label className="label">ملاحظات</label>
-              <input
-                className="input"
-                value={notes}
-                onChange={(e) => { if (e.target.value.length <= 500) setNotes(e.target.value); }}
-                placeholder="اختياري"
-                maxLength={500}
-              />
-            </div>
-
-            <div className="flex items-center justify-between border-t border-[var(--color-border)] pt-3">
-              <span className="text-sm font-semibold">الإجمالي</span>
-              <span className="text-base font-bold">
-                {formatMoney(total, currency)}
-              </span>
-            </div>
-
-            <Button
-              block
-              disabled={!lines.length || submitting}
-              onClick={submit}
-            >
-              {submitting ? (
-                <span className="flex items-center justify-center gap-2">
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white motion-reduce:hidden" />
-                  جاري الإرسال…
-                </span>
-              ) : (
-                'تأكيد الطلب'
-              )}
-            </Button>
-          </div>
-        </div>
+        </aside>
       </div>
 
+      {/* ── Mobile: floating total bar ───────────────────────────────── */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--pos-border)] bg-[var(--pos-surface)]/95 p-3 pb-safe-bottom backdrop-blur-md md:hidden">
+        <button
+          type="button"
+          onClick={() => setCartOpen(true)}
+          disabled={submitting}
+          aria-haspopup="dialog"
+          className="flex min-h-[48px] w-full items-center justify-between gap-3 rounded-[8px] bg-[var(--pos-green)] px-4 text-white transition-colors active:scale-[0.98] hover:bg-[var(--pos-green-hover)]"
+        >
+          <span className="flex items-center gap-2 text-sm font-semibold">
+            <ShoppingBag className="h-4 w-4" />
+            {itemCount > 0 ? `${itemCount} قطعة` : 'السلة فارغة'}
+          </span>
+          <span className="flex items-center gap-1 text-base font-bold tabular-nums">
+            {formatMoney(total, currency)}
+          </span>
+        </button>
+      </div>
+
+      {/* ── Mobile: cart bottom sheet ────────────────────────────────── */}
+      {cartOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 md:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label="سلة الطلب"
+          onClick={(e) => { if (e.target === e.currentTarget) setCartOpen(false); }}
+        >
+          <div className="flex h-[85dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-[var(--pos-surface)] animate-slide-up">
+            <div className="flex items-center justify-between border-b border-[var(--pos-border)] px-4 py-2">
+              <span className="mx-auto h-1 w-10 rounded-full bg-[var(--pos-border)]" aria-hidden="true" />
+              <button
+                type="button"
+                onClick={() => setCartOpen(false)}
+                className="btn btn-ghost btn-sm absolute end-3"
+                aria-label="إغلاق السلة"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <CartPanel
+              lines={lines}
+              products={products}
+              currency={currency}
+              type={type}
+              onTypeChange={setType}
+              notes={notes}
+              onNotesChange={setNotes}
+              onClear={() => setLines([])}
+              onIncrement={(key) => updateQty(key, 1)}
+              onDecrement={(key) => updateQty(key, -1)}
+              onRemove={(key) => setLines((prev) => prev.filter((x) => x.key !== key))}
+              onSubmit={submit}
+              submitting={submitting}
+              className="min-h-0 flex-1"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ── Quick actions sheet ──────────────────────────────────────── */}
       {showQuick && (
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4"
@@ -573,6 +537,7 @@ export function PosClient({
         </div>
       )}
 
+      {/* ── Addon picker ─────────────────────────────────────────────── */}
       {picker && (
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4"
@@ -583,7 +548,8 @@ export function PosClient({
         >
           <div
             ref={pickerRef}
-            className="w-full max-w-md max-h-[85dvh] overflow-y-auto rounded-t-2xl bg-[var(--color-surface)] p-4 pb-safe-bottom sm:max-h-[85vh] sm:rounded-[10px] animate-slide-up">
+            className="w-full max-w-md max-h-[85dvh] overflow-y-auto rounded-t-2xl bg-[var(--color-surface)] p-4 pb-safe-bottom sm:max-h-[85vh] sm:rounded-[10px] animate-slide-up"
+          >
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-bold">{picker.name}</h3>
               <button

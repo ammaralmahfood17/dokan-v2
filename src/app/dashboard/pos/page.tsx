@@ -25,32 +25,53 @@ const PosClient = dynamic<{
 
 function PosLoader() {
   return (
-    <div className="page">
+    <div className="page md:max-w-[1440px]">
       <div className="page-header">
         <div>
           <h1>نقطة البيع</h1>
           <p>جاري التحميل…</p>
         </div>
       </div>
-      <div className="grid gap-4 lg:grid-cols-5">
-        <div className="lg:col-span-3">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="card card-body animate-pulse h-20">
-                <div className="h-4 w-3/4 rounded bg-[var(--color-border)]" />
-                <div className="mt-2 h-3 w-1/2 rounded bg-[var(--color-border)]" />
+      <div className="md:grid md:grid-cols-[minmax(0,1fr)_380px] md:items-start md:gap-4">
+        <div className="min-w-0">
+          <div className="mb-3 flex gap-1 rounded-[8px] bg-[var(--pos-bg)] p-1">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-11 flex-1 rounded-[6px] bg-[var(--pos-surface)]" />
+            ))}
+          </div>
+          <div className="mb-3 flex gap-2">
+            <div className="h-11 flex-1 rounded-[8px] border border-[var(--pos-border)] bg-[var(--pos-surface)]" />
+            <div className="h-11 flex-1 rounded-[8px] border border-[var(--pos-border)] bg-[var(--pos-surface)]" />
+          </div>
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div
+                key={i}
+                className="overflow-hidden rounded-[8px] border border-[var(--pos-border)] bg-[var(--pos-surface)]"
+              >
+                <div className="aspect-[4/3] w-full animate-pulse bg-[var(--pos-bg)]" />
+                <div className="space-y-2 p-2.5">
+                  <div className="h-3 w-3/4 animate-pulse rounded bg-[var(--pos-border)]" />
+                  <div className="h-4 w-1/2 animate-pulse rounded bg-[var(--pos-border)]" />
+                </div>
               </div>
             ))}
           </div>
         </div>
-        <div className="card lg:col-span-2">
-          <div className="card-header">
-            <div className="h-4 w-16 rounded bg-[var(--color-border)]" />
+        <aside className="hidden md:block">
+          <div className="h-[calc(100dvh-57px)] rounded-[10px] border border-[var(--pos-border)] bg-[var(--pos-surface)] p-4 lg:h-dvh">
+            <div className="h-6 w-20 animate-pulse rounded bg-[var(--pos-border)]" />
+            <div className="mt-6 space-y-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="space-y-2">
+                  <div className="h-11 w-full animate-pulse rounded-[8px] bg-[var(--pos-bg)]" />
+                  <div className="h-3 w-2/3 animate-pulse rounded bg-[var(--pos-border)]" />
+                </div>
+              ))}
+            </div>
+            <div className="mt-8 h-11 w-full animate-pulse rounded-[8px] bg-[var(--pos-green-light)]" />
           </div>
-          <div className="card-body">
-            <div className="h-32 rounded bg-[var(--color-border)]" />
-          </div>
-        </div>
+        </aside>
       </div>
     </div>
   );
