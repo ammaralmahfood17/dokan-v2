@@ -2,7 +2,7 @@
 
 import { FormEvent, useMemo, useRef, useState, useCallback } from 'react';
 import Image from 'next/image';
-import { Plus, Pencil, Trash2, X, ImageIcon } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, ImageIcon, Copy, ChevronUp, ChevronDown, Check } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { formatMoney, money, currencyDecimals } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -190,6 +190,34 @@ export function ProductsClient({
   }
 
   // ----- Image Upload (drag & drop + click) -----
+  /**
+   * Compress before upload: resize to ≤1024px longest side + re-encode WebP
+   * (alpha-preserving) when the source is heavy. Small files pass through
+   * untouched — no pointless re-encode.
+   */
+  async function compressImage(file: File): Promise<File> {
+    if (file.size <= 300 * 1024) return file;
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, 1024 / Math.max(bitmap.width, bitmap.height));
+    if (scale === 1 && file.size <= 500 * 1024) return file;
+    const w = Math.max(1, Math.round(bitmap.width * scale));
+    const h = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return file;
+    ctx.drawImage(bitmap, 0, 0, w, h);
+    bitmap.close();
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, 'image/webp', 0.85)
+    );
+    if (!blob) return file;
+    return new File([blob], file.name.replace(/\.[^.]+$/, '.webp'), {
+      type: 'image/webp',
+    });
+  }
+
   async function handleFile(file: File) {
     if (!file.type.startsWith('image/')) {
       toast.error('الملف يجب أن يكون صورة');
@@ -210,13 +238,14 @@ export function ProductsClient({
     setPreviewUrl(objectUrl);
     try {
       const supabase = createClient();
+      const uploadFile = await compressImage(file);
       const extMap: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
-      const ext = extMap[file.type] || 'jpg';
+      const ext = extMap[uploadFile.type] || 'jpg';
       const path = `${projectId}/products/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
       const { data, error } = await supabase.storage
         .from('product-images')
-        .upload(path, file, { upsert: false, contentType: file.type });
+        .upload(path, uploadFile, { upsert: false, contentType: uploadFile.type });
 
       if (error) {
         console.error('[Image Upload]', error);
@@ -511,6 +540,181 @@ export function ProductsClient({
     );
   }
 
+  // ----- Duplicate product (name + "(نسخة)", copies addons & image) -----
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+
+  async function duplicateProduct(p: ProductWithAddons) {
+    if (duplicatingId) return;
+    setDuplicatingId(p.id);
+    const supabase = createClient();
+    const insertPayload: Database['public']['Tables']['products']['Insert'] = {
+      project_id: projectId,
+      name: `${p.name} (نسخة)`,
+      name_en: p.name_en ? `${p.name_en} (copy)` : null,
+      description: p.description,
+      price: p.price,
+      category_id: p.category_id,
+      is_available: p.is_available,
+      image_url: p.image_url,
+      sort_order: products.length,
+    };
+    const { data, error } = await supabase
+      .from('products')
+      .insert(insertPayload)
+      .select('*')
+      .single();
+    if (error || !data) {
+      setDuplicatingId(null);
+      toast.error('فشل نسخ المنتج');
+      return;
+    }
+    if (p.product_addons?.length) {
+      await supabase.from('product_addons').insert(
+        p.product_addons.map((a) => ({
+          product_id: data.id,
+          name: a.name,
+          price: a.price,
+          is_available: a.is_available,
+        }))
+      );
+    }
+    const { data: withAddons } = await supabase
+      .from('products')
+      .select('*, product_addons(*)')
+      .eq('id', data.id)
+      .single();
+    setProducts((prev) => [
+      ...prev,
+      (withAddons ?? { ...data, product_addons: [] }) as ProductWithAddons,
+    ]);
+    setDuplicatingId(null);
+    toast.success('تم نسخ المنتج');
+  }
+
+  // ----- Bulk selection (select mode → toggle availability / delete) -----
+  const [bulkMode, setBulkMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+
+  function exitBulk() {
+    setBulkMode(false);
+    setSelectedIds(new Set());
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  const visibleIds = filteredProducts.map((p) => p.id);
+  const allVisibleSelected =
+    visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id));
+
+  function toggleSelectAllVisible() {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allVisibleSelected) {
+        for (const id of visibleIds) next.delete(id);
+      } else {
+        for (const id of visibleIds) next.add(id);
+      }
+      return next;
+    });
+  }
+
+  async function bulkSetAvailability(available: boolean) {
+    if (selectedIds.size === 0) return;
+    setBulkBusy(true);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('products')
+      .update({ is_available: available })
+      .in('id', [...selectedIds]);
+    setBulkBusy(false);
+    if (error) {
+      toast.error('فشل التحديث');
+      return;
+    }
+    setProducts((prev) =>
+      prev.map((p) =>
+        selectedIds.has(p.id) ? { ...p, is_available: available } : p
+      )
+    );
+    toast.success(available ? 'تم تفعيل المنتجات' : 'تم إيقاف المنتجات');
+    exitBulk();
+  }
+
+  async function bulkDelete() {
+    if (selectedIds.size === 0) return;
+    setBulkBusy(true);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('products')
+      .delete()
+      .in('id', [...selectedIds]);
+    setBulkBusy(false);
+    setConfirmBulkDelete(false);
+    if (error) {
+      toast.error('فشل الحذف');
+      return;
+    }
+    setProducts((prev) => prev.filter((p) => !selectedIds.has(p.id)));
+    toast.success('تم حذف المنتجات');
+    exitBulk();
+  }
+
+  // ----- Reorder (drag & drop on desktop + arrows everywhere) -----
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [reorderBusy, setReorderBusy] = useState(false);
+  // Reorder is only meaningful on the FULL list — disable while filtering
+  const reorderEnabled = !activeCat && !searchQuery.trim();
+
+  function moveProduct(fromIndex: number, toIndex: number) {
+    setProducts((prev) => {
+      const next = [...prev].sort((a, b) => a.sort_order - b.sort_order);
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return next.map((p, i) => ({ ...p, sort_order: i }));
+    });
+  }
+
+  async function persistOrder() {
+    setReorderBusy(true);
+    const supabase = createClient();
+    const ordered = [...products]
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((p, i) => ({ id: p.id, sort_order: i }));
+    for (const { id, sort_order } of ordered) {
+      const { error } = await supabase
+        .from('products')
+        .update({ sort_order })
+        .eq('id', id);
+      if (error) {
+        setReorderBusy(false);
+        toast.error('فشل حفظ الترتيب');
+        return;
+      }
+    }
+    setReorderBusy(false);
+    toast.success('تم حفظ الترتيب');
+  }
+
+  function handleDrop(targetId: string) {
+    if (!dragId || dragId === targetId) return;
+    const ordered = [...products].sort((a, b) => a.sort_order - b.sort_order);
+    const from = ordered.findIndex((p) => p.id === dragId);
+    const to = ordered.findIndex((p) => p.id === targetId);
+    if (from === -1 || to === -1) return;
+    moveProduct(from, to);
+    setDragId(null);
+    void persistOrder();
+  }
+
   async function saveCategory(e: FormEvent) {
     e.preventDefault();
     if (!catName.trim()) {
@@ -580,13 +784,39 @@ export function ProductsClient({
           <p>إدارة التصنيفات والمنتجات والإضافات</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" size="sm" onClick={openCategoryForm}>
-            تصنيف جديد
-          </Button>
-          <Button size="sm" onClick={openCreate}>
-            <Plus className="h-4 w-4" />
-            منتج جديد
-          </Button>
+          {bulkMode ? (
+            <>
+              <Button variant="secondary" size="sm" onClick={exitBulk}>
+                إلغاء التحديد
+              </Button>
+              <Button size="sm" onClick={openCreate}>
+                <Plus className="h-4 w-4" />
+                منتج جديد
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="secondary" size="sm" onClick={() => setBulkMode(true)}>
+                تحديد
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={!reorderEnabled || reorderBusy}
+                onClick={() => void persistOrder()}
+                title={reorderEnabled ? 'حفظ ترتيب السحب' : 'ألغِ البحث والتصنيف أولًا لإعادة الترتيب'}
+              >
+                {reorderBusy ? '…' : 'حفظ الترتيب'}
+              </Button>
+              <Button variant="secondary" size="sm" onClick={openCategoryForm}>
+                تصنيف جديد
+              </Button>
+              <Button size="sm" onClick={openCreate}>
+                <Plus className="h-4 w-4" />
+                منتج جديد
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -675,87 +905,206 @@ export function ProductsClient({
           }
         />
       ) : (
-        <div className="space-y-3">
-          {filteredProducts.map((p) => (
-            <div key={p.id} className="dashboard-card card card-body">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="flex min-w-0 items-start gap-3">
-                  {/* Product thumbnail — next/image: srcset + lazy + zero CLS */}
+        <>
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3">
+            {filteredProducts.map((p, idx) => (
+              <div
+                key={p.id}
+                draggable={reorderEnabled && !bulkMode}
+                onDragStart={() => { if (reorderEnabled && !bulkMode) setDragId(p.id); }}
+                onDragOver={(e) => { if (reorderEnabled && dragId) e.preventDefault(); }}
+                onDrop={() => { if (reorderEnabled && dragId) handleDrop(p.id); }}
+                onDragEnd={() => setDragId(null)}
+                className={`dashboard-card card overflow-hidden ${dragId === p.id ? 'opacity-60' : ''} ${
+                  bulkMode && selectedIds.has(p.id) ? 'ring-2 ring-[var(--color-primary)]' : ''
+                }`}
+              >
+                {/* Image / placeholder — 4:3 like the POS grid */}
+                <div className="relative aspect-[4/3] w-full overflow-hidden bg-[var(--color-bg)]">
                   {p.image_url ? (
                     <Image
                       src={p.image_url}
                       alt={p.name}
-                      width={48}
-                      height={48}
-                      className="mt-0.5 h-12 w-12 shrink-0 rounded-[8px] border border-[var(--color-border)] object-cover"
+                      fill
+                      sizes="(max-width: 768px) 50vw, 200px"
+                      className="object-cover"
                     />
                   ) : (
-                    <div className="mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-[8px] border border-dashed border-[var(--color-border)] bg-[var(--color-bg)] text-[var(--color-text-muted)]">
-                      <ImageIcon className="h-5 w-5" />
+                    <div className="flex h-full w-full items-center justify-center text-[var(--color-text-muted)]">
+                      <ImageIcon className="h-7 w-7" />
                     </div>
                   )}
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-sm font-bold">{p.name}</h3>
-                      {!p.is_available && (
-                        <span className="badge badge-cancelled">متوقف</span>
-                      )}
-                    </div>
-                    {p.description && (
-                      <p className="mt-0.5 line-clamp-1 text-xs text-[var(--color-text-secondary)]">
-                        {p.description}
-                      </p>
-                    )}
-                    <p className="mt-1 text-sm font-bold text-[var(--color-primary)]">
-                      {formatMoney(Number(p.price), currency)}
+                  {bulkMode ? (
+                    <button
+                      type="button"
+                      onClick={() => toggleSelect(p.id)}
+                      aria-label={`اختيار ${p.name}`}
+                      className={`absolute start-2 top-2 flex h-9 w-9 items-center justify-center rounded-full border-2 bg-[var(--color-surface)] shadow-sm transition-colors ${
+                        selectedIds.has(p.id)
+                          ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white'
+                          : 'border-[var(--color-border)] text-transparent'
+                      }`}
+                    >
+                      <Check className="h-4 w-4" />
+                    </button>
+                  ) : (
+                    !p.is_available && (
+                      <span className="badge badge-cancelled absolute end-2 top-2">متوقف</span>
+                    )
+                  )}
+                </div>
+
+                <div className="p-3">
+                  <h3 className="line-clamp-1 text-sm font-bold">{p.name}</h3>
+                  {p.description && (
+                    <p className="mt-0.5 line-clamp-1 text-[11px] text-[var(--color-text-secondary)]">
+                      {p.description}
                     </p>
+                  )}
+                  <p className="mt-1 text-sm font-bold text-[var(--color-primary)]">
+                    {formatMoney(Number(p.price), currency)}
+                  </p>
+
+                  {p.product_addons?.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {p.product_addons.slice(0, 3).map((a) => (
+                        <span
+                          key={a.id}
+                          className="rounded-full bg-[var(--color-bg)] px-2 py-0.5 text-[10px] font-semibold text-[var(--color-text-secondary)]"
+                        >
+                          {a.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="mt-3 flex items-center gap-1">
+                    {/* Reorder arrows — always on touch, drag handle is desktop bonus */}
+                    {reorderEnabled && !bulkMode && (
+                      <div className="flex shrink-0 flex-col">
+                        <button
+                          type="button"
+                          onClick={() => idx > 0 && moveProduct(idx, idx - 1)}
+                          aria-label={`تحريك ${p.name} لأعلى`}
+                          disabled={idx === 0}
+                          className="flex h-7 w-7 items-center justify-center rounded-md text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] disabled:opacity-30"
+                        >
+                          <ChevronUp className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => idx < filteredProducts.length - 1 && moveProduct(idx, idx + 1)}
+                          aria-label={`تحريك ${p.name} لأسفل`}
+                          disabled={idx === filteredProducts.length - 1}
+                          className="flex h-7 w-7 items-center justify-center rounded-md text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] disabled:opacity-30"
+                        >
+                          <ChevronDown className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="flex flex-1 items-center justify-end gap-1">
+                      <button
+                        type="button"
+                        onClick={() => toggleAvailable(p)}
+                        disabled={togglingId === p.id}
+                        aria-label={p.is_available ? `إيقاف ${p.name}` : `تفعيل ${p.name}`}
+                        className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full"
+                      >
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-[11px] font-bold transition-colors ${
+                            p.is_available
+                              ? 'bg-[var(--color-bg)] text-[var(--color-text-secondary)]'
+                              : 'bg-[var(--color-primary-tint)] text-[var(--color-primary)]'
+                          }`}
+                        >
+                          {togglingId === p.id ? '…' : p.is_available ? 'متاح' : 'متوقف'}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => duplicateProduct(p)}
+                        disabled={duplicatingId === p.id}
+                        aria-label={`نسخ ${p.name}`}
+                        className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-[var(--color-text-secondary)] transition-opacity hover:opacity-70"
+                      >
+                        {duplicatingId === p.id ? (
+                          <span className="text-xs">…</span>
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openEdit(p)}
+                        aria-label={`تعديل ${p.name}`}
+                        className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-[var(--color-text-secondary)] transition-opacity hover:opacity-70"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDelete(p)}
+                        aria-label={`حذف ${p.name}`}
+                        className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-[var(--color-danger)] transition-opacity hover:opacity-70"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    disabled={togglingId === p.id}
-                    onClick={() => toggleAvailable(p)}
-                  >
-                    {togglingId === p.id ? '…' : p.is_available ? 'إيقاف' : 'تفعيل'}
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => openEdit(p)} aria-label="تعديل">
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setConfirmDelete(p)}
-                    aria-label="حذف"
-                  >
-                    <Trash2 className="h-4 w-4 text-[var(--color-danger)]" />
-                  </Button>
-                </div>
               </div>
+            ))}
+          </div>
 
-              {p.product_addons?.length > 0 && (
-                <ul className="mt-3 space-y-1 border-t border-[var(--color-border)] pt-3 text-sm">
-                  {p.product_addons.map((a) => (
-                    <li
-                      key={a.id}
-                      className="flex items-center justify-between text-[var(--color-text-secondary)]"
-                    >
-                      <span className="flex items-center gap-1.5">
-                        <span className="inline-block h-1 w-1 rounded-full bg-[var(--color-text-muted)]" />
-                        {a.name}
-                      </span>
-                      <span className="font-semibold">
-                        +{formatMoney(Number(a.price), currency)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
+          {/* Bulk action bar */}
+          {bulkMode && (
+            <div className="sticky bottom-3 z-30 mt-4 flex items-center justify-between gap-2 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] p-2 shadow-lg">
+              <button
+                type="button"
+                onClick={toggleSelectAllVisible}
+                className="flex min-h-[44px] items-center gap-2 rounded-[8px] px-3 text-sm font-semibold text-[var(--color-text-secondary)]"
+              >
+                <span
+                  className={`flex h-5 w-5 items-center justify-center rounded border-2 ${
+                    allVisibleSelected
+                      ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white'
+                      : 'border-[var(--color-border)]'
+                  }`}
+                >
+                  {allVisibleSelected && <Check className="h-3 w-3" />}
+                </span>
+                {allVisibleSelected ? 'إلغاء الكل' : 'اختيار الكل'}
+              </button>
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => bulkSetAvailability(true)}
+                  disabled={bulkBusy || selectedIds.size === 0}
+                  className="btn btn-secondary btn-sm"
+                >
+                  تفعيل
+                </button>
+                <button
+                  type="button"
+                  onClick={() => bulkSetAvailability(false)}
+                  disabled={bulkBusy || selectedIds.size === 0}
+                  className="btn btn-secondary btn-sm"
+                >
+                  إيقاف
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmBulkDelete(true)}
+                  disabled={bulkBusy || selectedIds.size === 0}
+                  className="btn btn-danger btn-sm"
+                >
+                  حذف
+                </button>
+              </div>
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
 
       </PullToRefresh>
@@ -1180,6 +1529,31 @@ export function ProductsClient({
                 {loading ? 'جاري…' : 'نعم، احذف'}
               </Button>
               <Button variant="secondary" onClick={() => setConfirmDeleteCat(null)}>
+                إلغاء
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+      {confirmBulkDelete && (
+        <Modal title="حذف المنتجات المحددة" onClose={() => setConfirmBulkDelete(false)}>
+          <div className="text-center">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-danger-tint)]">
+              <Trash2 className="h-6 w-6 text-[var(--color-danger)]" />
+            </div>
+            <p className="mb-5 text-xs text-[var(--color-text-secondary)]">
+              هل أنت متأكد؟ هذا الإجراء لا يمكن التراجع عنه.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="danger"
+                block
+                disabled={bulkBusy}
+                onClick={bulkDelete}
+              >
+                {bulkBusy ? 'جاري…' : 'نعم، احذف'}
+              </Button>
+              <Button variant="secondary" onClick={() => setConfirmBulkDelete(false)}>
                 إلغاء
               </Button>
             </div>
