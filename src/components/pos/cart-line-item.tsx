@@ -22,7 +22,7 @@ export function CartLineItem({
   onRemove: () => void;
 }) {
   return (
-    <li className="flex items-start gap-3 py-3">
+    <li data-pos-line className="flex items-start gap-3 py-3">
       {thumbnail ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img

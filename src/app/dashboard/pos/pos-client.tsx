@@ -304,7 +304,7 @@ export function PosClient({
         </div>
       </div>
 
-      <div className="md:grid md:grid-cols-[minmax(0,1fr)_380px] md:items-start md:gap-4">
+      <div data-pos-shell className="md:grid md:grid-cols-[minmax(0,1fr)_380px] md:items-start md:gap-4">
         {/* ── Left: product grid ─────────────────────────────────────── */}
         <div className="min-w-0">
           {/* Mobile order type — desktop keeps it in the cart header */}
@@ -350,7 +350,7 @@ export function PosClient({
               <p className="text-sm">أضف منتجاتك من صفحة المنتجات.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3">
+            <div data-pos-grid className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3">
               {available.map((p) => (
                 <ProductCard
                   key={p.id}
@@ -364,7 +364,7 @@ export function PosClient({
         </div>
 
         {/* ── Right: cart panel (desktop, sticky full-height) ─────────── */}
-        <aside className="hidden md:block">
+        <aside data-pos-cart className="hidden md:block">
           <div className="md:sticky md:top-[57px] md:h-[calc(100dvh-57px)] lg:top-0 lg:h-dvh">
             <CartPanel
               lines={lines}
@@ -387,12 +387,13 @@ export function PosClient({
       </div>
 
       {/* ── Mobile: floating total bar ───────────────────────────────── */}
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--pos-border)] bg-[var(--pos-surface)]/95 p-3 pb-safe-bottom backdrop-blur-md md:hidden">
+      <div data-pos-floating-bar className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--pos-border)] bg-[var(--pos-surface)]/95 p-3 pb-safe-bottom backdrop-blur-md md:hidden">
         <button
           type="button"
           onClick={() => setCartOpen(true)}
           disabled={submitting}
           aria-haspopup="dialog"
+          aria-label="عرض السلة"
           className="flex min-h-[48px] w-full items-center justify-between gap-3 rounded-[8px] bg-[var(--pos-green)] px-4 text-white transition-colors active:scale-[0.98] hover:bg-[var(--pos-green-hover)]"
         >
           <span className="flex items-center gap-2 text-sm font-semibold">

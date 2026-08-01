@@ -23,6 +23,7 @@ export function ProductCard({
     <button
       type="button"
       onClick={() => onSelect(product)}
+      data-pos-card
       aria-label={`${product.name} — ${formatMoney(Number(product.price), currency)}`}
       className={cn(
         'group flex w-full flex-col overflow-hidden rounded-[8px] border border-[var(--pos-border)] bg-[var(--pos-surface)] text-start',
@@ -59,13 +60,19 @@ export function ProductCard({
           </svg>
         </div>
       )}
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5 p-2.5">
-        <span className="line-clamp-2 text-[13px] font-semibold leading-5 text-[var(--pos-text-primary)]">
+      <div className="flex min-w-0 flex-1 flex-col gap-1 p-2.5">
+        <p
+          data-pos-name
+          className="line-clamp-2 min-h-[2.5rem] text-[13px] font-semibold leading-5 text-[var(--pos-text-primary)]"
+        >
           {product.name}
-        </span>
-        <span className="mt-auto pt-1 text-[15px] font-bold tabular-nums text-[var(--pos-text-primary)]">
+        </p>
+        <p
+          data-pos-price
+          className="mt-auto text-[15px] font-bold tabular-nums text-[var(--pos-text-primary)]"
+        >
           {formatMoney(Number(product.price), currency)}
-        </span>
+        </p>
       </div>
     </button>
   );
