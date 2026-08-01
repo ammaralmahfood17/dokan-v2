@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ShoppingBag, X } from 'lucide-react';
 import { formatMoney, money, currencyDecimals } from '@/lib/utils';
-import { createClient } from '@/lib/supabase/client';
 import type { OrderType, Product, ProductAddon } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { CartPanel } from '@/components/pos/cart-panel';
@@ -138,105 +137,7 @@ export function PosClient({
     addLine(picker, selectedAddons, labels);
   }
 
-  // ---------- Quick actions: top sellers + repeat last order ----------
-  const [showQuick, setShowQuick] = useState(false);
-  const [quickLoading, setQuickLoading] = useState(false);
-  const [topItems, setTopItems] = useState<
-    { product_id: string; name: string; qty: number }[]
-  >([]);
-  const [lastOrder, setLastOrder] = useState<{
-    order_number: number;
-    created_at: string;
-    items: {
-      product_id: string | null;
-      quantity: number;
-      addons: { id: string; name: string }[] | null;
-    }[];
-  } | null>(null);
-
-  async function openQuick() {
-    setShowQuick(true);
-    setQuickLoading(true);
-    const supabase = createClient();
-    // Top sellers: aggregate recent non-cancelled order lines.
-    const { data: items } = await supabase
-      .from('order_items')
-      .select('product_id, product_name, quantity, orders!inner(status)')
-      .eq('orders.project_id', projectId)
-      .neq('orders.status', 'cancelled')
-      .order('created_at', { ascending: false })
-      .limit(500);
-    const m = new Map<string, { name: string; qty: number }>();
-    for (const it of (items ?? []) as {
-      product_id: string | null;
-      product_name: string;
-      quantity: number;
-    }[]) {
-      if (!it.product_id) continue;
-      const cur = m.get(it.product_id) ?? { name: it.product_name, qty: 0 };
-      cur.qty += Number(it.quantity || 1);
-      m.set(it.product_id, cur);
-    }
-    setTopItems(
-      [...m.entries()]
-        .map(([product_id, v]) => ({ product_id, name: v.name, qty: v.qty }))
-        .sort((a, b) => b.qty - a.qty)
-        .slice(0, 8)
-    );
-    // Last non-cancelled order with its lines.
-    const { data: last } = await supabase
-      .from('orders')
-      .select(
-        'order_number, created_at, order_items(product_id, quantity, addons)'
-      )
-      .eq('project_id', projectId)
-      .neq('status', 'cancelled')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (last) {
-      setLastOrder({
-        order_number: last.order_number,
-        created_at: last.created_at,
-        items: ((last.order_items ?? []) as {
-          product_id: string | null;
-          quantity: number;
-          addons: { id: string; name: string }[] | null;
-        }[]).map((it) => ({
-          product_id: it.product_id,
-          quantity: Number(it.quantity || 1),
-          addons: Array.isArray(it.addons) ? (it.addons as { id: string; name: string }[]) : null,
-        })),
-      });
-    } else {
-      setLastOrder(null);
-    }
-    setQuickLoading(false);
-  }
-
-  function quickAddTop(item: { product_id: string }) {
-    const p = products.find((x) => x.id === item.product_id);
-    if (!p) return;
-    setShowQuick(false);
-    openProduct(p);
-  }
-
-  function repeatLastOrder() {
-    if (!lastOrder) return;
-    let added = 0;
-    for (const it of lastOrder.items) {
-      const p = products.find((x) => x.id === it.product_id);
-      if (!p) continue;
-      const addonIds = (it.addons ?? []).map((a) => a.id);
-      const labels = (it.addons ?? []).map((a) => a.name);
-      addLine(p, addonIds, labels, it.quantity, true);
-      added += 1;
-    }
-    setShowQuick(false);
-    toast.success(
-      added > 0 ? `تمت إعادة الطلب — ${added} صنف` : 'المنتجات غير متاحة حالياً'
-    );
-  }
+  // ---------- Quick actions: removed (top sellers + repeat last order) ----------
 
   function updateQty(key: string, delta: number) {
     setLines((prev) =>
@@ -322,26 +223,6 @@ export function PosClient({
                 {label}
               </button>
             ))}
-          </div>
-
-          {/* Quick actions — top sellers + repeat last order */}
-          <div className="mb-3 flex gap-2">
-            <button
-              type="button"
-              onClick={openQuick}
-              disabled={submitting}
-              className="flex-1 min-h-[44px] rounded-[8px] border border-[var(--pos-border)] bg-[var(--pos-surface)] px-4 text-sm font-semibold text-[var(--pos-text-primary)] transition-colors hover:bg-[var(--pos-bg)]"
-            >
-              ⚡ الأكثر مبيعًا
-            </button>
-            <button
-              type="button"
-              onClick={openQuick}
-              disabled={submitting}
-              className="flex-1 min-h-[44px] rounded-[8px] border border-[var(--pos-border)] bg-[var(--pos-surface)] px-4 text-sm font-semibold text-[var(--pos-text-primary)] transition-colors hover:bg-[var(--pos-bg)]"
-            >
-              🔄 آخر طلب
-            </button>
           </div>
 
           {!available.length ? (
@@ -443,97 +324,6 @@ export function PosClient({
               submitting={submitting}
               className="min-h-0 flex-1"
             />
-          </div>
-        </div>
-      )}
-
-      {/* ── Quick actions sheet ──────────────────────────────────────── */}
-      {showQuick && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-label="إعادة طلب سريع"
-          onClick={(e) => { if (e.target === e.currentTarget) setShowQuick(false); }}
-        >
-          <div className="w-full max-w-md max-h-[85dvh] overflow-y-auto rounded-t-2xl bg-[var(--color-surface)] p-4 pb-safe-bottom sm:max-h-[85vh] sm:rounded-[10px] animate-slide-up">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-bold">إعادة طلب سريع</h3>
-              <button
-                type="button"
-                onClick={() => setShowQuick(false)}
-                className="btn btn-ghost btn-sm"
-                aria-label="إغلاق"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            {quickLoading ? (
-              <p className="py-8 text-center text-sm text-[var(--color-text-muted)]">
-                جاري التحميل…
-              </p>
-            ) : (
-              <div className="space-y-5">
-                {/* Top sellers */}
-                <div>
-                  <h4 className="mb-2 text-xs font-bold text-[var(--color-text-secondary)]">
-                    الأكثر مبيعًا
-                  </h4>
-                  {topItems.length === 0 ? (
-                    <p className="text-xs text-[var(--color-text-muted)]">
-                      ما فيه مبيعات بعد — أول طلب يظهر هنا.
-                    </p>
-                  ) : (
-                    <div className="space-y-1.5">
-                      {topItems.map((t) => (
-                        <button
-                          key={t.product_id}
-                          type="button"
-                          onClick={() => quickAddTop(t)}
-                          className="flex min-h-[44px] w-full items-center justify-between gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 text-start transition-colors hover:border-[var(--color-primary)]"
-                        >
-                          <span className="truncate text-sm font-semibold">{t.name}</span>
-                          <span className="shrink-0 rounded-full bg-[var(--color-primary-tint)] px-2 py-0.5 text-[10px] font-bold text-[var(--color-primary)]">
-                            {t.qty}×
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Repeat last order */}
-                <div>
-                  <h4 className="mb-2 text-xs font-bold text-[var(--color-text-secondary)]">
-                    آخر طلب
-                  </h4>
-                  {lastOrder ? (
-                    <div className="rounded-lg border border-[var(--color-border)] p-3">
-                      <p className="text-xs text-[var(--color-text-secondary)]">
-                        <span dir="ltr">order-{lastOrder.order_number}</span> ·{' '}
-                        {new Date(lastOrder.created_at).toLocaleString('ar-BH')}
-                      </p>
-                      <p className="mt-1 text-xs">
-                        {lastOrder.items.length} صنف —{' '}
-                        {lastOrder.items.reduce((s, i) => s + i.quantity, 0)} قطعة
-                      </p>
-                      <button
-                        type="button"
-                        onClick={repeatLastOrder}
-                        className="mt-3 min-h-[44px] w-full rounded-lg bg-[var(--color-primary)] px-4 text-sm font-bold text-white transition-colors hover:opacity-90"
-                      >
-                        🔄 إعادة الطلب للسلة
-                      </button>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-[var(--color-text-muted)]">
-                      ما فيه طلبات سابقة.
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
         </div>
       )}
