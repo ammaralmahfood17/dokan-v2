@@ -30,6 +30,8 @@ export async function sendPushToProject(
     return { sent: 0, failed: 0, cleaned: 0 };
   }
 
+  console.log('[Push] keys OK — public key prefix:', publicKey.slice(0, 16), '… (len ' + publicKey.length + ')');
+
   webpush.setVapidDetails(contact, publicKey, privateKey);
 
   const admin = createAdminClient() as any;
@@ -40,6 +42,8 @@ export async function sendPushToProject(
     .eq('project_id', projectId);
 
   if (!subs?.length) return { sent: 0, failed: 0 };
+
+  console.log('[Push] sending to', subs.length, 'subscription(s)');
 
   const results = await Promise.allSettled(
     subs.map((sub: any) =>
@@ -65,11 +69,14 @@ export async function sendPushToProject(
     } else {
       failed++;
       const reason = r.reason as any;
+      console.log('[Push] sub', i, 'FAILED —', reason?.statusCode, reason?.body || reason?.message);
       if (reason?.statusCode === 410 || reason?.statusCode === 404) {
         expiredEndpoints.push(subs[i].endpoint);
       }
     }
   }
+
+  console.log('[Push] result — sent:', sent, 'failed:', failed, 'cleaned:', expiredEndpoints.length);
 
   // Clean up expired subscriptions
   if (expiredEndpoints.length > 0) {
