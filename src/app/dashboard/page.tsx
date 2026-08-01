@@ -1,10 +1,30 @@
 import Link from 'next/link';
-import { Check, ChevronLeft, ShoppingBag, Clock, Banknote } from 'lucide-react';
+import { Check, ChevronLeft, ShoppingBag, Clock, Banknote, TrendingUp } from 'lucide-react';
 import { getCurrentProject, buildChecklist } from '@/lib/project';
 import { createClient } from '@/lib/supabase/server';
 import { formatMoney } from '@/lib/utils';
 import { redirect } from 'next/navigation';
 import { EmptyState } from '@/components/ui/empty-state';
+
+/** Last-7-days buckets (Asia/Bahrain) — built outside the component so the
+ * react-hooks purity rule doesn't flag Date.now() during render. */
+function buildWeekBuckets(dayFmt: Intl.DateTimeFormat) {
+  const now = Date.now();
+  const dayKeys: string[] = [];
+  for (let i = 6; i >= 0; i--) {
+    dayKeys.push(dayFmt.format(new Date(now - i * 86_400_000)));
+  }
+  return {
+    weekAgo: new Date(now - 7 * 86_400_000),
+    byDay7: dayKeys.map((key) => ({
+      key,
+      label: new Date(`${key}T00:00:00+03:00`).toLocaleDateString('ar-BH', {
+        weekday: 'short',
+      }),
+      revenue: 0,
+    })),
+  };
+}
 
 export default async function DashboardPage() {
   const ctx = await getCurrentProject();
@@ -65,6 +85,33 @@ export default async function DashboardPage() {
     (sum: number, o: { total_amount: number }) => sum + Number(o.total_amount),
     0
   );
+
+  // ---- Last 7 days chart (Asia/Bahrain buckets, mirrors analytics) ----
+  const { weekAgo, byDay7 } = buildWeekBuckets(dayFmt);
+  const { data: weekOrders } = await supabase
+    .from('orders')
+    .select('id, status, total_amount, created_at, order_items(product_name, quantity)')
+    .eq('project_id', ctx.project.id)
+    .is('service_type', null)
+    .gte('created_at', weekAgo.toISOString());
+
+  const weekTop = new Map<string, number>();
+  for (const o of (weekOrders ?? []) as {
+    status: string;
+    total_amount: number;
+    created_at: string;
+    order_items?: { product_name: string; quantity: number }[] | null;
+  }[]) {
+    if (o.status === 'cancelled') continue;
+    const k = dayFmt.format(new Date(o.created_at));
+    const day = byDay7.find((d) => d.key === k);
+    if (day) day.revenue += Number(o.total_amount);
+    for (const it of o.order_items ?? []) {
+      weekTop.set(it.product_name, (weekTop.get(it.product_name) ?? 0) + Number(it.quantity));
+    }
+  }
+  const top3 = [...weekTop.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const maxDayRevenue = Math.max(...byDay7.map((d) => d.revenue), 0.001);
 
   return (
     <div className="page">
@@ -166,6 +213,78 @@ export default async function DashboardPage() {
           </div>
         </section>
       )}
+
+      <section className="mb-8 grid gap-6 lg:grid-cols-2">
+        {/* Last 7 days revenue */}
+        <div className="card card-body">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-bold">مبيعات آخر 7 أيام</h2>
+            <TrendingUp className="h-4 w-4 text-[var(--color-text-muted)]" />
+          </div>
+          {byDay7.every((d) => d.revenue === 0) ? (
+            <p className="text-xs text-[var(--color-text-muted)]">
+              ما فيه مبيعات هالأسبوع — أول طلب يظهر هنا.
+            </p>
+          ) : (
+            <div
+              className="flex h-28 items-end gap-1.5"
+              dir="ltr"
+              role="img"
+              aria-label={`مبيعات آخر 7 أيام — ${byDay7.map((d) => `${d.label} ${formatMoney(d.revenue, ctx.project.currency)}`).join('، ')}`}
+            >
+              {byDay7.map((d) => (
+                <div
+                  key={d.key}
+                  className="group relative flex flex-1 flex-col items-center gap-1"
+                  title={`${d.label} — ${formatMoney(d.revenue, ctx.project.currency)}`}
+                >
+                  <div
+                    className="w-full rounded-t-[4px] bg-[var(--color-primary)] transition-all group-hover:opacity-80"
+                    style={{
+                      height: `${Math.max((d.revenue / maxDayRevenue) * 100, d.revenue > 0 ? 4 : 2)}%`,
+                    }}
+                  />
+                  <span className="text-[10px] text-[var(--color-text-secondary)]">
+                    {d.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Top 3 this week */}
+        <div className="card card-body">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-bold">الأكثر مبيعًا هذا الأسبوع</h2>
+            <Link
+              href="/dashboard/analytics"
+              className="text-xs font-semibold text-[var(--color-primary)]"
+            >
+              التفاصيل
+            </Link>
+          </div>
+          {top3.length === 0 ? (
+            <p className="text-xs text-[var(--color-text-muted)]">
+              ما فيه منتجات مباعة هالأسبوع.
+            </p>
+          ) : (
+            <ul className="space-y-2.5">
+              {top3.map(([name, qty], idx) => (
+                <li key={name} className="flex items-center gap-3 text-xs">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary-tint)] font-bold text-[var(--color-primary)]">
+                    {idx + 1}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate font-semibold">{name}</span>
+                  <span className="shrink-0 font-bold text-[var(--color-text-secondary)]">
+                    {qty}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </section>
 
       <section>
         <div className="mb-3 flex items-center justify-between">

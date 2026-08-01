@@ -13,7 +13,7 @@ type OrderRow = {
   total_amount: number;
   type: string;
   created_at: string;
-  order_items?: { product_name: string; quantity: number }[] | null;
+  order_items?: { product_name: string; quantity: number; unit_price?: number | null }[] | null;
 };
 
 export type AnalyticsData = {
@@ -31,7 +31,7 @@ export type AnalyticsData = {
   };
   byDay: { key: string; label: string; revenue: number; count: number }[];
   byHour: { label: string; count: number }[];
-  topProducts: { name: string; quantity: number }[];
+  topProducts: { name: string; quantity: number; revenue: number }[];
   byType: { type: string; count: number }[];
 };
 
@@ -132,7 +132,7 @@ export default async function AnalyticsPage({
 
   const [{ data, error }, { data: prevData, error: prevError }] = await Promise.all([
     collectOrders(
-      'id, status, total_amount, type, created_at, order_items(product_name, quantity)',
+      'id, status, total_amount, type, created_at, order_items(product_name, quantity, unit_price)',
       startUTC
     ),
     collectOrders('id, status, total_amount', prevStart, prevEnd),
@@ -181,15 +181,21 @@ export default async function AnalyticsPage({
   }
   const byHour = hourBuckets;
 
-  // ---- Top products (only active orders) ----
-  const productMap = new Map<string, number>();
+  // ---- Top products (only active orders) — quantity + revenue ----
+  const productMap = new Map<string, { quantity: number; revenue: number }>();
   for (const o of active) {
     for (const item of o.order_items ?? []) {
-      productMap.set(item.product_name, (productMap.get(item.product_name) ?? 0) + Number(item.quantity || 1));
+      const qty = Number(item.quantity || 1);
+      const rev = qty * Number(item.unit_price || 0);
+      const cur = productMap.get(item.product_name) ?? { quantity: 0, revenue: 0 };
+      productMap.set(item.product_name, {
+        quantity: cur.quantity + qty,
+        revenue: cur.revenue + rev,
+      });
     }
   }
   const topProducts = [...productMap.entries()]
-    .map(([name, quantity]) => ({ name, quantity }))
+    .map(([name, v]) => ({ name, quantity: v.quantity, revenue: v.revenue }))
     .sort((a, b) => b.quantity - a.quantity)
     .slice(0, 8);
 

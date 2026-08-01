@@ -271,7 +271,9 @@ export function AnalyticsClient({
                     <li key={p.name}>
                       <div className="mb-1 flex items-center justify-between gap-2 text-xs">
                         <span className="truncate font-semibold">{p.name}</span>
-                        <span className="shrink-0 font-bold text-[var(--color-text-secondary)]">{p.quantity}</span>
+                        <span className="shrink-0 font-bold text-[var(--color-text-secondary)]">
+                          {p.quantity} · <span dir="ltr">{formatMoney(p.revenue, currency)}</span>
+                        </span>
                       </div>
                       <div className="h-1.5 overflow-hidden rounded-full bg-[var(--color-border)]">
                         <div

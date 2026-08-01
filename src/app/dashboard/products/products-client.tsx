@@ -215,7 +215,7 @@ export function ProductsClient({
       const path = `${projectId}/products/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
       const { data, error } = await supabase.storage
-        .from('business-assets')
+        .from('product-images')
         .upload(path, file, { upsert: false, contentType: file.type });
 
       if (error) {
@@ -226,7 +226,7 @@ export function ProductsClient({
 
       if (data) {
         const { data: { publicUrl } } = supabase.storage
-          .from('business-assets')
+          .from('product-images')
           .getPublicUrl(data.path);
         setImageUrl(publicUrl);
         toast.success('تم رفع الصورة');

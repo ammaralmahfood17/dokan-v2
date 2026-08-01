@@ -12,6 +12,7 @@ type ProductWithAddons = Product & { product_addons: ProductAddon[] };
  * The skeleton shows instantly while the chunk downloads + hydrates.
  */
 const PosClient = dynamic<{
+  projectId: string;
   currency: string;
   products: (Product & { product_addons: ProductAddon[] })[];
 }>(
@@ -68,6 +69,7 @@ export default async function PosPage() {
 
   return (
     <PosClient
+      projectId={ctx.project.id}
       currency={ctx.project.currency}
       products={
         (products ?? []) as (Product & { product_addons: ProductAddon[] })[]
