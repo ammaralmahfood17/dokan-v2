@@ -14,6 +14,9 @@ import type { Database } from '@/lib/database.types';
  * - For normal staff operations, prefer createClient() (respects RLS).
  */
 export function createAdminClient() {
+  if (typeof window !== 'undefined') {
+    throw new Error('createAdminClient() is server-only — the service role key must never reach the browser');
+  }
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 

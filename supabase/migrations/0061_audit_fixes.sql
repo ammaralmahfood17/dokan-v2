@@ -26,7 +26,10 @@ revoke execute on function public.next_order_number(uuid) from anon, authenticat
 drop policy if exists products_select on public.products;
 create policy products_public_read on public.products
   for select to anon
-  using (is_available = true);
+  using (
+    is_available = true
+    and exists (select 1 from public.projects pr where pr.id = products.project_id and pr.is_active = true)
+  );
 create policy products_member_read on public.products
   for select to authenticated
   using (public.is_project_member(project_id));
@@ -35,7 +38,10 @@ create policy products_member_read on public.products
 drop policy if exists categories_select on public.categories;
 create policy categories_public_read on public.categories
   for select to anon
-  using (is_active = true);
+  using (
+    is_active = true
+    and exists (select 1 from public.projects pr where pr.id = categories.project_id and pr.is_active = true)
+  );
 create policy categories_member_read on public.categories
   for select to authenticated
   using (public.is_project_member(project_id));
@@ -44,7 +50,14 @@ create policy categories_member_read on public.categories
 drop policy if exists addons_select on public.product_addons;
 create policy addons_public_read on public.product_addons
   for select to anon
-  using (is_available = true);
+  using (
+    is_available = true
+    and exists (
+      select 1 from public.products p
+      join public.projects pr on pr.id = p.project_id
+      where p.id = product_addons.product_id and pr.is_active = true
+    )
+  );
 create policy addons_member_read on public.product_addons
   for select to authenticated
   using (
@@ -59,7 +72,10 @@ create policy addons_member_read on public.product_addons
 drop policy if exists tables_select on public.tables;
 create policy tables_public_read on public.tables
   for select to anon
-  using (is_active = true);
+  using (
+    is_active = true
+    and exists (select 1 from public.projects pr where pr.id = tables.project_id and pr.is_active = true)
+  );
 create policy tables_member_read on public.tables
   for select to authenticated
   using (public.is_project_member(project_id));
