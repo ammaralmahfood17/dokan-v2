@@ -22,6 +22,7 @@ export default async function KitchenPage() {
     <KitchenClient
       projectId={ctx.project.id}
       projectName={ctx.project.name}
+      currency={ctx.project.currency}
       initialOrders={
         (orders ?? []) as unknown as (Order & {
           tables?: { number: number } | null;

@@ -2,9 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { formatMoney } from '@/lib/utils';
 import {
-  ORDER_STATUS_LABELS,
-  ORDER_TYPE_LABELS,
   type Order,
   type OrderItem,
   type OrderItemStatus,
@@ -18,9 +17,18 @@ type OrderRow = Order & {
   service_type?: string | null;
 };
 
-/** An order item paired with its parent order (for the KDS kanban). */
-type KdsItem = {
-  item: OrderItem;
+/**
+ * Grouped KDS item: identical lines of the same product (same addons + note)
+ * within one order are merged into a single card with summed quantity, so the
+ * kitchen sees "كركديه ×3" instead of three separate cards.
+ */
+type KdsGroup = {
+  key: string;
+  items: OrderItem[];
+  quantity: number;
+  productName: string;
+  addons: { name: string }[];
+  notes: string | null;
   order: OrderRow;
 };
 
@@ -222,10 +230,12 @@ function useTitleFlash() {
 export function KitchenClient({
   projectId,
   projectName,
+  currency,
   initialOrders,
 }: {
   projectId: string;
   projectName: string;
+  currency: string;
   initialOrders: OrderRow[];
 }) {
   const [orders, setOrders] = useState(initialOrders);
@@ -466,14 +476,14 @@ export function KitchenClient({
 
   // ---------- Item-level KDS ----------
 
-  // Advance a single item; then re-derive the parent order status.
+  // Advance one or more items (grouped card); then re-derive the order status.
   const advanceItem = useCallback(
-    async (itemId: string, orderId: string, toStatus: OrderItemStatus) => {
+    async (itemIds: string[], orderId: string, toStatus: OrderItemStatus) => {
       const supabase = createClient();
       const { error } = await supabase
         .from('order_items')
         .update({ status: toStatus })
-        .eq('id', itemId);
+        .in('id', itemIds);
       if (error) {
         toast.error('فشل التحديث');
         return;
@@ -525,18 +535,55 @@ export function KitchenClient({
     setOrders((prev) => prev.filter((o) => o.id !== orderId));
   }, []);
 
-  // Kanban by ITEM status (each item moves independently).
-  const pendingItems: KdsItem[] = [];
-  const preparingItems: KdsItem[] = [];
-  const readyItems: KdsItem[] = [];
-  for (const o of orders) {
-    for (const it of o.order_items ?? []) {
-      const k: KdsItem = { item: it, order: o };
-      if (it.status === 'preparing') preparingItems.push(k);
-      else if (it.status === 'ready') readyItems.push(k);
-      else pendingItems.push(k);
+  // Kanban by ITEM status — identical lines within an order are merged.
+  const groupBy = (status: OrderItemStatus): KdsGroup[] => {
+    const groups = new Map<string, KdsGroup>();
+    for (const o of orders) {
+      for (const it of o.order_items ?? []) {
+        if ((it.status ?? 'pending') !== status) continue;
+        const addons = Array.isArray(it.addons) ? (it.addons as { name: string }[]) : [];
+        const key = `${o.id}|${it.product_id ?? ''}|${JSON.stringify(addons)}|${it.notes ?? ''}`;
+        const existing = groups.get(key);
+        if (existing) {
+          existing.items.push(it);
+          existing.quantity += it.quantity;
+        } else {
+          groups.set(key, {
+            key,
+            items: [it],
+            quantity: it.quantity,
+            productName: it.product_name,
+            addons,
+            notes: it.notes,
+            order: o,
+          });
+        }
+      }
     }
-  }
+    return [...groups.values()].sort((a, b) =>
+      a.order.created_at.localeCompare(b.order.created_at)
+    );
+  };
+
+  const pendingGroups = groupBy('pending');
+  const preparingGroups = groupBy('preparing');
+  const readyGroups = groupBy('ready');
+
+  // Start EVERY pending item on the board in one tap (fast-service flow).
+  const startAll = useCallback(async () => {
+    const ids = pendingGroups.flatMap((g) => g.items.map((it) => it.id));
+    if (!ids.length) return;
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('order_items')
+      .update({ status: 'preparing' })
+      .in('id', ids);
+    if (error) {
+      toast.error('فشل التحديث');
+      return;
+    }
+    await fullRefresh();
+  }, [pendingGroups, fullRefresh]);
 
   return (
     <div className="kds-root" onClick={clearBadge}>
@@ -584,56 +631,65 @@ export function KitchenClient({
 
       {/* Kanban columns — by ITEM status */}
       <div className="flex gap-4 overflow-x-auto p-5 lg:grid lg:grid-cols-3">
-        <KdsColumn title="جديد" count={pendingItems.length}>
-          {pendingItems.length === 0 && (
+        <KdsColumn title="جديد" count={pendingGroups.length}>
+          {pendingGroups.length > 0 && (
+            <button
+              type="button"
+              onClick={startAll}
+              className="mb-2.5 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[7px] bg-[#4F46E5] px-4 text-[12px] font-bold text-white transition-colors hover:bg-[#4338CA]"
+            >
+              ⚡ بدء الكل ({pendingGroups.reduce((s, g) => s + g.quantity, 0)})
+            </button>
+          )}
+          {pendingGroups.length === 0 && (
             <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[#232838] py-10 text-[#6B7280]">
               <span className="text-2xl">✅</span>
               <span className="mt-2 text-xs">لا توجد أصناف جديدة</span>
             </div>
           )}
-          {pendingItems.map(({ item, order }) => (
-            <KdsItemCard
-              key={item.id}
-              item={item}
-              order={order}
+          {pendingGroups.map((g) => (
+            <KdsGroupCard
+              key={g.key}
+              group={g}
               now={now}
-              onAdvance={() => advanceItem(item.id, order.id, 'preparing')}
+              currency={currency}
+              onAdvance={() => advanceItem(g.items.map((it) => it.id), g.order.id, 'preparing')}
               advanceLabel="بدء"
-              onCancel={() => setConfirmCancel(order.id)}
+              onCancel={() => setConfirmCancel(g.order.id)}
             />
           ))}
         </KdsColumn>
-        <KdsColumn title="قيد التجهيز" count={preparingItems.length}>
-          {preparingItems.length === 0 && (
+        <KdsColumn title="قيد التجهيز" count={preparingGroups.length}>
+          {preparingGroups.length === 0 && (
             <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[#232838] py-10 text-[#6B7280]">
               <span className="text-xs">لا توجد أصناف قيد التجهيز</span>
             </div>
           )}
-          {preparingItems.map(({ item, order }) => (
-            <KdsItemCard
-              key={item.id}
-              item={item}
-              order={order}
+          {preparingGroups.map((g) => (
+            <KdsGroupCard
+              key={g.key}
+              group={g}
               now={now}
-              onAdvance={() => advanceItem(item.id, order.id, 'ready')}
+              currency={currency}
+              onAdvance={() => advanceItem(g.items.map((it) => it.id), g.order.id, 'ready')}
               advanceLabel="تم"
-              onCancel={() => setConfirmCancel(order.id)}
+              onCancel={() => setConfirmCancel(g.order.id)}
             />
           ))}
         </KdsColumn>
-        <KdsColumn title="جاهز" count={readyItems.length}>
-          {readyItems.length === 0 && (
+        <KdsColumn title="جاهز" count={readyGroups.length}>
+          {readyGroups.length === 0 && (
             <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[#232838] py-10 text-[#6B7280]">
               <span className="text-xs">لا توجد أصناف جاهزة</span>
             </div>
           )}
-          {readyItems.map(({ item, order }) => (
-            <KdsItemCard
-              key={item.id}
-              item={item}
-              order={order}
+          {readyGroups.map((g) => (
+            <KdsGroupCard
+              key={g.key}
+              group={g}
               now={now}
-              onAdvance={() => deliverOrder(order.id)}
+              currency={currency}
+              onAdvance={() => deliverOrder(g.order.id)}
               advanceLabel="تسليم"
               onCancel={null}
             />
@@ -702,36 +758,44 @@ function KdsColumn({
   );
 }
 
-function KdsItemCard({
-  item,
-  order,
+function KdsGroupCard({
+  group,
   now,
+  currency,
   onAdvance,
   advanceLabel,
   onCancel,
 }: {
-  item: OrderItem;
-  order: OrderRow;
+  group: KdsGroup;
   now: number;
+  currency: string;
   onAdvance: () => void;
   advanceLabel: string;
   onCancel: (() => void) | null;
 }) {
-  const itemStatus = item.status ?? 'pending';
+  const order = group.order;
+  const status = group.items[0]?.status ?? 'pending';
   const mins = Math.max(
     0,
     Math.floor((now - new Date(order.created_at).getTime()) / 60000)
   );
 
   let overdueClass = '';
-  if (itemStatus === 'pending' && mins >= OVERDUE_MIN_PENDING) {
+  if (status === 'pending' && mins >= OVERDUE_MIN_PENDING) {
     overdueClass = 'kds-overdue';
-  } else if (itemStatus === 'preparing' && mins >= OVERDUE_MIN_PREPARING) {
+  } else if (status === 'preparing' && mins >= OVERDUE_MIN_PREPARING) {
     overdueClass = 'kds-taking-long';
   }
 
+  // Order summary — item count + total (uses the first item's unit price × qty).
+  const orderItems = order.order_items ?? [];
+  const orderTotal = orderItems.reduce(
+    (s, it) => s + Number(it.unit_price) * it.quantity,
+    0
+  );
+
   return (
-    <article className={`kds-card p-3 ${itemStatus} ${overdueClass}`}>
+    <article className={`kds-card p-3 ${status} ${overdueClass}`}>
       <div className="mb-1.5 flex items-start justify-between gap-2">
         <p className="text-[12px] font-bold text-[#9CA3AF]" dir="ltr">
           #{order.order_number}
@@ -749,21 +813,27 @@ function KdsItemCard({
 
       <p className="mb-1 text-[15px] font-extrabold leading-snug text-white">
         <span className="ml-1 inline-block min-w-[28px] text-right text-[#F59E0B]">
-          {item.quantity}×
+          {group.quantity}×
         </span>
-        {item.product_name}
+        {group.productName}
       </p>
-      {Array.isArray(item.addons) && item.addons.length > 0 && (
+      {group.addons.length > 0 && (
         <p className="mb-0.5 text-[11px] text-[#6B7280]">
-          {(item.addons as { name: string }[]).map((a) => a.name).join(' · ')}
+          {group.addons.map((a) => a.name).join(' · ')}
         </p>
       )}
-      {item.notes && (
-        <p className="mb-0.5 text-[11px] text-[#F59E0B]/80">📝 {item.notes}</p>
+      {group.notes && (
+        <p className="mb-0.5 text-[11px] text-[#F59E0B]/80">📝 {group.notes}</p>
       )}
       {order.notes && (
-        <p className="mb-2 rounded bg-[#1E2330]/50 px-2 py-1 text-[11px] text-[#F59E0B]/80">
+        <p className="mb-1 rounded bg-[#1E2330]/50 px-2 py-1 text-[11px] text-[#F59E0B]/80">
           {order.notes}
+        </p>
+      )}
+      {orderItems.length > 1 && (
+        <p className="mb-1 text-[10px] text-[#6B7280]">
+          {orderItems.length} أصناف ·{' '}
+          <span dir="ltr">{formatMoney(orderTotal, currency)}</span>
         </p>
       )}
       {/* Touch targets ≥ 44px */}
@@ -772,7 +842,7 @@ function KdsItemCard({
           type="button"
           onClick={onAdvance}
           className={`min-h-[44px] flex-1 rounded-[7px] px-4 text-[11.5px] font-bold transition-colors ${
-            itemStatus === 'ready'
+            status === 'ready'
               ? 'bg-[#10B981] text-white hover:bg-[#059669]'
               : 'border border-[#323A4D] bg-[#232838] text-white hover:bg-[#2a3040]'
           }`}
