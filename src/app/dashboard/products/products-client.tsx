@@ -366,6 +366,7 @@ export function ProductsClient({
         .from('products')
         .update(updatePayload)
         .eq('id', editing.id)
+        .eq('project_id', projectId)
         .select('*, product_addons(*)')
         .single();
 
@@ -386,6 +387,7 @@ export function ProductsClient({
         const { error: deleteAddonErr } = await supabase
           .from('product_addons')
           .delete()
+          .eq('product_id', editing.id)
           .in('id', removedAddons.map((a) => a.id));
         if (deleteAddonErr) {
           console.error('[Products] Failed to delete removed addons:', deleteAddonErr);
@@ -400,6 +402,7 @@ export function ProductsClient({
           const { error: updErr } = await supabase
             .from('product_addons')
             .update({ name: a.name, price: a.price })
+            .eq('product_id', editing.id)
             .eq('id', a.id);
           if (updErr) {
             console.error('[Products] Failed to update addon:', updErr);
@@ -493,7 +496,7 @@ export function ProductsClient({
 
   async function deleteProduct(id: string) {
     const supabase = createClient();
-    const { error } = await supabase.from('products').delete().eq('id', id);
+    const { error } = await supabase.from('products').delete().eq('id', id).eq('project_id', projectId);
     if (error) {
       toast.error('فشل الحذف');
       return;
@@ -504,7 +507,7 @@ export function ProductsClient({
 
   async function deleteAddon(productId: string, addonId: string) {
     const supabase = createClient();
-    const { error } = await supabase.from('product_addons').delete().eq('id', addonId);
+    const { error } = await supabase.from('product_addons').delete().eq('product_id', productId).eq('id', addonId);
     if (error) {
       toast.error('فشل الحذف');
       return;
@@ -612,7 +615,8 @@ export function ProductsClient({
     const { error } = await supabase
       .from('products')
       .update({ is_available: available })
-      .in('id', [...selectedIds]);
+      .in('id', [...selectedIds])
+      .eq('project_id', projectId);
     setBulkBusy(false);
     if (error) {
       toast.error('فشل التحديث');
@@ -683,7 +687,8 @@ export function ProductsClient({
     const { error } = await supabase
       .from('categories')
       .update({ name })
-      .eq('id', editingCat.id);
+      .eq('id', editingCat.id)
+      .eq('project_id', projectId);
     setLoading(false);
     if (error) { toast.error('فشل التحديث'); return; }
     setCategories((prev) => prev.map((c) => c.id === editingCat.id ? { ...c, name } : c));
@@ -695,7 +700,7 @@ export function ProductsClient({
     if (!confirmDeleteCat) return;
     setLoading(true);
     const supabase = createClient();
-    const { error } = await supabase.from('categories').delete().eq('id', confirmDeleteCat.id);
+    const { error } = await supabase.from('categories').delete().eq('id', confirmDeleteCat.id).eq('project_id', projectId);
     setLoading(false);
     if (error) { toast.error('فشل الحذف — تأكد من عدم وجود منتجات مرتبطة'); return; }
     setCategories((prev) => prev.filter((c) => c.id !== confirmDeleteCat.id));

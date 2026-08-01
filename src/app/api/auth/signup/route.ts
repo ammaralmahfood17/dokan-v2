@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { rateLimit, createRateLimitResponse } from '@/lib/rate-limit';
 
@@ -52,11 +53,11 @@ export async function POST(request: Request) {
     });
 
     if (createError) {
+      // Don't leak internal error details / user-enumeration signals to clients.
       console.error('[API /auth/signup] createUser error:', createError.message);
+      Sentry.captureException(createError);
       return NextResponse.json({
-        error: createError.message || 'فشل إنشاء الحساب',
-        code: createError.code,
-        status: createError.status,
+        error: 'تعذر إنشاء الحساب، يرجى المحاولة مرة أخرى',
       }, { status: 400 });
     }
 
@@ -78,9 +79,9 @@ export async function POST(request: Request) {
     });
   } catch (err: any) {
     console.error('[API /auth/signup] unexpected error:', err?.message);
+    Sentry.captureException(err);
     return NextResponse.json({
       error: 'خطأ داخلي في الخادم',
-      details: err?.message,
     }, { status: 500 });
   }
 }

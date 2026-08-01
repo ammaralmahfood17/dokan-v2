@@ -187,7 +187,7 @@ export function TablesClient({
   async function deleteTable(table: Table) {
     setLoading(true);
     const supabase = createClient();
-    const { error } = await supabase.from('tables').delete().eq('id', table.id);
+    const { error } = await supabase.from('tables').delete().eq('id', table.id).eq('project_id', projectId);
     setLoading(false);
     setConfirmDelete(null);
     if (error) { toast.error('فشل حذف الطاولة'); return; }
