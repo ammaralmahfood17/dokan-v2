@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next';
+import { withSentryConfig } from '@sentry/nextjs';
 
 const securityHeaders = [
   { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
@@ -35,4 +36,14 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Sentry wraps the config; harmless without SENTRY_DSN (SDK no-ops).
+// Auth tokens: no sentry.authToken set → CI/source-map upload disabled until
+// the user adds Sentry credentials in the dashboard.
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  silent: !process.env.CI,
+  telemetry: false,
+  widenClientFileUpload: true,
+  disableLogger: true,
+});
