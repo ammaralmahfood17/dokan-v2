@@ -90,8 +90,9 @@ export async function POST(request: NextRequest) {
       console.warn('[Audit] Failed to write order audit log', auditErr);
     }
 
-    // Non-blocking push notification to all staff
-    sendPushToProject(project.id, {
+    // Push notification to all staff — MUST await: Vercel freezes the function
+    // on response return, so fire-and-forget promises never complete.
+    await sendPushToProject(project.id, {
       title: '🔔 طلب جديد',
       body: `طلب #${result.order.orderNumber} من القائمة — ${formatMoney(
         result.order.totalAmount,

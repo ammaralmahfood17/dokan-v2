@@ -96,8 +96,9 @@ export async function POST(request: NextRequest) {
 
     const currency = project?.currency || 'BHD';
 
-    // Non-blocking push notification
-    sendPushToProject(membership.project_id, {
+    // Push notification to all staff — MUST await: Vercel freezes the function
+    // on response return, so fire-and-forget promises never complete.
+    await sendPushToProject(membership.project_id, {
       title: '🔔 طلب جديد',
       body: `طلب #${orderNumber} — ${formatMoney(totalAmount, currency)}`,
       url: '/dashboard/kitchen',
