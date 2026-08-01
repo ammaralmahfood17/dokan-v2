@@ -15,8 +15,11 @@ export async function sendPushToProject(
   projectId: string,
   payload: PushPayload
 ) {
-  if (typeof navigator !== 'undefined') {
-    // Called accidentally from client — silently skip
+  if (typeof window !== 'undefined') {
+    // Called accidentally from client — silently skip.
+    // NOTE: must check `window`, NOT `navigator` — Node 21+ (Vercel uses 24.x)
+    // ships a global `navigator`, so that guard always fired server-side and
+    // silently skipped every push in production.
     return { sent: 0, failed: 0 };
   }
 
