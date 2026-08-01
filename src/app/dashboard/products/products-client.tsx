@@ -2,7 +2,7 @@
 
 import { FormEvent, useMemo, useRef, useState, useCallback } from 'react';
 import Image from 'next/image';
-import { Plus, Pencil, Trash2, X, ImageIcon, Copy, ChevronUp, ChevronDown, Check } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, ImageIcon, Copy, Check } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { formatMoney, money, currencyDecimals } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -646,53 +646,6 @@ export function ProductsClient({
     exitBulk();
   }
 
-  // ----- Reorder (drag & drop on desktop + arrows everywhere) -----
-  const [dragId, setDragId] = useState<string | null>(null);
-  const [reorderBusy, setReorderBusy] = useState(false);
-  // Reorder is only meaningful on the FULL list — disable while filtering
-  const reorderEnabled = !activeCat && !searchQuery.trim();
-
-  function moveProduct(fromIndex: number, toIndex: number) {
-    setProducts((prev) => {
-      const next = [...prev].sort((a, b) => a.sort_order - b.sort_order);
-      const [moved] = next.splice(fromIndex, 1);
-      next.splice(toIndex, 0, moved);
-      return next.map((p, i) => ({ ...p, sort_order: i }));
-    });
-  }
-
-  async function persistOrder() {
-    setReorderBusy(true);
-    const supabase = createClient();
-    const ordered = [...products]
-      .sort((a, b) => a.sort_order - b.sort_order)
-      .map((p, i) => ({ id: p.id, sort_order: i }));
-    for (const { id, sort_order } of ordered) {
-      const { error } = await supabase
-        .from('products')
-        .update({ sort_order })
-        .eq('id', id);
-      if (error) {
-        setReorderBusy(false);
-        toast.error('فشل حفظ الترتيب');
-        return;
-      }
-    }
-    setReorderBusy(false);
-    toast.success('تم حفظ الترتيب');
-  }
-
-  function handleDrop(targetId: string) {
-    if (!dragId || dragId === targetId) return;
-    const ordered = [...products].sort((a, b) => a.sort_order - b.sort_order);
-    const from = ordered.findIndex((p) => p.id === dragId);
-    const to = ordered.findIndex((p) => p.id === targetId);
-    if (from === -1 || to === -1) return;
-    moveProduct(from, to);
-    setDragId(null);
-    void persistOrder();
-  }
-
   async function saveCategory(e: FormEvent) {
     e.preventDefault();
     if (!catName.trim()) {
@@ -776,15 +729,6 @@ export function ProductsClient({
             <>
               <Button variant="secondary" size="sm" onClick={() => setBulkMode(true)}>
                 تحديد
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={!reorderEnabled || reorderBusy}
-                onClick={() => void persistOrder()}
-                title={reorderEnabled ? 'حفظ ترتيب السحب' : 'ألغِ البحث والتصنيف أولًا لإعادة الترتيب'}
-              >
-                {reorderBusy ? '…' : 'حفظ الترتيب'}
               </Button>
               <Button variant="secondary" size="sm" onClick={openCategoryForm}>
                 تصنيف جديد
@@ -885,15 +829,14 @@ export function ProductsClient({
       ) : (
         <>
           <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3">
-            {filteredProducts.map((p, idx) => (
-              <div
+            {filteredProducts.map((p) => (
+              <button
                 key={p.id}
-                draggable={reorderEnabled && !bulkMode}
-                onDragStart={() => { if (reorderEnabled && !bulkMode) setDragId(p.id); }}
-                onDragOver={(e) => { if (reorderEnabled && dragId) e.preventDefault(); }}
-                onDrop={() => { if (reorderEnabled && dragId) handleDrop(p.id); }}
-                onDragEnd={() => setDragId(null)}
-                className={`dashboard-card card overflow-hidden ${dragId === p.id ? 'opacity-60' : ''} ${
+                type="button"
+                disabled={bulkMode}
+                onClick={() => openEdit(p)}
+                aria-label={`تعديل ${p.name}`}
+                className={`dashboard-card card overflow-hidden text-start transition-all active:scale-[0.98] ${
                   bulkMode && selectedIds.has(p.id) ? 'ring-2 ring-[var(--color-primary)]' : ''
                 }`}
               >
@@ -955,53 +898,8 @@ export function ProductsClient({
                       ))}
                     </div>
                   )}
-
-                  <div className="mt-3 flex items-center gap-1">
-                    {/* Reorder arrows — always on touch, drag handle is desktop bonus */}
-                    {reorderEnabled && !bulkMode && (
-                      <div className="flex shrink-0 flex-col">
-                        <button
-                          type="button"
-                          onClick={() => idx > 0 && moveProduct(idx, idx - 1)}
-                          aria-label={`تحريك ${p.name} لأعلى`}
-                          disabled={idx === 0}
-                          className="flex h-7 w-7 items-center justify-center rounded-md text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] disabled:opacity-30"
-                        >
-                          <ChevronUp className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => idx < filteredProducts.length - 1 && moveProduct(idx, idx + 1)}
-                          aria-label={`تحريك ${p.name} لأسفل`}
-                          disabled={idx === filteredProducts.length - 1}
-                          className="flex h-7 w-7 items-center justify-center rounded-md text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] disabled:opacity-30"
-                        >
-                          <ChevronDown className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    )}
-
-                    <div className="flex flex-1 items-center justify-end gap-1">
-                      <button
-                        type="button"
-                        onClick={() => openEdit(p)}
-                        aria-label={`تعديل ${p.name}`}
-                        className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-[var(--color-text-secondary)] transition-opacity hover:opacity-70"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setConfirmDelete(p)}
-                        aria-label={`حذف ${p.name}`}
-                        className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-[var(--color-danger)] transition-opacity hover:opacity-70"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
 
@@ -1350,24 +1248,38 @@ export function ProductsClient({
                   : 'إضافة المنتج'}
               </Button>
               {editing && (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={duplicatingId === editing.id}
-                  onClick={() => {
-                    duplicateProduct(editing);
-                    setShowProductForm(false);
-                  }}
-                >
-                  {duplicatingId === editing.id ? (
-                    '…'
-                  ) : (
-                    <>
-                      <Copy className="h-4 w-4" />
-                      نسخ
-                    </>
-                  )}
-                </Button>
+                <>
+                  <Button
+                    type="button"
+                    variant="danger"
+                    disabled={duplicatingId === editing.id}
+                    onClick={() => {
+                      setShowProductForm(false);
+                      setConfirmDelete(editing);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    حذف
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={duplicatingId === editing.id}
+                    onClick={() => {
+                      duplicateProduct(editing);
+                      setShowProductForm(false);
+                    }}
+                  >
+                    {duplicatingId === editing.id ? (
+                      '…'
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4" />
+                        نسخ
+                      </>
+                    )}
+                  </Button>
+                </>
               )}
               <Button
                 type="button"
