@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
 
     // Push notification to all staff — MUST await: Vercel freezes the function
     // on response return, so fire-and-forget promises never complete.
-    await sendPushToProject(project.id, {
+    const pushResult = await sendPushToProject(project.id, {
       title: '🔔 طلب جديد',
       body: `طلب #${result.order.orderNumber} من القائمة — ${formatMoney(
         result.order.totalAmount,
@@ -100,7 +100,19 @@ export async function POST(request: NextRequest) {
       )}`,
       url: '/dashboard/kitchen',
       tag: `order-${result.order.id}`,
-    }).catch(() => {});
+    }).catch((e) => ({ sent: 0, failed: 0, cleaned: 0, configured: false, error: String(e) }));
+
+    // Debug: persist push outcome so delivery can be verified from the DB
+    try {
+      await supabase.from('order_audit_logs').insert({
+        order_id: result.order.id,
+        project_id: project.id,
+        event: 'push_debug',
+        metadata: pushResult,
+      });
+    } catch (auditErr) {
+      console.warn('[Audit] Failed to write push debug log', auditErr);
+    }
 
     return NextResponse.json({
       order: {
