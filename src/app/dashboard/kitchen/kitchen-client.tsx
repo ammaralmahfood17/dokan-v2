@@ -7,6 +7,7 @@ import {
   ORDER_TYPE_LABELS,
   type Order,
   type OrderItem,
+  type OrderItemStatus,
   type OrderStatus,
 } from '@/lib/types';
 import { toast } from 'sonner';
@@ -15,6 +16,12 @@ type OrderRow = Order & {
   tables?: { number: number } | null;
   order_items?: OrderItem[];
   service_type?: string | null;
+};
+
+/** An order item paired with its parent order (for the KDS kanban). */
+type KdsItem = {
+  item: OrderItem;
+  order: OrderRow;
 };
 
 const OVERDUE_MIN_PENDING = 15;
@@ -307,15 +314,34 @@ export function KitchenClient({
   }, [projectId, notifyNewOrder]);
 
   // Fetch single order
-  const fetchSingleOrder = useCallback(async (orderId: string) => {
-    const supabase = createClient();
-    const { data } = await supabase
-      .from('orders')
-      .select('*, tables(number), order_items(*)')
-      .eq('id', orderId)
-      .single();
-    return data as OrderRow | null;
-  }, []);
+  const fetchSingleOrder = useCallback(
+    async (orderId: string) => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('orders')
+        .select('*, tables(number), order_items(*)')
+        .eq('id', orderId)
+        .eq('project_id', projectId)
+        .single();
+      return data as OrderRow | null;
+    },
+    [projectId]
+  );
+
+  // Realtime item updates from another screen — refetch that order so the
+  // kanban stays in sync even when the change came from elsewhere.
+  const refetchOrder = useCallback(
+    async (orderId: string) => {
+      const fresh = await fetchSingleOrder(orderId);
+      if (!fresh) return;
+      setOrders((prev) => {
+        const exists = prev.some((o) => o.id === orderId);
+        if (!exists) return prev;
+        return prev.map((o) => (o.id === orderId ? fresh : o));
+      });
+    },
+    [fetchSingleOrder]
+  );
 
   // Realtime
   useEffect(() => {
@@ -361,6 +387,18 @@ export function KitchenClient({
           setOrders((prev) => prev.filter((o) => o.id !== deletedId));
         }
       )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'order_items' },
+        (payload) => {
+          // Item moved by another screen — refetch that order to keep the
+          // kanban correct. fetchSingleOrder guards project_id, and
+          // refetchOrder ignores orders not on our board, so updates from
+          // other projects are a cheap no-op.
+          const itemOrderId = (payload.new as { order_id: string }).order_id;
+          void refetchOrder(itemOrderId);
+        }
+      )
       .subscribe();
 
     // Fallback polling every 30s
@@ -370,7 +408,7 @@ export function KitchenClient({
       void supabase.removeChannel(channel);
       clearInterval(interval);
     };
-  }, [projectId, fullRefresh, fetchSingleOrder, notifyNewOrder]);
+  }, [projectId, fullRefresh, fetchSingleOrder, notifyNewOrder, refetchOrder]);
 
   // Clear new order badge when user interacts with the page
   const clearBadge = useCallback(() => {
@@ -426,9 +464,79 @@ export function KitchenClient({
     }
   }
 
-  const pending = orders.filter((o) => o.status === 'pending');
-  const preparing = orders.filter((o) => o.status === 'preparing');
-  const ready = orders.filter((o) => o.status === 'ready');
+  // ---------- Item-level KDS ----------
+
+  // Advance a single item; then re-derive the parent order status.
+  const advanceItem = useCallback(
+    async (itemId: string, orderId: string, toStatus: OrderItemStatus) => {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('order_items')
+        .update({ status: toStatus })
+        .eq('id', itemId);
+      if (error) {
+        toast.error('فشل التحديث');
+        return;
+      }
+      // Fetch the fresh order (with its items) and derive its status:
+      // all ready → ready · any preparing → preparing · else pending.
+      const fresh = await fetchSingleOrder(orderId);
+      if (!fresh) return;
+      setOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? fresh : o))
+      );
+      const items = fresh.order_items ?? [];
+      if (!items.length) return;
+      const allReady = items.every((it) => it.status === 'ready');
+      const anyPreparing = items.some((it) => it.status === 'preparing');
+      const derived: OrderStatus = allReady
+        ? 'ready'
+        : anyPreparing
+          ? 'preparing'
+          : 'pending';
+      if (fresh.status !== derived) {
+        const { error: statusErr } = await supabase
+          .from('orders')
+          .update({ status: derived })
+          .eq('id', orderId);
+        if (statusErr) {
+          toast.error('فشل تحديث حالة الطلب');
+          return;
+        }
+        setOrders((prev) =>
+          prev.map((o) => (o.id === orderId ? { ...o, status: derived } : o))
+        );
+      }
+    },
+    [fetchSingleOrder]
+  );
+
+  // Deliver from the ready column — order leaves the kitchen board.
+  const deliverOrder = useCallback(async (orderId: string) => {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('orders')
+      .update({ status: 'delivered' })
+      .eq('id', orderId);
+    if (error) {
+      toast.error('فشل التحديث');
+      return;
+    }
+    setOrders((prev) => prev.filter((o) => o.id !== orderId));
+  }, []);
+
+  // Kanban by ITEM status (each item moves independently).
+  const pendingItems: KdsItem[] = [];
+  const preparingItems: KdsItem[] = [];
+  const readyItems: KdsItem[] = [];
+  for (const o of orders) {
+    for (const it of o.order_items ?? []) {
+      const k: KdsItem = { item: it, order: o };
+      if (it.status === 'preparing') preparingItems.push(k);
+      else if (it.status === 'ready') readyItems.push(k);
+      else pendingItems.push(k);
+    }
+  }
 
   return (
     <div className="kds-root" onClick={clearBadge}>
@@ -474,57 +582,60 @@ export function KitchenClient({
         </div>
       </div>
 
-      {/* Kanban columns */}
+      {/* Kanban columns — by ITEM status */}
       <div className="flex gap-4 overflow-x-auto p-5 lg:grid lg:grid-cols-3">
-        <KdsColumn title="جديد" count={pending.length}>
-          {pending.length === 0 && (
+        <KdsColumn title="جديد" count={pendingItems.length}>
+          {pendingItems.length === 0 && (
             <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[#232838] py-10 text-[#6B7280]">
               <span className="text-2xl">✅</span>
-              <span className="mt-2 text-xs">لا توجد طلبات جديدة</span>
+              <span className="mt-2 text-xs">لا توجد أصناف جديدة</span>
             </div>
           )}
-          {pending.map((o) => (
-            <KdsCard
-              key={o.id}
-              order={o}
+          {pendingItems.map(({ item, order }) => (
+            <KdsItemCard
+              key={item.id}
+              item={item}
+              order={order}
               now={now}
-              onAdvance={() => setStatus(o.id, 'preparing')}
-              advanceLabel="بدء التجهيز"
-              onCancel={() => setConfirmCancel(o.id)}
+              onAdvance={() => advanceItem(item.id, order.id, 'preparing')}
+              advanceLabel="بدء"
+              onCancel={() => setConfirmCancel(order.id)}
             />
           ))}
         </KdsColumn>
-        <KdsColumn title="قيد التجهيز" count={preparing.length}>
-          {preparing.length === 0 && (
+        <KdsColumn title="قيد التجهيز" count={preparingItems.length}>
+          {preparingItems.length === 0 && (
             <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[#232838] py-10 text-[#6B7280]">
-              <span className="text-xs">لا توجد طلبات قيد التجهيز</span>
+              <span className="text-xs">لا توجد أصناف قيد التجهيز</span>
             </div>
           )}
-          {preparing.map((o) => (
-            <KdsCard
-              key={o.id}
-              order={o}
+          {preparingItems.map(({ item, order }) => (
+            <KdsItemCard
+              key={item.id}
+              item={item}
+              order={order}
               now={now}
-              onAdvance={() => setStatus(o.id, 'ready')}
-              advanceLabel="تم التجهيز"
-              onCancel={() => setConfirmCancel(o.id)}
+              onAdvance={() => advanceItem(item.id, order.id, 'ready')}
+              advanceLabel="تم"
+              onCancel={() => setConfirmCancel(order.id)}
             />
           ))}
         </KdsColumn>
-        <KdsColumn title="جاهز" count={ready.length}>
-          {ready.length === 0 && (
+        <KdsColumn title="جاهز" count={readyItems.length}>
+          {readyItems.length === 0 && (
             <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[#232838] py-10 text-[#6B7280]">
-              <span className="text-xs">لا توجد طلبات جاهزة</span>
+              <span className="text-xs">لا توجد أصناف جاهزة</span>
             </div>
           )}
-          {ready.map((o) => (
-            <KdsCard
-              key={o.id}
-              order={o}
+          {readyItems.map(({ item, order }) => (
+            <KdsItemCard
+              key={item.id}
+              item={item}
+              order={order}
               now={now}
-              onAdvance={() => setStatus(o.id, 'delivered')}
+              onAdvance={() => deliverOrder(order.id)}
               advanceLabel="تسليم"
-              onCancel={() => setConfirmCancel(o.id)}
+              onCancel={null}
             />
           ))}
         </KdsColumn>
@@ -591,93 +702,92 @@ function KdsColumn({
   );
 }
 
-function KdsCard({
+function KdsItemCard({
+  item,
   order,
   now,
   onAdvance,
   advanceLabel,
   onCancel,
 }: {
+  item: OrderItem;
   order: OrderRow;
   now: number;
   onAdvance: () => void;
   advanceLabel: string;
-  onCancel: () => void;
+  onCancel: (() => void) | null;
 }) {
+  const itemStatus = item.status ?? 'pending';
   const mins = Math.max(
     0,
     Math.floor((now - new Date(order.created_at).getTime()) / 60000)
   );
 
   let overdueClass = '';
-  if (order.status === 'pending' && mins >= OVERDUE_MIN_PENDING) {
+  if (itemStatus === 'pending' && mins >= OVERDUE_MIN_PENDING) {
     overdueClass = 'kds-overdue';
-  } else if (order.status === 'preparing' && mins >= OVERDUE_MIN_PREPARING) {
+  } else if (itemStatus === 'preparing' && mins >= OVERDUE_MIN_PREPARING) {
     overdueClass = 'kds-taking-long';
   }
 
   return (
-    <article className={`kds-card p-3 ${order.status} ${overdueClass}`}>
-      <div className="mb-2 flex items-start justify-between gap-2">
-        <div>
-          <p className="text-[15px] font-extrabold text-white" dir="ltr">
-            #{order.order_number}
-          </p>
-          <p className="mt-0.5 text-[11px] text-[#9CA3AF]">
-            {order.tables
-              ? `طاولة ${order.tables.number}`
-              : ORDER_TYPE_LABELS[order.type]}{' '}
-            · <span className={overdueClass ? 'font-bold text-[#EF4444]' : 'text-[#9CA3AF]'}>{mins} د</span>
-            {overdueClass && (
-              <span className="mr-1 font-bold text-[#EF4444]">متأخر!</span>
-            )}
-          </p>
-        </div>
-        <span className="rounded bg-[#1E2330] px-2 py-0.5 text-[10px] font-bold text-[#9CA3AF]">
-          {ORDER_STATUS_LABELS[order.status]}
-        </span>
+    <article className={`kds-card p-3 ${itemStatus} ${overdueClass}`}>
+      <div className="mb-1.5 flex items-start justify-between gap-2">
+        <p className="text-[12px] font-bold text-[#9CA3AF]" dir="ltr">
+          #{order.order_number}
+          {order.tables ? ` · طاولة ${order.tables.number}` : ''}
+        </p>
+        <p className="text-[11px] text-[#6B7280]">
+          <span className={overdueClass ? 'font-bold text-[#EF4444]' : ''}>
+            {mins} د
+          </span>
+          {overdueClass && (
+            <span className="mr-1 font-bold text-[#EF4444]">متأخر!</span>
+          )}
+        </p>
       </div>
-      <ul className="mb-3 space-y-1">
-        {(order.order_items ?? []).map((item) => (
-          <li key={item.id} className="text-[12px] leading-[1.9] text-[#C6CAD3]">
-            <strong className="text-white">{item.quantity}×</strong>{' '}
-            {item.product_name}
-            {Array.isArray(item.addons) && item.addons.length > 0 && (
-              <span className="block text-[11px] text-[#6B7280]">
-                {(item.addons as { name: string }[])
-                  .map((a) => a.name)
-                  .join(' · ')}
-              </span>
-            )}
-            {item.notes && (
-              <span className="block text-[11px] text-[#F59E0B]/80">
-                {item.notes}
-              </span>
-            )}
-          </li>
-        ))}
-      </ul>
+
+      <p className="mb-1 text-[15px] font-extrabold leading-snug text-white">
+        <span className="ml-1 inline-block min-w-[28px] text-right text-[#F59E0B]">
+          {item.quantity}×
+        </span>
+        {item.product_name}
+      </p>
+      {Array.isArray(item.addons) && item.addons.length > 0 && (
+        <p className="mb-0.5 text-[11px] text-[#6B7280]">
+          {(item.addons as { name: string }[]).map((a) => a.name).join(' · ')}
+        </p>
+      )}
+      {item.notes && (
+        <p className="mb-0.5 text-[11px] text-[#F59E0B]/80">📝 {item.notes}</p>
+      )}
       {order.notes && (
-        <p className="mb-3 rounded bg-[#1E2330]/50 px-2 py-1 text-[11px] text-[#F59E0B]/80">
+        <p className="mb-2 rounded bg-[#1E2330]/50 px-2 py-1 text-[11px] text-[#F59E0B]/80">
           {order.notes}
         </p>
       )}
       {/* Touch targets ≥ 44px */}
-      <div className="flex gap-2">
+      <div className="mt-2 flex gap-2">
         <button
           type="button"
           onClick={onAdvance}
-          className="min-h-[44px] flex-1 rounded-[7px] border border-[#323A4D] bg-[#232838] px-4 text-[11.5px] font-bold text-white transition-colors hover:bg-[#2a3040]"
+          className={`min-h-[44px] flex-1 rounded-[7px] px-4 text-[11.5px] font-bold transition-colors ${
+            itemStatus === 'ready'
+              ? 'bg-[#10B981] text-white hover:bg-[#059669]'
+              : 'border border-[#323A4D] bg-[#232838] text-white hover:bg-[#2a3040]'
+          }`}
         >
           {advanceLabel}
         </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="min-h-[44px] min-w-[80px] rounded-[7px] border border-[#323A4D] bg-[#232838] px-4 text-[11.5px] font-semibold text-[#9CA3AF] transition-colors hover:bg-[#2a3040]"
-        >
-          إلغاء
-        </button>
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="min-h-[44px] min-w-[80px] rounded-[7px] border border-[#323A4D] bg-[#232838] px-4 text-[11.5px] font-semibold text-[#9CA3AF] transition-colors hover:bg-[#2a3040]"
+          >
+            إلغاء
+          </button>
+        )}
       </div>
     </article>
   );

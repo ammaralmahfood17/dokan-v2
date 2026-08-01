@@ -14,6 +14,9 @@ export type OrderStatus =
   | 'delivered'
   | 'cancelled';
 
+/** Per-item cooking state on the KDS (item-level kanban). */
+export type OrderItemStatus = 'pending' | 'preparing' | 'ready';
+
 export type StaffRole = 'owner' | 'manager' | 'staff';
 
 export interface Project {
@@ -97,6 +100,8 @@ export interface OrderItem {
   unit_price: number;
   addons: OrderItemAddon[];
   notes: string | null;
+  /** KDS cooking state — derived order status syncs automatically. */
+  status?: OrderItemStatus;
 }
 
 export interface StaffMember {
