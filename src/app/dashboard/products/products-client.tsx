@@ -490,8 +490,6 @@ export function ProductsClient({
 
   // Delete confirmation state
   const [confirmDelete, setConfirmDelete] = useState<ProductWithAddons | null>(null);
-  // Guards against double-tap on the availability toggle (two rapid requests would flip twice)
-  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   async function deleteProduct(id: string) {
     const supabase = createClient();
@@ -502,26 +500,6 @@ export function ProductsClient({
     }
     setProducts((prev) => prev.filter((p) => p.id !== id));
     toast.success('تم حذف المنتج');
-  }
-
-  async function toggleAvailable(p: ProductWithAddons) {
-    if (togglingId) return;
-    setTogglingId(p.id);
-    const supabase = createClient();
-    const { error } = await supabase
-      .from('products')
-      .update({ is_available: !p.is_available })
-      .eq('id', p.id);
-    setTogglingId(null);
-    if (error) {
-      toast.error('فشل التحديث — حاول مرة ثانية');
-      return;
-    }
-    setProducts((prev) =>
-      prev.map((x) =>
-        x.id === p.id ? { ...x, is_available: !x.is_available } : x
-      )
-    );
   }
 
   async function deleteAddon(productId: string, addonId: string) {
@@ -1006,36 +984,6 @@ export function ProductsClient({
                     <div className="flex flex-1 items-center justify-end gap-1">
                       <button
                         type="button"
-                        onClick={() => toggleAvailable(p)}
-                        disabled={togglingId === p.id}
-                        aria-label={p.is_available ? `إيقاف ${p.name}` : `تفعيل ${p.name}`}
-                        className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full"
-                      >
-                        <span
-                          className={`rounded-full px-2.5 py-1 text-[11px] font-bold transition-colors ${
-                            p.is_available
-                              ? 'bg-[var(--color-bg)] text-[var(--color-text-secondary)]'
-                              : 'bg-[var(--color-primary-tint)] text-[var(--color-primary)]'
-                          }`}
-                        >
-                          {togglingId === p.id ? '…' : p.is_available ? 'متاح' : 'متوقف'}
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => duplicateProduct(p)}
-                        disabled={duplicatingId === p.id}
-                        aria-label={`نسخ ${p.name}`}
-                        className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-[var(--color-text-secondary)] transition-opacity hover:opacity-70"
-                      >
-                        {duplicatingId === p.id ? (
-                          <span className="text-xs">…</span>
-                        ) : (
-                          <Copy className="h-4 w-4" />
-                        )}
-                      </button>
-                      <button
-                        type="button"
                         onClick={() => openEdit(p)}
                         aria-label={`تعديل ${p.name}`}
                         className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-[var(--color-text-secondary)] transition-opacity hover:opacity-70"
@@ -1401,6 +1349,26 @@ export function ProductsClient({
                   ? 'حفظ التغييرات'
                   : 'إضافة المنتج'}
               </Button>
+              {editing && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={duplicatingId === editing.id}
+                  onClick={() => {
+                    duplicateProduct(editing);
+                    setShowProductForm(false);
+                  }}
+                >
+                  {duplicatingId === editing.id ? (
+                    '…'
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4" />
+                      نسخ
+                    </>
+                  )}
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="secondary"
