@@ -422,7 +422,13 @@ a { color: inherit; text-decoration: none; }
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.page-enter { animation: page-enter 0.25s ease-out both; }
+/* Page enter from layout
+   NOTE: NO fill-mode (`both`/`forwards`) — a retained transform on the page
+   wrapper creates a containing block that breaks `position: fixed` children
+   (cart bar, sheets, modals) — they anchor to the page height instead of the
+   viewport and end up off-screen. Natural state (opacity 1, translateY(0))
+   already equals the end keyframe, so dropping the fill is visually identical. */
+.page-enter { animation: page-enter 0.25s ease-out; }
 
 /* ==========================================================================
    Reduced motion
