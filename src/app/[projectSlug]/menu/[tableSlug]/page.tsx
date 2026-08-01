@@ -35,9 +35,10 @@ export default async function PublicMenuPage({
   const [{ data: categories }, { data: products }] = await Promise.all([
     supabase
       .from('categories')
-      .select('*')
+      .select('id, name, sort_order, is_active')
       .eq('project_id', project.id)
-      .order('sort_order'),
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true }),
     supabase
       .from('products')
       .select('*, product_addons(*)')
