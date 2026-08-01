@@ -417,6 +417,76 @@ export type Database = {
           },
         ]
       }
+      telegram_links: {
+        Row: {
+          chat_id: string
+          created_at: string
+          id: string
+          kind: string
+          label: string | null
+          project_id: string
+        }
+        Insert: {
+          chat_id: string
+          created_at?: string
+          id?: string
+          kind?: string
+          label?: string | null
+          project_id: string
+        }
+        Update: {
+          chat_id?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          label?: string | null
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telegram_links_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      telegram_link_codes: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          id: string
+          project_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by?: string | null
+          expires_at: string
+          id?: string
+          project_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telegram_link_codes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_requests: {
         Row: {
           created_at: string

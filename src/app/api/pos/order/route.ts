@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { createSecureOrder } from '@/lib/order-pricing';
 import { rateLimit, createRateLimitResponse } from '@/lib/rate-limit';
 import { sendPushToProject } from '@/lib/push';
+import { sendTelegramAlert } from '@/lib/telegram';
 import { formatMoney } from '@/lib/utils';
 import type { OrderType, PublicOrderItemInput } from '@/lib/types';
 
@@ -103,6 +104,13 @@ export async function POST(request: NextRequest) {
       body: `طلب #${orderNumber} — ${formatMoney(totalAmount, currency)}`,
       url: '/dashboard/kitchen',
       tag: `order-${orderId}`,
+    }).catch(() => {});
+
+    // Telegram alert — free, reliable (works app-closed). MUST await (Vercel).
+    await sendTelegramAlert(membership.project_id, {
+      orderNumber,
+      totalText: formatMoney(totalAmount, currency),
+      context: type === 'drivethru' ? '🚗 سفري' : '🛒 كاشير',
     }).catch(() => {});
 
     return NextResponse.json({

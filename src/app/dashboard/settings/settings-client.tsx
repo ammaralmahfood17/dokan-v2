@@ -6,6 +6,7 @@ import { CURRENCIES, DEFAULT_PRIMARY_COLOR, type Project } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Toggle } from '@/components/ui/toggle';
 import { PushNotificationManager } from '@/components/push-notification-manager';
+import { TelegramManager } from '@/components/telegram-manager';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 
@@ -85,6 +86,11 @@ export function SettingsClient({
       {/* Push Notification Settings */}
       <div className="mb-4 max-w-lg">
         <PushNotificationManager projectId={projectId} />
+      </div>
+
+      {/* Telegram Alert Settings */}
+      <div className="mb-4 max-w-lg">
+        <TelegramManager projectId={projectId} />
       </div>
 
       <form onSubmit={onSubmit} className="card card-body max-w-lg">

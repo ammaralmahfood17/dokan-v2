@@ -1,0 +1,96 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { replyToChat } from '@/lib/telegram';
+
+/**
+ * POST /api/telegram/webhook
+ * Telegram bot webhook — receives updates when a user sends "/start <CODE>"
+ * to the platform bot and links their chat to the matching project.
+ *
+ * Reads telegram_link_codes via the admin client (bypasses RLS — this is a
+ * public endpoint; the one-time code IS the authorization).
+ */
+export async function POST(request: NextRequest) {
+  // Optional shared secret guards against spoofed requests when configured
+  const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
+  if (secret && request.headers.get('x-telegram-bot-api-secret-token') !== secret) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  }
+
+  try {
+    const update = (await request.json()) as {
+      message?: {
+        chat?: { id: number | string; type?: string; first_name?: string; title?: string };
+        text?: string;
+      };
+    };
+
+    const chat = update?.message?.chat;
+    const text = update?.message?.text || '';
+
+    // Only /start <CODE> is meaningful; ignore everything else
+    if (!chat) return NextResponse.json({ ok: true });
+
+    // Expect "/start <CODE>" (Telegram may send "/start@botname <CODE>")
+    const match = text.match(/^\/start(?:@\w+)?\s*([A-Za-z0-9]{6,12})$/);
+    if (!match) {
+      await replyToChat(String(chat.id), 'أرسل رمز الربط من لوحة تحكم دكان: /start <الرمز>');
+      return NextResponse.json({ ok: true });
+    }
+
+    const code = match[1].toUpperCase();
+    const admin = createAdminClient() as any;
+
+    const { data: linkCode, error: codeErr } = await admin
+      .from('telegram_link_codes')
+      .select('project_id, expires_at')
+      .eq('code', code)
+      .maybeSingle();
+
+    if (codeErr || !linkCode || new Date(linkCode.expires_at).getTime() < Date.now()) {
+      if (chat) {
+        await replyToChat(
+          String(chat.id),
+          '❌ الرمز غير صحيح أو انتهت صلاحيته (15 دقيقة). افتح لوحة التحكم → الإعدادات → «ربط تيليجرام» وجرّب من جديد.'
+        );
+      }
+      return NextResponse.json({ ok: true });
+    }
+
+    // Consume the code, then link the chat to the project
+    await admin.from('telegram_link_codes').delete().eq('code', code);
+
+    const chatId = String(chat.id);
+    const kind = chat.type === 'group' || chat.type === 'supergroup' ? 'group' : 'user';
+    const label = chat.title || chat.first_name || null;
+
+    const { data: project } = await admin
+      .from('projects')
+      .select('name')
+      .eq('id', linkCode.project_id)
+      .single();
+
+    const { error: insertErr } = await admin
+      .from('telegram_links')
+      .upsert(
+        { project_id: linkCode.project_id, chat_id: chatId, kind, label },
+        { onConflict: 'project_id,chat_id' }
+      );
+
+    if (insertErr) {
+      console.error('[Telegram Webhook]', insertErr);
+      await replyToChat(chatId, '❌ صار خطأ بالربط — حاول مرة ثانية.');
+      return NextResponse.json({ ok: true });
+    }
+
+    await replyToChat(
+      chatId,
+      `✅ تم الربط! بتوصلك تنبيهات الطلبات الجديدة لـ «${project?.name || 'متجرك'}» — حتى لو التطبيق مقفول.`
+    );
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error('[Telegram Webhook]', err);
+    // Always 200 — Telegram retries non-2xx and duplicates the update
+    return NextResponse.json({ ok: true });
+  }
+}
