@@ -140,6 +140,14 @@ export function ProductsClient({
     setShowProductForm(true);
   }
 
+  // Fresh category form every time — never leak the previous draft or error
+  // into a newly opened modal (cancel/X/backdrop close without resetting).
+  function openCategoryForm() {
+    setCatName('');
+    setCatError('');
+    setShowCategoryForm(true);
+  }
+
   function openEdit(p: ProductWithAddons) {
     setEditing(p);
     setName(p.name);
@@ -572,7 +580,7 @@ export function ProductsClient({
           <p>إدارة التصنيفات والمنتجات والإضافات</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" size="sm" onClick={() => setShowCategoryForm(true)}>
+          <Button variant="secondary" size="sm" onClick={openCategoryForm}>
             تصنيف جديد
           </Button>
           <Button size="sm" onClick={openCreate}>
