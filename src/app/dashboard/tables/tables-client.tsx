@@ -44,6 +44,18 @@ export function TablesClient({
   const [tableNumber, setTableNumber] = useState('1');
   const [tableSlug, setTableSlug] = useState('table-1');
 
+  // Prefill the modal with the smallest available table number (reuses freed
+  // numbers after a delete), and derive the default slug from it.
+  function openCreateModal() {
+    const used = new Set(tables.map((t) => t.number));
+    let next = 1;
+    while (used.has(next) && next <= 999) next++;
+    if (next > 999) next = 1; // all 1..999 used — fall back to 1, insert will reject
+    setTableNumber(String(next));
+    setTableSlug(tableSlugFromNumber(next));
+    setShowTable(true);
+  }
+
   async function createTable(e: FormEvent) {
     e.preventDefault();
     const number = Number(tableNumber);
@@ -198,7 +210,7 @@ export function TablesClient({
               طباعة QR
             </Button>
           )}
-          <Button size="sm" onClick={() => setShowTable(true)}>
+          <Button size="sm" onClick={openCreateModal}>
             <Plus className="h-4 w-4" />
             طاولة جديدة
           </Button>
@@ -211,7 +223,7 @@ export function TablesClient({
           <div className="card empty">
             <h3>ما فيه طاولات بعد</h3>
             <p className="mb-4 text-sm">أضف أول طاولة عشان تولّد QR ويقدر العملاء يطلبون.</p>
-            <Button onClick={() => setShowTable(true)}>
+            <Button onClick={openCreateModal}>
               أضف أول طاولة
             </Button>
           </div>
