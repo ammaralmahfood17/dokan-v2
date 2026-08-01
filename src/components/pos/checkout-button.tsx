@@ -1,8 +1,10 @@
 import { cn } from '@/lib/utils';
 
 /**
- * Polaris-style checkout CTA: full-width green (--pos-green), 16px / 600,
- * 8px radius, ≥44px touch target. Shows a spinner while submitting.
+ * Polaris-style checkout CTA: full-width brand primary (--color-primary),
+ * 16px / 600, 8px radius, ≥44px touch target. Shows a spinner while
+ * submitting. Follows the app's primary token so it stays in sync with the
+ * brand (indigo) in both light and dark themes.
  */
 export function CheckoutButton({
   loading,
@@ -23,8 +25,8 @@ export function CheckoutButton({
       onClick={onClick}
       disabled={disabled || loading}
       className={cn(
-        'flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[8px] bg-[var(--pos-green)] px-4 text-base font-semibold text-white',
-        'transition-colors duration-150 hover:bg-[var(--pos-green-hover)] active:scale-[0.98]',
+        'flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[8px] bg-[var(--color-primary)] px-4 text-base font-semibold text-white',
+        'transition-colors duration-150 hover:bg-[var(--color-primary-hover)] active:scale-[0.98]',
         'disabled:cursor-not-allowed disabled:opacity-50',
         className
       )}

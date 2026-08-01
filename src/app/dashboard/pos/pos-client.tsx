@@ -394,7 +394,7 @@ export function PosClient({
           disabled={submitting}
           aria-haspopup="dialog"
           aria-label="عرض السلة"
-          className="flex min-h-[48px] w-full items-center justify-between gap-3 rounded-[8px] bg-[var(--pos-green)] px-4 text-white transition-colors active:scale-[0.98] hover:bg-[var(--pos-green-hover)]"
+          className="flex min-h-[48px] w-full items-center justify-between gap-3 rounded-[8px] bg-[var(--color-primary)] px-4 text-white transition-colors active:scale-[0.98] hover:bg-[var(--color-primary-hover)]"
         >
           <span className="flex items-center gap-2 text-sm font-semibold">
             <ShoppingBag className="h-4 w-4" />

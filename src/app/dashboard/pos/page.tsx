@@ -69,7 +69,7 @@ function PosLoader() {
                 </div>
               ))}
             </div>
-            <div className="mt-8 h-11 w-full animate-pulse rounded-[8px] bg-[var(--pos-green-light)]" />
+            <div className="mt-8 h-11 w-full animate-pulse rounded-[8px] bg-[var(--color-primary-tint)]" />
           </div>
         </aside>
       </div>

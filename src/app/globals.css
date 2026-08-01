@@ -19,11 +19,12 @@
   --pos-border: #dfe3e8;
   --pos-text-primary: #202223;
   --pos-text-subdued: #6d7175;
-  --pos-green: #008060;          /* checkout / success */
+  --pos-green: #008060;          /* semantic success (badges) */
   --pos-green-hover: #006e52;
   --pos-green-light: #f1f8f5;
   --pos-blue: #006fbb;
   --pos-red: #d82c0d;
+  /* CTA/checkout intentionally uses --color-primary (brand indigo) */
   --pos-critical-tint: #fff4f4;
 }
 
