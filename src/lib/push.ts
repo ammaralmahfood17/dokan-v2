@@ -30,10 +30,8 @@ export async function sendPushToProject(
 
   if (!publicKey || !privateKey) {
     console.warn('[Push] VAPID keys not configured — skipping');
-    return { sent: 0, failed: 0, cleaned: 0, configured: false };
+    return { sent: 0, failed: 0, cleaned: 0 };
   }
-
-  console.log('[Push] keys OK — public key prefix:', publicKey.slice(0, 16), '… (len ' + publicKey.length + ')');
 
   webpush.setVapidDetails(contact, publicKey, privateKey);
 
@@ -44,9 +42,7 @@ export async function sendPushToProject(
     .select('endpoint, p256dh, auth')
     .eq('project_id', projectId);
 
-  if (!subs?.length) return { sent: 0, failed: 0, cleaned: 0, configured: true };
-
-  console.log('[Push] sending to', subs.length, 'subscription(s)');
+  if (!subs?.length) return { sent: 0, failed: 0, cleaned: 0 };
 
   const results = await Promise.allSettled(
     subs.map((sub: any) =>
