@@ -64,10 +64,30 @@ export function ensureUniqueSlug(base: string, existing: string[] = []): string 
   return `${candidate}-${i}`;
 }
 
-/** Round money to 3 decimal places (BHD standard). Returns 0 for non-finite. */
-export function money(value: number): number {
+/** Decimal places per currency (Gulf): BHD/KWD/OMR = 3, others = 2. */
+export const CURRENCY_DECIMALS: Record<string, number> = {
+  BHD: 3,
+  KWD: 3,
+  OMR: 3,
+  SAR: 2,
+  AED: 2,
+  QAR: 2,
+};
+
+/** Currency-aware decimals (defaults to 2 for unknown currencies). */
+export function currencyDecimals(currency: string): number {
+  return CURRENCY_DECIMALS[currency.toUpperCase()] ?? 2;
+}
+
+/**
+ * Round money to the given decimal places (default 3 = BHD standard).
+ * Returns 0 for non-finite. Always pass `decimals` for non-BHD currencies —
+ * writing SAR/AED/QAR amounts at 3 decimals persists wrong prices.
+ */
+export function money(value: number, decimals = 3): number {
   if (!Number.isFinite(value)) return 0;
-  return Math.round((value + Number.EPSILON) * 1000) / 1000;
+  const factor = 10 ** decimals;
+  return Math.round((value + Number.EPSILON) * factor) / factor;
 }
 
 /** True when value is a valid finite money amount (>= 0) */
@@ -76,10 +96,10 @@ export function isValidMoney(value: unknown): value is number {
   return Number.isFinite(n) && n >= 0;
 }
 
-/** Format money for display with currency code */
+/** Format money for display with currency code (currency-aware decimals). */
 export function formatMoney(value: number, currency = 'BHD'): string {
-  const n = Number.isFinite(value) ? money(value) : 0;
-  const decimals = ['BHD', 'KWD'].includes(currency) ? 3 : 2;
+  const decimals = currencyDecimals(currency);
+  const n = Number.isFinite(value) ? money(value, decimals) : 0;
   return `${n.toFixed(decimals)} ${currency}`;
 }
 

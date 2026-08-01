@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Minus, Plus, Trash2, X } from 'lucide-react';
-import { formatMoney, money } from '@/lib/utils';
+import { formatMoney, money, currencyDecimals } from '@/lib/utils';
 import type { OrderType, Product, ProductAddon } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -74,8 +74,8 @@ export function PosClient({
   );
 
   const total = useMemo(
-    () => money(lines.reduce((s, l) => s + l.unitPrice * l.quantity, 0)),
-    [lines]
+    () => money(lines.reduce((s, l) => s + l.unitPrice * l.quantity, 0), currencyDecimals(currency)),
+    [lines, currency]
   );
 
   function openProduct(p: ProductWithAddons) {
@@ -96,9 +96,10 @@ export function PosClient({
     const addonTotal = money(
       (p.product_addons || [])
         .filter((a) => addonIds.includes(a.id))
-        .reduce((s, a) => s + Number(a.price), 0)
+        .reduce((s, a) => s + Number(a.price), 0),
+      currencyDecimals(currency)
     );
-    const unitPrice = money(Number(p.price) + addonTotal);
+    const unitPrice = money(Number(p.price) + addonTotal, currencyDecimals(currency));
     const key = `${p.id}:${[...addonIds].sort().join(',')}`;
     setLines((prev) => {
       const existing = prev.find((l) => l.key === key);

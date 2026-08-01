@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
 
     const { data: membership } = await userClient
       .from('staff_members')
-      .select('project_id')
+      .select('project_id, projects(currency)')
       .eq('user_id', user.id)
       .limit(1)
       .maybeSingle();
@@ -64,6 +64,8 @@ export async function POST(request: NextRequest) {
     const supabase = createAdminClient();
     const result = await createSecureOrder(supabase, {
       projectId: membership.project_id,
+      currency: (membership as unknown as { projects?: { currency?: string } }).projects
+        ?.currency,
       tableId: null,
       type,
       items: body.items,

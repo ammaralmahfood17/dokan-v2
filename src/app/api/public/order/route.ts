@@ -69,6 +69,7 @@ export async function POST(request: NextRequest) {
     // 3. Server-side pricing + insert (core security)
     const result = await createSecureOrder(supabase, {
       projectId: project.id,
+      currency: project.currency,
       tableId: table.id,
       type: 'dinein',
       items,

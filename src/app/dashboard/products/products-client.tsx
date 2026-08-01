@@ -4,7 +4,7 @@ import { FormEvent, useMemo, useRef, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { Plus, Pencil, Trash2, X, ImageIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { formatMoney, money } from '@/lib/utils';
+import { formatMoney, money, currencyDecimals } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Modal } from '@/components/ui/modal';
@@ -317,7 +317,7 @@ export function ProductsClient({
       name: name.trim(),
       name_en: nameEn.trim() || null,
       description: description.trim() || null,
-      price: money(parsedPrice),
+      price: money(parsedPrice, currencyDecimals(currency)),
       category_id: categoryId || null,
       is_available: isAvailable,
       image_url: imageUrl.trim() || null,
@@ -329,7 +329,7 @@ export function ProductsClient({
         .map((a) => ({
           id: a.id,
           name: a.name.trim(),
-          price: money(Number(a.price)),
+          price: money(Number(a.price), currencyDecimals(currency)),
         }));
 
     if (editing) {
@@ -414,7 +414,7 @@ export function ProductsClient({
         name: name.trim(),
         name_en: nameEn.trim() || null,
         description: description.trim() || null,
-        price: money(parsedPrice),
+        price: money(parsedPrice, currencyDecimals(currency)),
         category_id: categoryId || null,
         is_available: isAvailable,
         image_url: imageUrl.trim() || null,

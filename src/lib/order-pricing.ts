@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Json } from '@/lib/database.types';
 import type { OrderItemAddon, OrderType, PublicOrderItemInput } from '@/lib/types';
-import { money } from '@/lib/utils';
+import { money, currencyDecimals } from '@/lib/utils';
 
 type AdminClient = SupabaseClient<Database>;
 
@@ -34,13 +34,16 @@ export async function createSecureOrder(
   supabase: AdminClient,
   params: {
     projectId: string;
+    currency?: string;
     tableId: string | null;
     type: OrderType;
     items: PublicOrderItemInput[];
     notes?: string | null;
   }
 ): Promise<CreateOrderResult> {
-  const { projectId, tableId, type, items, notes } = params;
+  const { projectId, currency, tableId, type, items, notes } = params;
+  // Server-side rounding per the project's currency (BHD=3, SAR/AED/QAR=2…)
+  const decimals = currencyDecimals(currency ?? 'BHD');
 
   if (!items.length) {
     return { ok: false, error: 'السلة فارغة', status: 400 };
@@ -116,8 +119,8 @@ export async function createSecureOrder(
       }
 
       for (const addon of found) {
-        const price = money(Number(addon.price));
-        addonTotal = money(addonTotal + price);
+        const price = money(Number(addon.price), decimals);
+        addonTotal = money(addonTotal + price, decimals);
         addonDetails.push({
           id: addon.id,
           name: addon.name,
@@ -126,9 +129,9 @@ export async function createSecureOrder(
       }
     }
 
-    const unitPrice = money(Number(product.price) + addonTotal);
-    const lineTotal = money(unitPrice * quantity);
-    totalAmount = money(totalAmount + lineTotal);
+    const unitPrice = money(Number(product.price) + addonTotal, decimals);
+    const lineTotal = money(unitPrice * quantity, decimals);
+    totalAmount = money(totalAmount + lineTotal, decimals);
 
     validated.push({
       product_id: product.id,
@@ -192,7 +195,7 @@ export async function createSecureOrder(
     order: {
       id: order.id,
       status: order.status,
-      totalAmount: money(Number(order.total_amount)),
+      totalAmount: money(Number(order.total_amount), decimals),
       orderNumber: Number(order.order_number),
     },
   };

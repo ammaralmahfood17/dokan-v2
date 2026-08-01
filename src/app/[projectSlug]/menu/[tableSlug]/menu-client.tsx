@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Minus, Plus, ShoppingBag, X, Check, Bell, FileText, GripHorizontal } from 'lucide-react';
 import Image from 'next/image';
-import { formatMoney, money } from '@/lib/utils';
+import { formatMoney, money, currencyDecimals } from '@/lib/utils';
 import type {
   CartLine,
   Category,
@@ -69,8 +69,8 @@ export function MenuClient({
   }, [products, activeCategory]);
 
   const total = useMemo(
-    () => money(cart.reduce((s, l) => s + l.unitPrice * l.quantity, 0)),
-    [cart]
+    () => money(cart.reduce((s, l) => s + l.unitPrice * l.quantity, 0), currencyDecimals(currency)),
+    [cart, currency]
   );
   const itemCount = useMemo(
     () => cart.reduce((s, l) => s + l.quantity, 0),
@@ -99,10 +99,10 @@ export function MenuClient({
       .map((a) => ({
         id: a.id,
         name: a.name,
-        price: money(Number(a.price)),
+        price: money(Number(a.price), currencyDecimals(currency)),
       }));
-    const addonTotal = money(addons.reduce((s, a) => s + a.price, 0));
-    const unitPrice = money(Number(picker.price) + addonTotal);
+    const addonTotal = money(addons.reduce((s, a) => s + a.price, 0), currencyDecimals(currency));
+    const unitPrice = money(Number(picker.price) + addonTotal, currencyDecimals(currency));
     const key = `${picker.id}:${addons
       .map((a) => a.id)
       .sort()
@@ -166,7 +166,7 @@ export function MenuClient({
           key,
           productId: p.id,
           productName: p.name,
-          unitPrice: money(Number(p.price)),
+          unitPrice: money(Number(p.price), currencyDecimals(currency)),
           quantity: 1,
           addons: [],
           notes: '',
