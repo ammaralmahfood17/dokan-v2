@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createSecureOrder } from '@/lib/order-pricing';
 import { rateLimit, createRateLimitResponse } from '@/lib/rate-limit';
@@ -120,6 +121,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (err) {
     console.error('Public order API error:', err);
+    Sentry.captureException(err);
     return NextResponse.json({ error: 'خطأ داخلي' }, { status: 500 });
   }
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { replyToChat } from '@/lib/telegram';
 
@@ -90,6 +91,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('[Telegram Webhook]', err);
+    Sentry.captureException(err);
     // Always 200 — Telegram retries non-2xx and duplicates the update
     return NextResponse.json({ ok: true });
   }
