@@ -259,7 +259,7 @@ export default async function DashboardPage() {
             <h2 className="text-sm font-bold">الأكثر مبيعًا هذا الأسبوع</h2>
             <Link
               href="/dashboard/analytics"
-              className="text-xs font-semibold text-[var(--color-primary)]"
+              className="inline-flex min-h-11 items-center text-xs font-semibold text-[var(--color-primary)]"
             >
               التفاصيل
             </Link>
@@ -291,7 +291,7 @@ export default async function DashboardPage() {
           <h2 className="text-base font-bold">آخر الطلبات</h2>
           <Link
             href="/dashboard/orders"
-            className="text-xs font-semibold text-[var(--color-primary)]"
+            className="inline-flex min-h-11 items-center text-xs font-semibold text-[var(--color-primary)]"
           >
             عرض الكل
           </Link>

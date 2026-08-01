@@ -630,7 +630,12 @@ export function KitchenClient({
       </div>
 
       {/* Kanban columns — by ITEM status */}
-      <div className="flex gap-4 overflow-x-auto p-5 lg:grid lg:grid-cols-3">
+      <div
+        className="flex gap-4 overflow-x-auto p-5 lg:grid lg:grid-cols-3"
+        role="region"
+        aria-label="أعمدة المطبخ — مرّر أفقيًا للتنقل"
+        tabIndex={0}
+      >
         <KdsColumn title="جديد" count={pendingGroups.length}>
           {pendingGroups.length > 0 && (
             <button

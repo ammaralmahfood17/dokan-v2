@@ -185,7 +185,7 @@ export function AppSidebar({
           <button
             type="button"
             onClick={() => setIsOpen(false)}
-            className="flex h-8 w-8 items-center justify-center rounded-[8px] hover:bg-[var(--color-bg)] lg:hidden"
+            className="flex h-11 w-11 items-center justify-center rounded-[8px] hover:bg-[var(--color-bg)] lg:hidden"
             aria-label="إغلاق"
           >
             <X className="h-4 w-4 text-[var(--color-text-muted)]" />

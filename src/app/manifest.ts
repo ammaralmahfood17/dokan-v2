@@ -7,7 +7,7 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'إدارة طلبات المطاعم والمقاهي',
     start_url: '/dashboard',
     display: 'standalone',
-    background_color: '#F8FAFC',
+    background_color: '#4338CA',
     theme_color: '#4338CA',
     orientation: 'any',
     lang: 'ar',

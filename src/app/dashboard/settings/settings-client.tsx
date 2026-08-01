@@ -95,8 +95,9 @@ export function SettingsClient({
 
       <form onSubmit={onSubmit} className="card card-body max-w-lg">
         <div className="field">
-          <label className="label">اسم المتجر</label>
+          <label className="label" htmlFor="store-name">اسم المتجر</label>
           <input
+            id="store-name"
             className={`input ${errors.name ? 'input-error' : ''}`}
             required
             maxLength={80}
@@ -114,14 +115,15 @@ export function SettingsClient({
         </div>
 
         <div className="field">
-          <label className="label">المعرّف (slug)</label>
-          <input className="input" dir="ltr" value={project.slug} disabled />
+          <label className="label" htmlFor="store-slug">المعرّف (slug)</label>
+          <input id="store-slug" className="input" dir="ltr" value={project.slug} disabled />
           <p className="hint">ما ينفع تغيير المعرّف بعد الإنشاء</p>
         </div>
 
         <div className="field">
-          <label className="label">العملة</label>
+          <label className="label" htmlFor="currency-select">العملة</label>
           <select
+            id="currency-select"
             className="select"
             value={currency}
             onChange={(e) => setCurrency(e.target.value)}
@@ -135,9 +137,10 @@ export function SettingsClient({
         </div>
 
         <div className="field">
-          <label className="label">اللون الأساسي</label>
+          <label className="label" htmlFor="primary-color">اللون الأساسي</label>
           <div className="flex items-center gap-3">
             <input
+              id="primary-color"
               type="color"
               value={primaryColor}
               onChange={(e) => {
