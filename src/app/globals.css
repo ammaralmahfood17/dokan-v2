@@ -7,6 +7,57 @@
    Typography: Tajawal (headings) + Noto Sans Arabic (body)
    ========================================================================== */
 
+/* ==========================================================================
+   POS — Polaris-style cashier tokens (Shopify POS design language)
+   Light-first (POS is a fast, high-contrast surface); dark variants keep
+   the app's dark-mode contract. Exposed to Tailwind via @theme inline so
+   bg-pos-* / text-pos-* utilities resolve through the runtime vars.
+   ========================================================================== */
+:root {
+  --pos-bg: #f6f6f7;
+  --pos-surface: #ffffff;
+  --pos-border: #dfe3e8;
+  --pos-text-primary: #202223;
+  --pos-text-subdued: #6d7175;
+  --pos-green: #008060;          /* checkout / success */
+  --pos-green-hover: #006e52;
+  --pos-green-light: #f1f8f5;
+  --pos-blue: #006fbb;
+  --pos-red: #d82c0d;
+  --pos-critical-tint: #fff4f4;
+}
+
+.dark {
+  --pos-bg: #0b0e14;
+  --pos-surface: #161b26;
+  --pos-border: #232838;
+  --pos-text-primary: #f8fafc;
+  --pos-text-subdued: #94a3b8;
+  --pos-green: #2fd08e;
+  --pos-green-hover: #27b47c;
+  --pos-green-light: #0b2b20;
+  --pos-blue: #60a5fa;
+  --pos-red: #f87171;
+  --pos-critical-tint: rgba(248, 113, 113, 0.1);
+}
+
+@theme inline {
+  --color-pos-bg: var(--pos-bg);
+  --color-pos-surface: var(--pos-surface);
+  --color-pos-border: var(--pos-border);
+  --color-pos-text-primary: var(--pos-text-primary);
+  --color-pos-text-subdued: var(--pos-text-subdued);
+  --color-pos-green: var(--pos-green);
+  --color-pos-green-hover: var(--pos-green-hover);
+  --color-pos-green-light: var(--pos-green-light);
+  --color-pos-blue: var(--pos-blue);
+  --color-pos-red: var(--pos-red);
+  --color-pos-critical-tint: var(--pos-critical-tint);
+
+  /* POS font: Inter for Latin/figures, Cairo/Tajawal fall back for Arabic */
+  --font-pos: var(--font-inter), "Cairo", "Tajawal", ui-sans-serif, system-ui, sans-serif;
+}
+
 @theme {
   /* Core brand */
   --color-primary: #4338CA;

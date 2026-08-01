@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Cairo, Tajawal } from 'next/font/google';
+import { Cairo, Inter, Tajawal } from 'next/font/google';
 import { Toaster } from 'sonner';
 import { ServiceWorkerRegister } from '@/components/service-worker-register';
 import { WebVitals } from '@/components/web-vitals';
@@ -16,6 +16,12 @@ const tajawal = Tajawal({
   subsets: ['arabic'],
   weight: ['400', '500', '700', '800'],
   variable: '--font-tajawal',
+  display: 'swap',
+});
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
   display: 'swap',
 });
 
@@ -61,7 +67,7 @@ export default function RootLayout({
       lang="ar"
       dir="rtl"
       suppressHydrationWarning
-      className={`${cairo.variable} ${tajawal.variable}`}
+      className={`${cairo.variable} ${tajawal.variable} ${inter.variable}`}
     >
       <head>
         {/* Supabase: early connect */}
