@@ -2,7 +2,7 @@
 
 import { FormEvent, useMemo, useRef, useState, useCallback } from 'react';
 import Image from 'next/image';
-import { Plus, Pencil, Trash2, X, ImageIcon, Copy, Check } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, ImageIcon, Copy, Check, Search } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { formatMoney, money, currencyDecimals } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -122,6 +122,16 @@ export function ProductsClient({
     }
     return list;
   }, [sortedProducts, activeCat, searchQuery]);
+
+  // Live product counts per category (updates as products change).
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const p of sortedProducts) {
+      if (!p.category_id) continue;
+      counts.set(p.category_id, (counts.get(p.category_id) ?? 0) + 1);
+    }
+    return counts;
+  }, [sortedProducts]);
 
   function openCreate() {
     setEditing(null);
@@ -749,9 +759,10 @@ export function ProductsClient({
 
       {/* Search bar */}
       <div className="relative mb-4">
+        <Search className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
         <input
-          className="input pl-9"
-          placeholder="🔍 ابحث عن منتج…"
+          className="input ps-10"
+          placeholder="ابحث عن منتج…"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
@@ -759,7 +770,7 @@ export function ProductsClient({
           <button
             type="button"
             onClick={() => setSearchQuery('')}
-            className="absolute left-2 top-1/2 -translate-y-1/2 btn btn-ghost btn-sm"
+            className="absolute end-2 top-1/2 -translate-y-1/2 btn btn-ghost btn-sm"
             aria-label="مسح البحث"
           >
             <X className="h-3.5 w-3.5" />
@@ -773,13 +784,20 @@ export function ProductsClient({
             type="button"
             onClick={() => setActiveCat(null)}
             aria-pressed={!activeCat}
-            className={`flex min-h-[44px] items-center rounded-full px-4 text-xs font-bold transition-all ${
+            className={`flex min-h-[44px] items-center gap-1.5 rounded-full px-4 text-xs font-bold transition-all ${
               !activeCat
                 ? 'bg-[var(--color-primary)] text-white shadow-sm'
                 : 'border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:border-[var(--color-primary)]'
             }`}
           >
             <span>الكل</span>
+            <span
+              className={`rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${
+                !activeCat ? 'bg-white/20' : 'bg-[var(--color-bg)]'
+              }`}
+            >
+              {sortedProducts.length}
+            </span>
           </button>
           {categories.map((c) => (
             <div
@@ -794,11 +812,19 @@ export function ProductsClient({
                 type="button"
                 onClick={() => setActiveCat(activeCat === c.id ? null : c.id)}
                 aria-pressed={activeCat === c.id}
-                className="rounded-full py-1.5"
+                className="flex items-center gap-1.5 rounded-full py-1.5"
               >
                 {c.name}
+                <span
+                  className={`rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${
+                    activeCat === c.id ? 'bg-white/20' : 'bg-[var(--color-bg)]'
+                  }`}
+                >
+                  {categoryCounts.get(c.id) ?? 0}
+                </span>
               </button>
               {/* Edit/delete — real buttons, always visible (touch + keyboard) */}
+              <span className="mx-0.5 h-4 w-px bg-[var(--color-border)]" aria-hidden="true" />
               <button
                 type="button"
                 onClick={() => { setEditingCat(c); setEditCatName(c.name); }}
@@ -843,7 +869,7 @@ export function ProductsClient({
                 aria-label={`تعديل ${p.name}`}
                 className={`dashboard-card card overflow-hidden text-start transition-all active:scale-[0.98] ${
                   bulkMode && selectedIds.has(p.id) ? 'ring-2 ring-[var(--color-primary)]' : ''
-                }`}
+                } ${!p.is_available ? 'opacity-60' : ''}`}
               >
                 {/* Image / placeholder — 4:3 like the POS grid */}
                 <div className="relative aspect-[4/3] w-full overflow-hidden bg-[var(--color-bg)]">
@@ -853,7 +879,9 @@ export function ProductsClient({
                       alt={p.name}
                       fill
                       sizes="(max-width: 768px) 50vw, 200px"
-                      className="object-cover"
+                      className={`object-cover ${
+                        !p.is_available ? 'grayscale' : ''
+                      }`}
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-[var(--color-text-muted)]">
@@ -875,7 +903,9 @@ export function ProductsClient({
                     </button>
                   ) : (
                     !p.is_available && (
-                      <span className="badge badge-cancelled absolute end-2 top-2">متوقف</span>
+                      <span className="absolute end-2 top-2 rounded-[4px] bg-[var(--color-danger)] px-2 py-0.5 text-[10px] font-bold text-[var(--color-surface)] shadow-sm">
+                        متوقف
+                      </span>
                     )
                   )}
                 </div>
@@ -887,13 +917,13 @@ export function ProductsClient({
                       {p.description}
                     </p>
                   )}
-                  <p className="mt-1 text-sm font-bold text-[var(--color-primary)]">
+                  <p className="mt-1 text-sm font-bold tabular-nums text-[var(--color-primary)]">
                     {formatMoney(Number(p.price), currency)}
                   </p>
 
                   {p.product_addons?.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1">
-                      {p.product_addons.slice(0, 3).map((a) => (
+                      {p.product_addons.slice(0, 2).map((a) => (
                         <span
                           key={a.id}
                           className="rounded-full bg-[var(--color-bg)] px-2 py-0.5 text-[10px] font-semibold text-[var(--color-text-secondary)]"
@@ -901,6 +931,11 @@ export function ProductsClient({
                           {a.name}
                         </span>
                       ))}
+                      {p.product_addons.length > 2 && (
+                        <span className="rounded-full bg-[var(--color-bg)] px-2 py-0.5 text-[10px] font-bold tabular-nums text-[var(--color-primary)]">
+                          +{p.product_addons.length - 2}
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
