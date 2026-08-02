@@ -6,6 +6,9 @@
  * Supabase: atomic counter via SECURITY DEFINER RPC (rate_limit_check) — works on
  *   serverless without extra services. This is the production path.
  * In-memory: local development only (per-instance, resets on cold starts).
+ *
+ * KV access goes through src/lib/cache (CacheProvider) — swapping Vercel KV
+ * for Upstash later is a one-line change in getCacheProvider().
  */
 
 type RateLimitRecord = {
@@ -35,16 +38,16 @@ async function kvRateLimit(
   options: RateLimitOptions
 ): Promise<RateLimitResult | null> {
   try {
-    const { kv } = await import('@vercel/kv');
     if (!process.env.KV_URL) return null; // KV not configured
 
+    const cache = (await import('@/lib/cache')).getCacheProvider();
     const now = Date.now();
     const windowSeconds = Math.ceil(options.windowMs / 1000);
-    const result = await kv.hgetall<{ count: number; resetAt: number }>(key);
+    const result = await cache.hGetAll<{ count: number; resetAt: number }>(key);
 
     if (!result || now > result.resetAt) {
-      await kv.hset(key, { count: 1, resetAt: now + options.windowMs });
-      await kv.expire(key, windowSeconds);
+      await cache.hSet(key, { count: 1, resetAt: now + options.windowMs });
+      await cache.expire(key, windowSeconds);
       return { allowed: true, remaining: options.limit - 1, resetIn: options.windowMs };
     }
 
@@ -52,7 +55,7 @@ async function kvRateLimit(
       return { allowed: false, remaining: 0, resetIn: result.resetAt - now };
     }
 
-    await kv.hincrby(key, 'count', 1);
+    await cache.hIncrBy(key, 'count', 1);
     return { allowed: true, remaining: options.limit - result.count - 1, resetIn: result.resetAt - now };
   } catch {
     return null; // Fall through to in-memory
