@@ -1,7 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { formatMoney } from '@/lib/utils';
 import {
@@ -12,11 +11,8 @@ import {
   type OrderItemAddon,
   type OrderStatus,
 } from '@/lib/types';
-import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
-import { Modal } from '@/components/ui/modal';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
-import { toast } from 'sonner';
 
 const FILTERS: { value: OrderStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'الكل' },
@@ -27,16 +23,31 @@ const FILTERS: { value: OrderStatus | 'all'; label: string }[] = [
   { value: 'cancelled', label: 'ملغى' },
 ];
 
-const NEXT: Partial<Record<OrderStatus, OrderStatus>> = {
-  pending: 'preparing',
-  preparing: 'ready',
-  ready: 'delivered',
-};
+/** ترتيب مراحل الحالة — تسلسل حقيقي (عملية الطهي/التسليم) */
+const STATUS_STEPS: OrderStatus[] = ['pending', 'preparing', 'ready', 'delivered'];
 
 type OrderRow = Order & {
   tables?: { number: number; slug: string } | null;
   order_items?: OrderItem[];
 };
+
+/** YYYY-MM-DD بالتوقيت المحلي للمتصفح */
+function toDateKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/** نطاق [بداية اليوم المختار, بداية اليوم التالي) */
+function dayRange(dateKey: string): { start: Date; end: Date } {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  const start = new Date(y, m - 1, d);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  return { start, end };
+}
 
 export function OrdersClient({
   projectId,
@@ -49,27 +60,63 @@ export function OrdersClient({
 }) {
   const [orders, setOrders] = useState(initialOrders);
   const [filter, setFilter] = useState<OrderStatus | 'all'>('all');
-  const [updating, setUpdating] = useState<string | null>(null);
-  const [confirmCancel, setConfirmCancel] = useState<string | null>(null);
+  // التاريخ المعروض — اليوم افتراضيًا (التقويم مقيد بـ max=اليوم)
+  const [dateKey, setDateKey] = useState(() => toDateKey(new Date()));
 
-  const refresh = useCallback(async () => {
-    const supabase = createClient();
-    // Only fetch today's real orders (service_type = null means real order)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const { data } = await supabase
-      .from('orders')
-      .select('*, tables(number, slug), order_items(*)')
-      .eq('project_id', projectId)
-      .is('service_type', null) // null = real order (not waiter/bill)
-      .gte('created_at', today.toISOString())
-      .order('created_at', { ascending: false })
-      .limit(50);
-    if (data) setOrders(data as unknown as OrderRow[]);
-  }, [projectId]);
+  const isToday = dateKey === toDateKey(new Date());
+  const mountedRef = useRef(false);
 
-  // Realtime — debounced full refresh (rapid status changes would otherwise
-  // fire parallel fetches that can resolve out of order and clobber state)
+  const refresh = useCallback(
+    async (key?: string) => {
+      const target = key ?? dateKey;
+      const { start, end } = dayRange(target);
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('orders')
+        .select('*, tables(number, slug), order_items(*)')
+        .eq('project_id', projectId)
+        .is('service_type', null) // null = real order (not waiter/bill)
+        .gte('created_at', start.toISOString())
+        .lt('created_at', end.toISOString())
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (data) setOrders(data as unknown as OrderRow[]);
+    },
+    [projectId, dateKey]
+  );
+
+  // SSR (Vercel = UTC) يجلب نطاقًا مختلفًا عن نطاق المتصفح المحلي (Asia/Bahrain) —
+  // إعادة جلب واحدة عند أول mount توحّد العرض على توقيت المستخدم.
+  useEffect(() => {
+    if (mountedRef.current) return;
+    mountedRef.current = true;
+    void refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // تاريخ محدد (تقويم) — يجلب مباشرة
+  const selectDate = useCallback(
+    (key: string) => {
+      setDateKey(key);
+      void refresh(key);
+    },
+    [refresh]
+  );
+
+  // اليوم / أمس — إزاحة من اليوم الحالي
+  const selectDayOffset = useCallback(
+    (offsetDays: number) => {
+      const d = new Date();
+      d.setDate(d.getDate() + offsetDays);
+      const key = toDateKey(d);
+      setDateKey(key);
+      void refresh(key);
+    },
+    [refresh]
+  );
+
+  // Realtime — تحديث تلقائي لطلبات اليوم فقط (الأيام السابقة ثابتة:
+  // ما يجي أحد يغيّر طلبات أمس أثناء عرضها)
   useEffect(() => {
     const supabase = createClient();
     let refreshTimer: ReturnType<typeof setTimeout> | null = null;
@@ -85,6 +132,7 @@ export function OrdersClient({
           filter: `project_id=eq.${projectId}`,
         },
         () => {
+          if (!isToday) return;
           if (refreshTimer) clearTimeout(refreshTimer);
           refreshTimer = setTimeout(() => void refresh(), 500);
         }
@@ -95,66 +143,74 @@ export function OrdersClient({
       if (refreshTimer) clearTimeout(refreshTimer);
       void supabase.removeChannel(channel);
     };
-  }, [projectId, refresh]);
+  }, [projectId, refresh, isToday]);
 
   const filtered = useMemo(() => {
     if (filter === 'all') return orders;
     return orders.filter((o) => o.status === filter);
   }, [orders, filter]);
 
-  // Cancel through the server API — same path as the KDS: validates the order
-  // can still be cancelled and writes the audit trail (order_audit_logs).
-  async function cancelOrder(orderId: string) {
-    setUpdating(orderId);
-    try {
-      const res = await fetch('/api/pos/cancel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId }),
-      });
-      const data = (await res.json()) as { error?: string };
-      if (!res.ok) {
-        toast.error(data.error || 'فشل إلغاء الطلب');
-        return;
-      }
-      setOrders((prev) =>
-        prev.map((o) => (o.id === orderId ? { ...o, status: 'cancelled' } : o))
-      );
-    } catch {
-      toast.error('تعذّر الاتصال');
-    } finally {
-      setUpdating(null);
-    }
-  }
-
-  async function setStatus(orderId: string, status: OrderStatus) {
-    setUpdating(orderId);
-    const supabase = createClient();
-    const { error } = await supabase
-      .from('orders')
-      .update({ status })
-      .eq('id', orderId)
-      .eq('project_id', projectId);
-    setUpdating(null);
-    if (error) {
-      toast.error('فشل تحديث الحالة');
-      return;
-    }
-    setOrders((prev) =>
-      prev.map((o) => (o.id === orderId ? { ...o, status } : o))
-    );
-  }
+  // عدادات حية لكل حالة — معلومة حقيقية من البيانات المعروضة
+  const counts = useMemo(() => {
+    const c: Record<OrderStatus | 'all', number> = {
+      all: orders.length,
+      pending: 0,
+      preparing: 0,
+      ready: 0,
+      delivered: 0,
+      cancelled: 0,
+    };
+    for (const o of orders) c[o.status] += 1;
+    return c;
+  }, [orders]);
 
   return (
     <div className="page">
-      <PullToRefresh onRefresh={refresh}>
+      <PullToRefresh onRefresh={() => void refresh()}>
       <div className="page-header">
         <div>
           <h1>الطلبات</h1>
-          <p>تحديث مباشر · فلترة حسب الحالة</p>
+          <p>متابعة فقط · الحالة تتحدث من شاشة المطبخ</p>
         </div>
       </div>
 
+      {/* Date picker — اليوم/أمس + تقويم (لا مستقبل) */}
+      <div className="mb-4 flex flex-wrap items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => selectDayOffset(0)}
+          aria-pressed={isToday}
+          className={`flex min-h-[44px] items-center rounded-full px-4 text-xs font-bold transition-colors ${
+            isToday
+              ? 'bg-[var(--color-primary)] text-white shadow-sm'
+              : 'border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:border-[var(--color-primary)]'
+          }`}
+        >
+          اليوم
+        </button>
+        <button
+          type="button"
+          onClick={() => selectDayOffset(-1)}
+          className="flex min-h-[44px] items-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-4 text-xs font-bold text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-primary)]"
+        >
+          أمس
+        </button>
+        <label className="flex min-h-[44px] cursor-pointer items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-xs font-semibold text-[var(--color-text-secondary)]">
+          📅
+          <input
+            type="date"
+            value={dateKey}
+            max={toDateKey(new Date())}
+            onChange={(e) => {
+              if (e.target.value) selectDate(e.target.value);
+            }}
+            className="bg-transparent text-xs font-semibold outline-none"
+            aria-label="اختيار تاريخ"
+          />
+        </label>
+      </div>
+
+      {/* Filters — مع عدادات حية */}
       <div className="mb-4 flex flex-wrap gap-1.5">
         {FILTERS.map((f) => (
           <button
@@ -162,131 +218,137 @@ export function OrdersClient({
             type="button"
             onClick={() => setFilter(f.value)}
             aria-pressed={filter === f.value}
-            className={`min-h-[44px] rounded-full px-3 py-1 text-xs font-bold transition-colors ${
+            className={`flex min-h-[44px] items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition-colors ${
               filter === f.value
                 ? 'bg-[var(--color-primary)] text-white'
                 : 'bg-[var(--color-surface)] text-[var(--color-text-secondary)] border border-[var(--color-border)]'
             }`}
           >
             {f.label}
+            <span
+              className={`rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${
+                filter === f.value
+                  ? 'bg-white/20 text-white'
+                  : 'bg-[var(--color-bg)] text-[var(--color-text-muted)]'
+              }`}
+            >
+              {counts[f.value]}
+            </span>
           </button>
         ))}
       </div>
 
       {!filtered.length ? (
         <EmptyState
-          title="ما فيه طلبات حالياً"
-          description="أول طلب بيظهر هنا مباشرة."
+          title="ما فيه طلبات في هذا اليوم"
+          description={isToday ? 'أول طلب بيظهر هنا مباشرة.' : 'جرب اختيار يوم آخر.'}
         />
       ) : (
         <div className="space-y-3">
-          {filtered.map((order) => {
-            const next = NEXT[order.status];
-            return (
-          <article key={order.id} className="dashboard-card card">
-                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--color-border)] px-4 py-3">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-sm font-bold" dir="ltr">order-{order.order_number}</span>
-                      <span className={`badge badge-${order.status}`}>
-                        {ORDER_STATUS_LABELS[order.status]}
-                      </span>
-                      <span className="text-xs text-[var(--color-text-muted)]">
-                        {ORDER_TYPE_LABELS[order.type]}
-                      </span>
-                    </div>
-                    <p className="mt-0.5 text-xs text-[var(--color-text-secondary)]">
-                      {order.tables
-                        ? `طاولة ${order.tables.number}`
-                        : 'بدون طاولة'}{' '}
-                      · {new Date(order.created_at).toLocaleString('ar-BH')} {/* Bahrain locale */}
-                    </p>
+          {filtered.map((order) => (
+            <article key={order.id} className="dashboard-card card">
+              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--color-border)] px-4 py-3">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-bold tabular-nums" dir="ltr">order-{order.order_number}</span>
+                    <span className={`badge badge-${order.status}`}>
+                      {ORDER_STATUS_LABELS[order.status]}
+                    </span>
+                    <span className="text-xs text-[var(--color-text-muted)]">
+                      {ORDER_TYPE_LABELS[order.type]}
+                    </span>
                   </div>
-                  <p className="text-sm font-bold">
-                    {formatMoney(Number(order.total_amount), currency)}
+                  <p className="mt-0.5 text-xs text-[var(--color-text-secondary)]">
+                    {order.tables
+                      ? `طاولة ${order.tables.number}`
+                      : 'بدون طاولة'}{' '}
+                    · {new Date(order.created_at).toLocaleString('ar-BH')}
                   </p>
                 </div>
-                {order.order_items && order.order_items.length > 0 && (
-                  <ul className="space-y-1 px-4 py-3 text-sm">
-                    {order.order_items.map((item) => (
-                      <li key={item.id} className="flex justify-between gap-2">
-                        <span>
-                          <strong>{item.quantity}×</strong> {item.product_name}
-                          {Array.isArray(item.addons) && item.addons.length > 0 && (
-                            <span className="block text-xs text-[var(--color-text-muted)]">
-                              {(item.addons as OrderItemAddon[])
-                                .map((a) => a.name)
-                                .join(' · ')}
-                            </span>
+                <p className="text-sm font-bold tabular-nums">
+                  {formatMoney(Number(order.total_amount), currency)}
+                </p>
+              </div>
+
+              {/* Status stepper — ثابت (عرض فقط): يعكس تسلسل العملية الحقيقية */}
+              {order.status !== 'cancelled' ? (
+                <div className="px-4 py-2.5" dir="ltr">
+                  <div className="flex items-center gap-1">
+                    {STATUS_STEPS.map((step, i) => {
+                      const idx = STATUS_STEPS.indexOf(order.status);
+                      const done = i < idx;
+                      const active = i === idx;
+                      return (
+                        <div key={step} className="flex flex-1 items-center gap-1 last:flex-none">
+                          <span
+                            className={`h-2 w-2 shrink-0 rounded-full ${
+                              done
+                                ? 'bg-[var(--color-success)]'
+                                : active
+                                  ? 'bg-[var(--color-primary)] ring-2 ring-[var(--color-primary-tint)]'
+                                  : 'bg-[var(--color-border)]'
+                            }`}
+                          />
+                          {i < STATUS_STEPS.length - 1 && (
+                            <span
+                              className={`h-0.5 flex-1 rounded ${
+                                i < idx ? 'bg-[var(--color-success)]' : 'bg-[var(--color-border)]'
+                              }`}
+                            />
                           )}
-                          {item.notes && (
-                            <span className="block text-xs text-[var(--color-text-muted)]">
-                              {item.notes}
-                            </span>
-                          )}
-                        </span>
-                        <span className="text-[var(--color-text-secondary)] shrink-0">
-                          {formatMoney(
-                            Number(item.unit_price) * item.quantity,
-                            currency
-                          )}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {order.notes && (
-                  <p className="border-t border-[var(--color-border)] px-4 py-2 text-xs text-[var(--color-text-secondary)]">
-                    {order.notes}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-1 text-[10px] text-[var(--color-text-muted)]" dir="rtl">
+                    {ORDER_STATUS_LABELS[order.status]}
                   </p>
-                )}
-                <div className="flex flex-wrap gap-2 border-t border-[var(--color-border)] px-4 py-3">
-                  {next && (
-                    <Button
-                      size="sm"
-                      disabled={updating === order.id}
-                      onClick={() => setStatus(order.id, next)}
-                    >
-                      → {ORDER_STATUS_LABELS[next]}
-                    </Button>
-                  )}
-                  {order.status !== 'cancelled' &&
-                    order.status !== 'delivered' && (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        disabled={updating === order.id}
-                        onClick={() => setConfirmCancel(order.id)}
-                      >
-                        إلغاء
-                      </Button>
-                    )}
                 </div>
-              </article>
-            );
-          })}
+              ) : (
+                <p className="border-b border-[var(--color-border)] px-4 py-2 text-[10px] font-bold text-[var(--color-danger)]">
+                  {ORDER_STATUS_LABELS.cancelled}
+                </p>
+              )}
+
+              {order.order_items && order.order_items.length > 0 && (
+                <ul className="space-y-1 px-4 py-3 text-sm">
+                  {order.order_items.map((item) => (
+                    <li key={item.id} className="flex justify-between gap-2">
+                      <span>
+                        <strong>{item.quantity}×</strong> {item.product_name}
+                        {Array.isArray(item.addons) && item.addons.length > 0 && (
+                          <span className="block text-xs text-[var(--color-text-muted)]">
+                            {(item.addons as OrderItemAddon[])
+                              .map((a) => a.name)
+                              .join(' · ')}
+                          </span>
+                        )}
+                        {item.notes && (
+                          <span className="block text-xs text-[var(--color-text-muted)]">
+                            {item.notes}
+                          </span>
+                        )}
+                      </span>
+                      <span className="text-[var(--color-text-secondary)] shrink-0 tabular-nums">
+                        {formatMoney(
+                          Number(item.unit_price) * item.quantity,
+                          currency
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {order.notes && (
+                <p className="border-t border-[var(--color-border)] px-4 py-2 text-xs text-[var(--color-text-secondary)]">
+                  {order.notes}
+                </p>
+              )}
+            </article>
+          ))}
         </div>
       )}
       </PullToRefresh>
-
-      {confirmCancel && (
-        <Modal title="تأكيد الإلغاء" onClose={() => setConfirmCancel(null)}>
-          <div className="text-center">
-            <div className="mb-3 mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[var(--color-danger-tint)]">
-              <AlertTriangle className="h-5 w-5 text-[var(--color-danger)]" />
-            </div>
-            <p className="mb-5 text-xs text-[var(--color-text-secondary)]">هل أنت متأكد من إلغاء هذا الطلب؟</p>
-            <div className="flex gap-2">
-              <Button variant="danger" block disabled={updating === confirmCancel} onClick={() => { cancelOrder(confirmCancel); setConfirmCancel(null); }}>
-                {updating === confirmCancel ? 'جاري…' : 'نعم، إلغاء'}
-              </Button>
-              <Button variant="secondary" onClick={() => setConfirmCancel(null)}>
-                رجوع
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
     </div>
   );
 }
