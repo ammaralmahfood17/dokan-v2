@@ -60,7 +60,6 @@ export function MenuClient({
   // Ref for smooth-scrolling to products section
   const productsRef = useRef<HTMLDivElement>(null);
 
-  const primary = project.primary_color || '#4338CA';
   const currency = project.currency;
 
   const filtered = useMemo(() => {
@@ -262,7 +261,7 @@ export function MenuClient({
       <div className="flex min-h-dvh flex-col items-center justify-center bg-[var(--color-bg)] px-6 text-center page-enter">
         <div
           className="mb-5 flex h-16 w-16 items-center justify-center rounded-full text-white"
-          style={{ background: primary }}
+          style={{ background: "var(--color-primary)" }}
         >
           <Check className="h-8 w-8" />
         </div>
@@ -315,99 +314,106 @@ export function MenuClient({
   // ======== CART BAR BADGE ========
   const cartBadge = itemCount > 0;
 
-  /** Render a single product card — isFirst gets priority (LCP) */
+  /** Render a single product row — mockup: square 72px image, teal mono price, ink add-btn */
   function renderProduct(p: ProductWithAddons, isFirst = false) {
     return (
-      <button
-        key={p.id}
-        type="button"
-        onClick={() => quickAdd(p)}
-        className="card flex w-full items-start gap-3 p-3 text-start transition-transform duration-150 active:scale-[0.98]"
-      >
-        {p.image_url ? (
-          <Image
-            src={p.image_url}
-            alt={p.name}
-            width={64}
-            height={64}
-            priority={isFirst}
-            placeholder="blur"
-            blurDataURL={BLUR_PLACEHOLDER}
-            className="h-16 w-16 shrink-0 rounded-[8px] object-cover"
-          />
-        ) : (
-          <div
-            className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[8px] text-lg font-bold text-white/90"
-            style={{ background: `${primary}22`, color: primary }}
-          >
-            {p.name.slice(0, 1)}
-          </div>
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold">{p.name}</p>
-          {p.description && (
-            <p className="mt-0.5 line-clamp-2 text-xs text-[var(--color-text-secondary)]">
-              {p.description}
-            </p>
-          )}
-          <p className="mt-1 text-sm font-bold" style={{ color: primary }}>
-            {formatMoney(Number(p.price), currency)}
-          </p>
-        </div>
-        <span
-          className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] text-white transition-transform duration-200 ${
-            lastAddedKey === p.id ? 'scale-125' : 'scale-100'
-          }`}
-          style={{ background: primary }}
+      <div key={p.id} className="flex items-center gap-3 border-b pb-3 pt-1" style={{ borderColor: 'rgba(61,58,52,.08)' }}>
+        <button
+          type="button"
+          onClick={() => quickAdd(p)}
+          aria-label={`إضافة ${p.name}`}
+          className="flex min-w-0 flex-1 items-center gap-3 text-start"
         >
-          <Plus className="h-5 w-5" />
-          {lastAddedKey === p.id && (
-            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-green-500 text-[9px] text-white">
-              <Check className="h-3 w-3" />
-            </span>
+          {p.image_url ? (
+            <Image
+              src={p.image_url}
+              alt={p.name}
+              width={72}
+              height={72}
+              priority={isFirst}
+              placeholder="blur"
+              blurDataURL={BLUR_PLACEHOLDER}
+              className="h-[72px] w-[72px] shrink-0 object-cover"
+            />
+          ) : (
+            <div
+              className="flex h-[72px] w-[72px] shrink-0 items-center justify-center text-[22px] font-bold bg-[#EDE7D6]"
+              style={{ color: 'var(--color-primary)' }}
+            >
+              {p.name.slice(0, 1)}
+            </div>
           )}
-        </span>
-      </button>
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate text-[15px] font-semibold">{p.name}</h3>
+            {p.description && (
+              <p className="mt-0.5 line-clamp-2 text-[12.5px] leading-[1.5] text-[var(--color-text-secondary)]">
+                {p.description}
+              </p>
+            )}
+            <span className="mt-1 inline-block font-mono text-[14px] font-semibold tabular-nums text-[var(--color-success)]" dir="ltr">
+              {formatMoney(Number(p.price), currency)}
+            </span>
+          </div>
+        </button>
+        <button
+          type="button"
+          onClick={() => quickAdd(p)}
+          aria-label={`إضافة ${p.name} إلى السلة`}
+          className={`flex h-[44px] w-[44px] shrink-0 items-center justify-center bg-[var(--color-text)] text-[20px] font-semibold leading-none text-[var(--color-accent)] transition-transform duration-200 active:scale-95 ${
+            lastAddedKey === p.id ? 'scale-110' : ''
+          }`}
+        >
+          {lastAddedKey === p.id ? <Check className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
+        </button>
+      </div>
     );
   }
 
   // ======== MAIN MENU ========
   return (
     <div className="min-h-dvh bg-[var(--color-bg)] pb-24 page-enter">
-      {/* HEADER */}
+      {/* HEADER — Scan Grid: ink round brand mark + TABLE chip */}
       <header
-        className="sticky top-0 z-20 border-b border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3"
-        style={{ borderBottomColor: `${primary}22` }}
+        className="sticky top-0 z-20 border-b bg-[var(--color-bg)] px-4 py-3.5"
+        style={{ borderColor: 'rgba(61,58,52,.12)' }}
       >
-        <div className="mx-auto flex max-w-lg items-center justify-between gap-3">
+        <div className="mx-auto flex max-w-[480px] items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2.5">
             <div
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] text-sm font-bold text-white"
-              style={{ background: primary }}
+              className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full bg-[var(--color-text)] font-display text-[18px] font-bold text-[var(--color-accent)]"
             >
               {project.name.slice(0, 1)}
             </div>
             <div className="min-w-0">
-              <h1 className="truncate text-sm font-bold">{project.name}</h1>
-              <p className="text-xs text-[var(--color-text-secondary)]">
-                طاولة {table.number}
+              <h1 className="truncate font-display text-[17px] font-bold">{project.name}</h1>
+              <p className="text-[11px] text-[var(--color-text-secondary)]">
+                امسح واطلب من طاولتك
               </p>
             </div>
           </div>
-          <div className="flex gap-1">
+          {/* Table chip — corner brackets like the mockup */}
+          <div className="flex items-center gap-1.5">
+            <div
+              className="relative px-2.5 py-1 font-mono text-[12px] font-semibold tabular-nums text-[var(--color-primary)]"
+              style={{ border: '1.5px solid var(--color-accent)' }}
+            >
+              <span className="absolute -top-[1.5px] -right-[1.5px] h-[6px] w-[6px] border-t-[1.5px] border-r-[1.5px] border-[var(--color-accent)]" />
+              <span className="absolute -bottom-[1.5px] -left-[1.5px] h-[6px] w-[6px] border-b-[1.5px] border-l-[1.5px] border-[var(--color-accent)]" />
+              TABLE·{String(table.number).padStart(2, '0')}
+            </div>
             <button
               type="button"
               disabled={busyAction !== null}
               onClick={() => callService('waiter')}
-              className="min-h-[44px] rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-xs font-bold transition-colors hover:bg-[var(--color-bg)] disabled:opacity-50"
+              className="min-h-[44px] rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-xs font-bold transition-colors hover:bg-[var(--color-bg)] disabled:opacity-50"
             >
-            موظف
+              موظف
             </button>
             <button
               type="button"
               disabled={busyAction !== null}
               onClick={() => callService('bill')}
-              className="min-h-[44px] rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-xs font-bold transition-colors hover:bg-[var(--color-bg)] disabled:opacity-50"
+              className="min-h-[44px] rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-xs font-bold transition-colors hover:bg-[var(--color-bg)] disabled:opacity-50"
             >
               فاتورة
             </button>
@@ -415,21 +421,18 @@ export function MenuClient({
         </div>
       </header>
 
-      {/* CATEGORIES */}
+      {/* CATEGORIES — pills, active = ink with saffron text (mockup) */}
       {categories.length > 0 && (
-        <div className="sticky top-[57px] z-10 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
-          <div className="mx-auto flex max-w-lg gap-1 overflow-x-auto px-3 py-2">
+        <div className="sticky top-[57px] z-10 border-b bg-[var(--color-bg)]" style={{ borderColor: 'rgba(61,58,52,.12)' }}>
+          <div className="mx-auto flex max-w-[480px] gap-2 overflow-x-auto px-3 pb-1 pt-1" style={{ scrollbarWidth: 'none' }}>
             <button
               type="button"
               onClick={() => handleCategoryChange('all')}
-              className={`min-h-[44px] shrink-0 rounded-full px-4 py-1.5 text-xs font-bold ${
+              className={`min-h-[44px] shrink-0 whitespace-nowrap rounded-full px-4 text-[13px] font-semibold transition-colors ${
                 activeCategory === 'all'
-                  ? 'text-white'
-                  : 'border border-[var(--color-border)] text-[var(--color-text-secondary)]'
+                  ? 'bg-[var(--color-text)] text-[var(--color-accent)]'
+                  : 'bg-[#EDE7D6] text-[var(--color-text)] hover:bg-[var(--color-border)]'
               }`}
-              style={
-                activeCategory === 'all' ? { background: primary } : undefined
-              }
             >
               الكل
             </button>
@@ -438,14 +441,11 @@ export function MenuClient({
                 key={c.id}
                 type="button"
                 onClick={() => handleCategoryChange(c.id)}
-                className={`min-h-[44px] shrink-0 rounded-full px-4 py-1.5 text-xs font-bold ${
+                className={`min-h-[44px] shrink-0 whitespace-nowrap rounded-full px-4 text-[13px] font-semibold transition-colors ${
                   activeCategory === c.id
-                    ? 'text-white'
-                    : 'border border-[var(--color-border)] text-[var(--color-text-secondary)]'
+                    ? 'bg-[var(--color-text)] text-[var(--color-accent)]'
+                    : 'bg-[#EDE7D6] text-[var(--color-text)] hover:bg-[var(--color-border)]'
                 }`}
-                style={
-                  activeCategory === c.id ? { background: primary } : undefined
-                }
               >
                 {c.name}
               </button>
@@ -471,8 +471,11 @@ export function MenuClient({
                   if (!catProducts.length) return null;
                   return (
                     <section key={cat.id} className="mb-6">
-                      <h2 className="mb-3 text-sm font-bold text-[var(--color-text-secondary)]">{cat.name}</h2>
-                      <div className="space-y-3">
+                      <div className="mb-3 flex items-baseline gap-2.5">
+                        <h2 className="font-display text-[19px] font-semibold">{cat.name}</h2>
+                        <span className="h-px flex-1 opacity-50" style={{ background: 'repeating-linear-gradient(90deg, var(--color-text-secondary) 0 4px, transparent 4px 8px)' }} />
+                      </div>
+                      <div>
                         {catProducts.map((p, idx) => renderProduct(p, idx === 0 && catIdx === 0))}
                       </div>
                     </section>
@@ -481,8 +484,11 @@ export function MenuClient({
                 {/* Uncategorized products (category deleted → SET NULL): keep them visible */}
                 {products.some((p) => !p.category_id) && (
                   <section className="mb-6">
-                    <h2 className="mb-3 text-sm font-bold text-[var(--color-text-secondary)]">بدون تصنيف</h2>
-                    <div className="space-y-3">
+                    <div className="mb-3 flex items-baseline gap-2.5">
+                      <h2 className="font-display text-[19px] font-semibold">بدون تصنيف</h2>
+                      <span className="h-px flex-1 opacity-50" style={{ background: 'repeating-linear-gradient(90deg, var(--color-text-secondary) 0 4px, transparent 4px 8px)' }} />
+                    </div>
+                    <div>
                       {products
                         .filter((p) => !p.category_id)
                         .map((p, idx) => renderProduct(p, idx === 0 && categories.length === 0))}
@@ -500,31 +506,35 @@ export function MenuClient({
         )}
       </main>
 
-      {/* CART FLOATING BAR */}
+      {/* CART FLOATING BAR — ink bar with saffron corner brackets (mockup) */}
       {cartBadge && (
-        <div className="fixed inset-x-0 bottom-0 z-30 animate-slide-up p-3 pb-safe-bottom">
-          <button
-            type="button"
-            onClick={() => setCartOpen(true)}
-            className="mx-auto flex w-full max-w-lg items-center justify-between rounded-[10px] px-4 py-3 text-white shadow-lg transition-transform active:scale-[0.98]"
-            style={{ background: primary }}
-          >
-            <span className="flex items-center gap-2 text-sm font-bold">
-              <span className="relative">
-                <ShoppingBag className="h-5 w-5" />
-                <span
-                  className="absolute -right-1.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-white text-[10px] font-bold"
-                  style={{ color: primary }}
-                >
+        <div className="fixed inset-x-0 bottom-0 z-30 p-3 pb-safe-bottom">
+          <div className="mx-auto w-full max-w-[480px] px-1 pb-1">
+            <button
+              type="button"
+              onClick={() => setCartOpen(true)}
+              className="relative flex w-full items-center justify-between bg-[var(--color-text)] px-4 py-3.5 text-[var(--color-bg)] shadow-lg transition-transform active:scale-[0.98]"
+            >
+              {/* Corner brackets — saffron scan corners */}
+              <span className="absolute -top-[2px] -right-[2px] h-[10px] w-[10px] border-t-2 border-r-2 border-[var(--color-accent)]" />
+              <span className="absolute -bottom-[2px] -left-[2px] h-[10px] w-[10px] border-b-2 border-l-2 border-[var(--color-accent)]" />
+
+              <span className="flex items-center gap-2.5">
+                <span className="flex h-[26px] w-[26px] items-center justify-center bg-[var(--color-accent)] font-mono text-[13px] font-bold tabular-nums text-[var(--color-text)]">
                   {itemCount}
                 </span>
+                <span className="text-start">
+                  <span className="block text-[14px] font-semibold">عرض السلة</span>
+                  <span className="mt-0.5 block text-[11px] opacity-60">
+                    الدفع نقدًا عند الاستلام
+                  </span>
+                </span>
               </span>
-              السلة
-            </span>
-            <span className="text-sm font-bold">
-              {formatMoney(total, currency)}
-            </span>
-          </button>
+              <span className="font-mono text-[15px] font-bold tabular-nums text-[var(--color-accent)]" dir="ltr">
+                {formatMoney(total, currency)}
+              </span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -536,7 +546,7 @@ export function MenuClient({
               {picker.description}
             </p>
           )}
-          <p className="mb-3 text-base font-bold" style={{ color: primary }}>
+          <p className="mb-3 text-base font-bold" style={{ color: "var(--color-primary)" }}>
             {formatMoney(Number(picker.price), currency)}
           </p>
           {(picker.product_addons || []).filter((a) => a.is_available).length > 0 && (
@@ -586,7 +596,7 @@ export function MenuClient({
             />
             <p className="hint">{itemNotes.length}/200</p>
           </div>
-          <Button block onClick={confirmAdd} style={{ background: primary }}>
+          <Button block onClick={confirmAdd} style={{ background: "var(--color-primary)" }}>
             أضف إلى السلة
           </Button>
         </Sheet>
@@ -662,7 +672,7 @@ export function MenuClient({
             block
             disabled={submitting || !cart.length}
             onClick={placeOrder}
-            style={{ background: primary }}
+            style={{ background: "var(--color-primary)" }}
             className="min-h-[48px]"
           >
             {submitting ? (
