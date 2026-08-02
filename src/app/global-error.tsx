@@ -10,13 +10,13 @@ export default function GlobalError({
     <html lang="ar" dir="rtl">
       <body
         style={{
-          fontFamily: 'Cairo, sans-serif',
+          fontFamily: "'IBM Plex Sans Arabic', sans-serif",
           display: 'flex',
           minHeight: '100dvh',
           alignItems: 'center',
           justifyContent: 'center',
-          background: '#F8FAFC',
-          color: '#0F172A',
+          background: '#F5F1E6',
+          color: '#17140F',
           padding: 16,
           textAlign: 'center',
         }}
@@ -32,7 +32,7 @@ export default function GlobalError({
             type="button"
             onClick={reset}
             style={{
-              background: '#4338CA',
+              background: '#C97A0F',
               color: '#fff',
               border: 0,
               borderRadius: 8,

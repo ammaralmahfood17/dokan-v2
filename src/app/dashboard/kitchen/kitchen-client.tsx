@@ -641,7 +641,7 @@ export function KitchenClient({
             <button
               type="button"
               onClick={startAll}
-              className="mb-2.5 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[7px] bg-[#4F46E5] px-4 text-[12px] font-bold text-white transition-colors hover:bg-[#4338CA]"
+              className="mb-2.5 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[7px] bg-[#C97A0F] px-4 text-[12px] font-bold text-white transition-colors hover:bg-[#A8660C]"
             >
               ⚡ بدء الكل ({pendingGroups.reduce((s, g) => s + g.quantity, 0)})
             </button>

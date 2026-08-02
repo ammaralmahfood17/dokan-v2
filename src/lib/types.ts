@@ -178,4 +178,4 @@ export const CURRENCIES: { value: Currency; label: string }[] = [
   { value: 'QAR', label: 'ريال قطري (QAR)' },
 ];
 
-export const DEFAULT_PRIMARY_COLOR = '#4338CA';
+export const DEFAULT_PRIMARY_COLOR = '#C97A0F';

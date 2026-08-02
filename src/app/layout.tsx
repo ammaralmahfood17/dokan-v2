@@ -1,24 +1,36 @@
 import type { Metadata, Viewport } from 'next';
-import { Cairo, Inter, Tajawal } from 'next/font/google';
+import { El_Messiri, IBM_Plex_Sans_Arabic, IBM_Plex_Mono, Inter } from 'next/font/google';
 import { Toaster } from 'sonner';
 import { ServiceWorkerRegister } from '@/components/service-worker-register';
 import { WebVitals } from '@/components/web-vitals';
 import './globals.css';
 
-const cairo = Cairo({
+// "شبكة المسح" — Scan Grid identity
+// Display: El Messiri (600/700) — عناوين كبيرة وشعار فقط
+// UI:      IBM Plex Sans Arabic (400/500/600) — واجهة ونصوص، وضوح تشغيلي
+// Mono:    IBM Plex Mono (500/600) — أرقام الطلبات والوقت والأسعار (طابع الإيصال)
+const elMessiri = El_Messiri({
   subsets: ['arabic', 'latin'],
-  weight: ['400', '600', '700'],
-  variable: '--font-cairo',
+  weight: ['600', '700'],
+  variable: '--font-el-messiri',
   display: 'swap',
 });
 
-const tajawal = Tajawal({
-  subsets: ['arabic'],
-  weight: ['400', '500', '700', '800'],
-  variable: '--font-tajawal',
+const plexSansArabic = IBM_Plex_Sans_Arabic({
+  subsets: ['arabic', 'latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-plex-arabic',
   display: 'swap',
 });
 
+const plexMono = IBM_Plex_Mono({
+  subsets: ['latin'],
+  weight: ['500', '600', '700'],
+  variable: '--font-plex-mono',
+  display: 'swap',
+});
+
+// POS keeps Inter for Latin/figures (Polaris-style cashier surface)
 const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
@@ -51,8 +63,8 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#F8FAFC' },
-    { media: '(prefers-color-scheme: dark)', color: '#0F0F17' },
+    { media: '(prefers-color-scheme: light)', color: '#F5F1E6' },
+    { media: '(prefers-color-scheme: dark)', color: '#14110C' },
   ],
 };
 
@@ -66,7 +78,7 @@ export default function RootLayout({
       lang="ar"
       dir="rtl"
       suppressHydrationWarning
-      className={`${cairo.variable} ${tajawal.variable} ${inter.variable}`}
+      className={`${elMessiri.variable} ${plexSansArabic.variable} ${plexMono.variable} ${inter.variable}`}
     >
       <head>
         {/* Supabase: early connect */}

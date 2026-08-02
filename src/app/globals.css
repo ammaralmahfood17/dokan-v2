@@ -1,10 +1,11 @@
 @import "tailwindcss";
 
 /* ==========================================================================
-   دكان Design System — Gulf Hospitality SaaS
-   Primary: Indigo #4338CA (Dark: #818CF8)
-   Accent:  Gold #D4AF37
-   Typography: Tajawal (headings) + Noto Sans Arabic (body)
+   دكان Design System — "شبكة المسح" (Scan Grid)
+   Gulf hospitality identity built from the product's core act: scanning a
+   QR code at a café table. Paper/ink/saffron/teal/clay — all light surfaces,
+   context distinction via layout & intensity, not dark/light mode switching.
+   Typography: El Messiri (display) + IBM Plex Sans Arabic (UI) + IBM Plex Mono (figures)
    ========================================================================== */
 
 /* ==========================================================================
@@ -24,7 +25,7 @@
   --pos-green-light: #f1f8f5;
   --pos-blue: #006fbb;
   --pos-red: #d82c0d;
-  /* CTA/checkout intentionally uses --color-primary (brand indigo) */
+  /* CTA/checkout intentionally uses --color-primary (brand saffron) */
   --pos-critical-tint: #fff4f4;
 }
 
@@ -55,103 +56,161 @@
   --color-pos-red: var(--pos-red);
   --color-pos-critical-tint: var(--pos-critical-tint);
 
-  /* POS font: Inter for Latin/figures, Cairo/Tajawal fall back for Arabic */
-  --font-pos: var(--font-inter), "Cairo", "Tajawal", ui-sans-serif, system-ui, sans-serif;
+  /* POS font: Inter for Latin/figures, Plex Sans Arabic fall back for Arabic */
+  --font-pos: var(--font-inter), "IBM Plex Sans Arabic", ui-sans-serif, system-ui, sans-serif;
 }
 
 @theme {
-  /* Core brand */
-  --color-primary: #4338CA;
-  --color-primary-hover: #3730A3;
-  --color-primary-tint: #EEF2FF;
+  /* Core brand — Saffron (زعفران القهوة الخليجية) */
+  --color-primary: #C97A0F;
+  --color-primary-hover: #A8660C;
+  --color-primary-tint: #FBF3E6;
 
   /* Semantic colors */
-  --color-success: #0F766E;
-  --color-success-tint: #CCFBF1;
-  --color-success-hover: #0D6F63;
-  --color-warn: #B45309;
-  --color-warn-tint: #FEF3C7;
-  --color-warn-hover: #9A4507;
-  --color-danger: #DC2626;
-  --color-danger-tint: #FEE2E2;
-  --color-danger-hover: #B91C1C;
+  --color-success: #0F6B63;      /* Deep Teal — مياه الخليج */
+  --color-success-tint: #DCEFEC;
+  --color-success-hover: #0C5A53;
+  --color-warn: #B54834;         /* Burnt Clay — جديد/تنبيه */
+  --color-warn-tint: #F8E8E3;
+  --color-warn-hover: #98392A;
+  --color-danger: #B54834;       /* Burnt Clay — خطأ */
+  --color-danger-tint: #F8E8E3;
+  --color-danger-hover: #98392A;
 
-  /* Accent */
-  --color-accent: #D4AF37;
-  --color-accent-hover: #C9A032;
-  --color-accent-tint: #FEF9E7;
+  /* Accent — Saffron bright (خلفيات الزعفران) */
+  --color-accent: #E39A2D;
+  --color-accent-hover: #C97A0F;
+  --color-accent-tint: #FBF3E6;
 
-  /* Neutral (light) */
-  --color-bg: #F8FAFC;
-  --color-surface: #FFFFFF;
-  --color-text: #0F172A;
-  --color-text-secondary: #475569;
-  --color-text-muted: #94A3B8;
-  --color-border: #E2E8F0;
+  /* Neutral — Paper & Ink */
+  --color-bg: #F5F1E6;           /* ورق الفاتورة */
+  --color-surface: #FFFFFF;      /* بطاقات، تذاكر، لوحات */
+  --color-text: #17140F;         /* الحبر */
+  --color-text-secondary: #7A7568; /* رمادي دافئ */
+  --color-text-muted: #A8A294;
+  --color-border: #E2DBC8;       /* حدود دافئة */
 
-  /* KDS (always dark) */
+  /* KDS (always dark — يتحول للفاتح مع إعادة تصميم المطبخ) */
   --color-kds-bg: #0B0E14;
   --color-kds-surface: #161B26;
   --color-kds-border: #232838;
 
-  /* Typography */
-  --font-sans: "Cairo", "Tajawal", ui-sans-serif, system-ui, sans-serif;
+  /* Typography — Scan Grid trio */
+  --font-sans: var(--font-plex-arabic), "IBM Plex Sans Arabic", ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-el-messiri), "El Messiri", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
 
-  /* Radius */
-  --radius-sm: 6px;
+  /* Radius — sharp reserved for scan/order elements, rounded for generic */
+  --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 10px;
   --radius-xl: 14px;
 
   /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow-md: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow-lg: 0 4px 12px rgba(15, 23, 42, 0.08);
-  --shadow-xl: 0 8px 24px rgba(15, 23, 42, 0.12);
-  --shadow-card-hover: 0 4px 16px rgba(15, 23, 42, 0.10);
-  --shadow-btn-primary: 0 4px 14px rgba(67, 56, 202, 0.25);
+  --shadow-sm: 0 1px 2px rgba(23, 20, 15, 0.04);
+  --shadow-md: 0 1px 3px rgba(23, 20, 15, 0.06), 0 1px 2px rgba(23, 20, 15, 0.04);
+  --shadow-lg: 0 4px 12px rgba(23, 20, 15, 0.08);
+  --shadow-xl: 0 8px 24px rgba(23, 20, 15, 0.12);
+  --shadow-card-hover: 0 4px 16px rgba(23, 20, 15, 0.10);
+  --shadow-btn-primary: 0 4px 14px rgba(201, 122, 15, 0.25);
 }
 
 /*
   Dark mode via class strategy.
   Toggle with: document.documentElement.classList.toggle('dark')
+  Warm night variant of the Scan Grid palette (paper → deep ink).
 */
 .dark {
-  --color-primary: #818CF8;
-  --color-primary-hover: #6366F1;
-  --color-primary-tint: #1E1E3A;
+  --color-primary: #E39A2D;
+  --color-primary-hover: #F0B153;
+  --color-primary-tint: #2D2608;
 
-  --color-success: #34D399;
-  --color-success-tint: #064E3B;
-  --color-warn: #FBBF24;
-  --color-warn-tint: #451A03;
-  --color-danger: #F87171;
-  --color-danger-hover: #EF4444;
-  --color-danger-tint: rgba(248, 113, 113, 0.1);
+  --color-success: #4DB6A5;
+  --color-success-tint: #0B2B26;
+  --color-warn: #D97A60;
+  --color-warn-tint: #3A1D14;
+  --color-danger: #E0856E;
+  --color-danger-hover: #D97A60;
+  --color-danger-tint: rgba(181, 72, 52, 0.15);
 
-  --color-accent: #D4AF37;
-  --color-accent-hover: #E0C04A;
+  --color-accent: #E39A2D;
+  --color-accent-hover: #F0B153;
   --color-accent-tint: #2D2608;
 
-  --color-bg: #0A0A0F;
-  --color-surface: #12121A;
-  --color-text: #EDEDEF;
-  --color-text-secondary: #9CA3AF;
-  --color-text-muted: #6B7280;
-  --color-border: #1F1F2D;
+  --color-bg: #14110C;
+  --color-surface: #1E1A12;
+  --color-text: #F0EAD8;
+  --color-text-secondary: #A8A294;
+  --color-text-muted: #6E685C;
+  --color-border: #2E2A20;
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.5);
   --shadow-xl: 0 8px 32px rgba(0, 0, 0, 0.6);
   --shadow-card-hover: 0 4px 20px rgba(0, 0, 0, 0.5);
-  --shadow-btn-primary: 0 4px 14px rgba(129, 140, 248, 0.3);
+  --shadow-btn-primary: 0 4px 14px rgba(227, 154, 45, 0.3);
+}
+
+/* ==========================================================================
+   Scan Grid identity components
+   The QR finder pattern is the signature: sharp corner brackets, mono
+   order badges, dot grid. Used sparingly — only around order/scan elements.
+   ========================================================================== */
+
+/* QR finder corner brackets (زوايا الالتقاط) — sharp, 2px, saffron.
+   Apply to a positioned element; two opposing corners (RTL-aware). */
+.scan-corners {
+  position: relative;
+}
+.scan-corners::before,
+.scan-corners::after {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  pointer-events: none;
+  border-color: var(--scan-accent, var(--color-accent));
+}
+.scan-corners::before {
+  top: -1px;
+  inset-inline-start: -1px;
+  border-top: 2px solid;
+  border-inline-start: 2px solid;
+}
+.scan-corners::after {
+  bottom: -1px;
+  inset-inline-end: -1px;
+  border-bottom: 2px solid;
+  border-inline-end: 2px solid;
+}
+
+/* Order number badge — square with finder corners, mono (receipt feel) */
+.order-badge {
+  font-family: var(--font-mono);
+  direction: ltr;
+  display: inline-block;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  line-height: 1;
+  border: 1.5px solid var(--badge-accent, var(--color-accent));
+  color: var(--badge-accent, var(--color-accent));
+  padding: 0.3rem 0.55rem;
+  background: var(--color-surface);
+}
+
+/* Dot grid backdrop — ONLY for empty states & scan screens */
+.dotgrid {
+  background-image: radial-gradient(var(--color-text-muted) 1px, transparent 1px);
+  background-size: 14px 14px;
+  opacity: 0.15;
 }
 
 /* ==========================================================================
    Base — wrapped in @layer base so Tailwind utilities can override these
-   (unlayered CSS beats ALL layers in Tailwind v4 and killed mx-auto/mt-*/mb-*
-   on h1/p — e.g. the landing page title was never centered)
+   (unlayered CSS beats ALL layers in Tailwind v4 and killed margin
+   utilities like mx-auto / mt-* / mb-* on h1/p — e.g. the landing page
+   title was never centered)
    ========================================================================== */
 @layer base {
   * { box-sizing: border-box; }
@@ -175,7 +234,13 @@
   }
 
   /* Typography */
-  h1, h2, h3, h4, h5, h6 { margin: 0; font-weight: 700; letter-spacing: 0; }
+  h1, h2, h3, h4, h5, h6 {
+    margin: 0;
+    font-weight: 700;
+    letter-spacing: 0;
+    /* El Messiri — display face for headings/brand only (Scan Grid identity) */
+    font-family: var(--font-display);
+  }
   h1 { font-size: 1.5rem; }
   h2 { font-size: 1.25rem; }
   h3 { font-size: 1.0625rem; }
@@ -391,7 +456,7 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 .kds-card.pending { border-color: #F59E0B; }
-.kds-card.preparing { border-color: #818CF8; }
+.kds-card.preparing { border-color: #E39A2D; }
 .kds-card.ready { border-color: #34D399; }
 .kds-card.kds-overdue { border-color: #EF4444; box-shadow: 0 0 0 1px #EF4444; background: rgba(239, 68, 68, 0.08); }
 .kds-card.kds-taking-long { border-color: #F59E0B; background: rgba(245, 158, 11, 0.06); }
