@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { formatMoney } from '@/lib/utils';
 import {
   type Order,
   type OrderItem,
@@ -17,23 +16,31 @@ type OrderRow = Order & {
   service_type?: string | null;
 };
 
-/**
- * Grouped KDS item: identical lines of the same product (same addons + note)
- * within one order are merged into a single card with summed quantity, so the
- * kitchen sees "كركديه ×3" instead of three separate cards.
- */
-type KdsGroup = {
+/** Kitchen ticket = ONE full order (not a single item). */
+type Ticket = {
+  order: OrderRow;
+  /** Merged identical lines inside the ticket: "قهوة عربية بالهيل ×4" */
+  lines: TicketLine[];
+  totalQty: number;
+};
+
+type TicketLine = {
   key: string;
   items: OrderItem[];
   quantity: number;
   productName: string;
   addons: { name: string }[];
   notes: string | null;
-  order: OrderRow;
 };
 
 const OVERDUE_MIN_PENDING = 15;
 const OVERDUE_MIN_PREPARING = 30;
+
+const TAB_LABELS: Record<string, string> = {
+  all: 'الكل',
+  dinein: 'الطاولات',
+  drivethru: 'الدرايف ثرو',
+};
 
 /* ========== Audio System Hook ========== */
 
@@ -246,7 +253,7 @@ export function KitchenClient({
     new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
   );
   const [now, setNow] = useState(() => Date.now());
-  const [confirmCancel, setConfirmCancel] = useState<string | null>(null);
+  const [tab, setTab] = useState<'all' | 'dinein' | 'drivethru'>('all');
 
   const { playChime, ensureAudioReady, preloadChime, attachAudioResumeOnInteraction } = useAudioSystem();
   const { flashTitle, clearFlash, syncTitle, resetTitle } = useTitleFlash();
@@ -339,7 +346,7 @@ export function KitchenClient({
   );
 
   // Realtime item updates from another screen — refetch that order so the
-  // kanban stays in sync even when the change came from elsewhere.
+  // board stays in sync even when the change came from elsewhere.
   const refetchOrder = useCallback(
     async (orderId: string) => {
       const fresh = await fetchSingleOrder(orderId);
@@ -402,7 +409,7 @@ export function KitchenClient({
         { event: 'UPDATE', schema: 'public', table: 'order_items' },
         (payload) => {
           // Item moved by another screen — refetch that order to keep the
-          // kanban correct. fetchSingleOrder guards project_id, and
+          // board correct. fetchSingleOrder guards project_id, and
           // refetchOrder ignores orders not on our board, so updates from
           // other projects are a cheap no-op.
           const itemOrderId = (payload.new as { order_id: string }).order_id;
@@ -425,103 +432,44 @@ export function KitchenClient({
     setNewOrderCount(0);
   }, []);
 
-  // Close the cancel-confirm dialog with ESC
-  useEffect(() => {
-    if (!confirmCancel) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setConfirmCancel(null);
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [confirmCancel]);
+  // ---------- Ticket-level KDS ----------
 
-  async function setStatus(orderId: string, status: OrderStatus) {
-    if (status === 'cancelled') {
-      try {
-        const res = await fetch('/api/pos/cancel', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orderId }),
-        });
-        const data = (await res.json()) as { error?: string };
-        if (!res.ok) {
-          toast.error(data.error || 'فشل إلغاء الطلب');
-          return;
-        }
-        setOrders((prev) => prev.filter((o) => o.id !== orderId));
-        return;
-      } catch {
-        toast.error('تعذّر الاتصال');
-        return;
-      }
-    }
-
-    const supabase = createClient();
-    const { error } = await supabase
-      .from('orders')
-      .update({ status })
-      .eq('id', orderId);
-    if (error) {
-      toast.error('فشل التحديث');
-      return;
-    }
-    if (status === 'delivered') {
-      setOrders((prev) => prev.filter((o) => o.id !== orderId));
-    } else {
-      setOrders((prev) =>
-        prev.map((o) => (o.id === orderId ? { ...o, status } : o))
-      );
-    }
-  }
-
-  // ---------- Item-level KDS ----------
-
-  // Advance one or more items (grouped card); then re-derive the order status.
-  const advanceItem = useCallback(
-    async (itemIds: string[], orderId: string, toStatus: OrderItemStatus) => {
+  // Advance a WHOLE order: every line → toItem, order → toOrder status.
+  const advanceOrder = useCallback(
+    async (orderId: string, toItem: OrderItemStatus, toOrder: OrderStatus) => {
       const supabase = createClient();
-      const { error } = await supabase
+      const { error: itemErr } = await supabase
         .from('order_items')
-        .update({ status: toStatus })
-        .in('id', itemIds);
-      if (error) {
+        .update({ status: toItem })
+        .eq('order_id', orderId);
+      if (itemErr) {
         toast.error('فشل التحديث');
         return;
       }
-      // Fetch the fresh order (with its items) and derive its status:
-      // all ready → ready · any preparing → preparing · else pending.
-      const fresh = await fetchSingleOrder(orderId);
-      if (!fresh) return;
-      setOrders((prev) =>
-        prev.map((o) => (o.id === orderId ? fresh : o))
-      );
-      const items = fresh.order_items ?? [];
-      if (!items.length) return;
-      const allReady = items.every((it) => it.status === 'ready');
-      const anyPreparing = items.some((it) => it.status === 'preparing');
-      const derived: OrderStatus = allReady
-        ? 'ready'
-        : anyPreparing
-          ? 'preparing'
-          : 'pending';
-      if (fresh.status !== derived) {
-        const { error: statusErr } = await supabase
-          .from('orders')
-          .update({ status: derived })
-          .eq('id', orderId);
-        if (statusErr) {
-          toast.error('فشل تحديث حالة الطلب');
-          return;
-        }
-        setOrders((prev) =>
-          prev.map((o) => (o.id === orderId ? { ...o, status: derived } : o))
-        );
+      const { error: orderErr } = await supabase
+        .from('orders')
+        .update({ status: toOrder })
+        .eq('id', orderId);
+      if (orderErr) {
+        toast.error('فشل تحديث حالة الطلب');
+        return;
       }
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === orderId
+            ? {
+                ...o,
+                status: toOrder,
+                order_items: (o.order_items ?? []).map((it) => ({ ...it, status: toItem })),
+              }
+            : o
+        )
+      );
     },
-    [fetchSingleOrder]
+    []
   );
 
-  // Deliver from the ready column — order leaves the kitchen board.
+  // Deliver — order leaves the kitchen board.
   const deliverOrder = useCallback(async (orderId: string) => {
     const supabase = createClient();
     const { error } = await supabase
@@ -535,72 +483,134 @@ export function KitchenClient({
     setOrders((prev) => prev.filter((o) => o.id !== orderId));
   }, []);
 
-  // Kanban by ITEM status — identical lines within an order are merged.
-  const groupBy = (status: OrderItemStatus): KdsGroup[] => {
-    const groups = new Map<string, KdsGroup>();
-    for (const o of orders) {
-      for (const it of o.order_items ?? []) {
-        if ((it.status ?? 'pending') !== status) continue;
-        const addons = Array.isArray(it.addons) ? (it.addons as { name: string }[]) : [];
-        const key = `${o.id}|${it.product_id ?? ''}|${JSON.stringify(addons)}|${it.notes ?? ''}`;
-        const existing = groups.get(key);
-        if (existing) {
-          existing.items.push(it);
-          existing.quantity += it.quantity;
-        } else {
-          groups.set(key, {
-            key,
-            items: [it],
-            quantity: it.quantity,
-            productName: it.product_name,
-            addons,
-            notes: it.notes,
-            order: o,
-          });
-        }
+  // Build tickets — one per order, identical lines merged inside.
+  const buildTicket = useCallback((o: OrderRow): Ticket => {
+    const lines = new Map<string, TicketLine>();
+    let totalQty = 0;
+    for (const it of o.order_items ?? []) {
+      totalQty += it.quantity;
+      const addons = Array.isArray(it.addons) ? (it.addons as { name: string }[]) : [];
+      const key = `${it.product_id ?? ''}|${JSON.stringify(addons)}|${it.notes ?? ''}`;
+      const existing = lines.get(key);
+      if (existing) {
+        existing.items.push(it);
+        existing.quantity += it.quantity;
+      } else {
+        lines.set(key, {
+          key,
+          items: [it],
+          quantity: it.quantity,
+          productName: it.product_name,
+          addons,
+          notes: it.notes,
+        });
       }
     }
-    return [...groups.values()].sort((a, b) =>
-      a.order.created_at.localeCompare(b.order.created_at)
-    );
-  };
+    return { order: o, lines: [...lines.values()], totalQty };
+  }, []);
 
-  const pendingGroups = groupBy('pending');
-  const preparingGroups = groupBy('preparing');
-  const readyGroups = groupBy('ready');
-
-  // Start EVERY pending item on the board in one tap (fast-service flow).
+  // Start EVERY pending order in one tap (fast-service flow).
   const startAll = useCallback(async () => {
-    const ids = pendingGroups.flatMap((g) => g.items.map((it) => it.id));
-    if (!ids.length) return;
+    const pendingOrders = orders.filter((o) => o.status === 'pending');
+    if (!pendingOrders.length) return;
+    const orderIds = pendingOrders.map((o) => o.id);
     const supabase = createClient();
-    const { error } = await supabase
+    const { error: itemErr } = await supabase
       .from('order_items')
       .update({ status: 'preparing' })
-      .in('id', ids);
-    if (error) {
+      .in('order_id', orderIds);
+    if (itemErr) {
       toast.error('فشل التحديث');
       return;
     }
+    const { error: orderErr } = await supabase
+      .from('orders')
+      .update({ status: 'preparing' })
+      .in('id', orderIds);
+    if (orderErr) {
+      toast.error('فشل تحديث الحالات');
+      return;
+    }
     await fullRefresh();
-  }, [pendingGroups, fullRefresh]);
+  }, [orders, fullRefresh]);
+
+  // ---------- Derived view ----------
+
+  const tickets = orders.map(buildTicket);
+
+  const countByTab = {
+    all: tickets.length,
+    dinein: tickets.filter((t) => t.order.type === 'dinein').length,
+    drivethru: tickets.filter((t) => t.order.type === 'drivethru').length,
+  };
+
+  const visibleTickets =
+    tab === 'all'
+      ? tickets
+      : tickets.filter((t) => (t.order.type ?? null) === tab);
+
+  // Sort: new → preparing → ready; oldest first within each stage.
+  const stageRank: Record<OrderStatus, number> = {
+    pending: 0,
+    preparing: 1,
+    ready: 2,
+    delivered: 3,
+    cancelled: 4,
+  };
+  const sorted = [...visibleTickets].sort((a, b) => {
+    const ra = stageRank[a.order.status] ?? 0;
+    const rb = stageRank[b.order.status] ?? 0;
+    if (ra !== rb) return ra - rb;
+    return a.order.created_at.localeCompare(b.order.created_at);
+  });
+
+  const pendingCount = tickets.filter((t) => t.order.status === 'pending').length;
 
   return (
-    <div className="kds-root" onClick={clearBadge}>
-      {/* Topbar */}
-      <div className="flex items-center justify-between border-b border-[#1E2330] px-6 py-4">
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-bold text-white">
-            شاشة المطبخ — {projectName}
-          </span>
-          {newOrderCount > 0 && (
-            <span className="animate-pulse rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">
-              +{newOrderCount}
-            </span>
+    <div className="min-h-dvh bg-[var(--color-bg)]" onClick={clearBadge}>
+      {/* Header — Scan Grid: tabs + display title + clock */}
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border)] bg-[var(--color-surface)] px-6 py-4">
+        <nav className="flex items-center gap-5 text-[13px]" aria-label="تصنيف الطلبات">
+          {(['all', 'dinein', 'drivethru'] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setTab(t)}
+              aria-pressed={tab === t}
+              className={`relative min-h-[44px] font-semibold transition-colors ${
+                tab === t
+                  ? 'text-[var(--color-text)]'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
+              }`}
+            >
+              {TAB_LABELS[t]}
+              <span className="ms-1 font-mono text-[11px] tabular-nums opacity-70">
+                · {String(countByTab[t]).padStart(2, '0')}
+              </span>
+              {tab === t && (
+                <span className="absolute inset-x-0 bottom-0 h-0.5 bg-[var(--color-accent)]" />
+              )}
+            </button>
+          ))}
+        </nav>
+
+        <h1 className="font-display text-xl font-bold text-[var(--color-primary)]">
+          {projectName} — شاشة المطبخ
+        </h1>
+
+        <div className="flex items-center gap-2.5">
+          {pendingCount > 0 && (
+            <button
+              type="button"
+              onClick={startAll}
+              className="flex min-h-[44px] items-center gap-1.5 rounded-[7px] bg-[var(--color-primary)] px-4 text-[12px] font-bold text-white transition-colors hover:bg-[var(--color-primary-hover)]"
+            >
+              ⚡ بدء الكل ({pendingCount})
+            </button>
           )}
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-[#9CA3AF]">{time}</span>
+          <span className="font-mono text-[15px] tabular-nums text-[var(--color-text-muted)]" dir="ltr">
+            {time}
+          </span>
           <button
             type="button"
             onClick={(e) => {
@@ -609,7 +619,7 @@ export function KitchenClient({
             }}
             aria-label={soundOn ? 'كتم الصوت' : 'تفعيل الصوت'}
             aria-pressed={soundOn}
-            className="flex min-h-[44px] items-center rounded-[8px] border border-[var(--color-kds-border)] bg-[var(--color-kds-surface)] px-3 text-xs font-semibold text-[#9CA3AF] transition-colors hover:border-[#4F46E5] hover:text-white"
+            className="flex min-h-[44px] items-center rounded-[7px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-xs font-semibold text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-primary)]"
           >
             <span aria-hidden="true">{soundOn ? '🔊' : '🔇'}</span>
           </button>
@@ -622,245 +632,189 @@ export function KitchenClient({
               toast.success('🔔 صوت التنبيه', { description: 'صوت الإشعار يعمل ✅' });
             }}
             title="اختبار الصوت"
-            className="flex min-h-[44px] items-center rounded-[8px] border border-[var(--color-kds-border)] bg-[var(--color-kds-surface)] px-3 text-xs font-semibold text-[#9CA3AF] transition-colors hover:border-[#34D399] hover:text-white"
+            className="flex min-h-[44px] items-center rounded-[7px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-xs font-semibold text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-success)]"
           >
             <span aria-hidden="true">🔊</span> اختبار
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* Kanban columns — by ITEM status */}
-      <div
-        className="flex gap-4 overflow-x-auto p-5 lg:grid lg:grid-cols-3"
+      {/* Board — Scan Grid tickets */}
+      <main
+        className="grid grid-cols-1 gap-4 p-5 md:grid-cols-2 xl:grid-cols-3"
         role="region"
-        aria-label="أعمدة المطبخ — مرّر أفقيًا للتنقل"
+        aria-label="تذاكر المطبخ"
         tabIndex={0}
       >
-        <KdsColumn title="جديد" count={pendingGroups.length}>
-          {pendingGroups.length > 0 && (
-            <button
-              type="button"
-              onClick={startAll}
-              className="mb-2.5 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[7px] bg-[#C97A0F] px-4 text-[12px] font-bold text-white transition-colors hover:bg-[#A8660C]"
-            >
-              ⚡ بدء الكل ({pendingGroups.reduce((s, g) => s + g.quantity, 0)})
-            </button>
-          )}
-          {pendingGroups.length === 0 && (
-            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[#232838] py-10 text-[#6B7280]">
-              <span className="text-2xl">✅</span>
-              <span className="mt-2 text-xs">لا توجد أصناف جديدة</span>
-            </div>
-          )}
-          {pendingGroups.map((g) => (
-            <KdsGroupCard
-              key={g.key}
-              group={g}
-              now={now}
-              currency={currency}
-              onAdvance={() => advanceItem(g.items.map((it) => it.id), g.order.id, 'preparing')}
-              advanceLabel="بدء"
-              onCancel={() => setConfirmCancel(g.order.id)}
-            />
-          ))}
-        </KdsColumn>
-        <KdsColumn title="قيد التجهيز" count={preparingGroups.length}>
-          {preparingGroups.length === 0 && (
-            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[#232838] py-10 text-[#6B7280]">
-              <span className="text-xs">لا توجد أصناف قيد التجهيز</span>
-            </div>
-          )}
-          {preparingGroups.map((g) => (
-            <KdsGroupCard
-              key={g.key}
-              group={g}
-              now={now}
-              currency={currency}
-              onAdvance={() => advanceItem(g.items.map((it) => it.id), g.order.id, 'ready')}
-              advanceLabel="تم"
-              onCancel={() => setConfirmCancel(g.order.id)}
-            />
-          ))}
-        </KdsColumn>
-        <KdsColumn title="جاهز" count={readyGroups.length}>
-          {readyGroups.length === 0 && (
-            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[#232838] py-10 text-[#6B7280]">
-              <span className="text-xs">لا توجد أصناف جاهزة</span>
-            </div>
-          )}
-          {readyGroups.map((g) => (
-            <KdsGroupCard
-              key={g.key}
-              group={g}
-              now={now}
-              currency={currency}
-              onAdvance={() => deliverOrder(g.order.id)}
-              advanceLabel="تسليم"
-              onCancel={null}
-            />
-          ))}
-        </KdsColumn>
-      </div>
-
-      {confirmCancel && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-label="تأكيد إلغاء الطلب"
-          onClick={() => setConfirmCancel(null)}
-        >
-          <div className="w-full max-w-xs rounded-xl bg-[#161B26] p-5 text-center shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-3 mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[#EF4444]/20">
-              <span className="text-lg font-bold text-[#EF4444]">!</span>
-            </div>
-            <p className="mb-1 text-sm font-bold text-white">تأكيد الإلغاء</p>
-            <p className="mb-5 text-xs text-[#9CA3AF]">هل أنت متأكد من إلغاء هذا الطلب؟</p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => { setStatus(confirmCancel, 'cancelled'); setConfirmCancel(null); }}
-                className="min-h-[44px] flex-1 rounded-lg bg-[#EF4444] px-4 text-sm font-bold text-white transition-colors hover:bg-[#DC2626]"
-              >
-                نعم، إلغاء
-              </button>
-              <button
-                type="button"
-                onClick={() => setConfirmCancel(null)}
-                className="min-h-[44px] flex-1 rounded-lg border border-[#323A4D] bg-[#232838] px-4 text-sm font-bold text-[#9CA3AF] transition-colors hover:bg-[#2a3040]"
-              >
-                رجوع
-              </button>
-            </div>
+        {sorted.length === 0 && (
+          <div className="dotgrid col-span-full flex min-h-[40vh] flex-col items-center justify-center rounded-lg border border-dashed border-[var(--color-border)] text-[var(--color-text-muted)]">
+            <span className="text-2xl">📡</span>
+            <span className="mt-2 text-[13px]">بانتظار الطلبات…</span>
           </div>
-        </div>
-      )}
+        )}
+        {sorted.map((t) => (
+          <KitchenTicket
+            key={t.order.id}
+            ticket={t}
+            now={now}
+            currency={currency}
+            onStart={() => advanceOrder(t.order.id, 'preparing', 'preparing')}
+            onReady={() => advanceOrder(t.order.id, 'ready', 'ready')}
+            onDeliver={() => deliverOrder(t.order.id)}
+          />
+        ))}
+      </main>
     </div>
   );
 }
 
-function KdsColumn({
-  title,
-  count,
-  children,
-}: {
-  title: string;
-  count: number;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="min-w-[260px] flex-1">
-      <div className="mb-3 flex items-center justify-between px-1">
-        <h2 className="text-[11.5px] font-bold uppercase text-[#9CA3AF]">
-          {title}
-        </h2>
-        <span className="rounded-full bg-[#1E2330] px-2 py-0.5 text-xs font-bold text-white">
-          {count}
-        </span>
-      </div>
-      <div className="space-y-2.5">{children}</div>
-    </section>
-  );
-}
+/* ========== Ticket ========== */
 
-function KdsGroupCard({
-  group,
+function KitchenTicket({
+  ticket,
   now,
   currency,
-  onAdvance,
-  advanceLabel,
-  onCancel,
+  onStart,
+  onReady,
+  onDeliver,
 }: {
-  group: KdsGroup;
+  ticket: Ticket;
   now: number;
   currency: string;
-  onAdvance: () => void;
-  advanceLabel: string;
-  onCancel: (() => void) | null;
+  onStart: () => void;
+  onReady: () => void;
+  onDeliver: () => void;
 }) {
-  const order = group.order;
-  const status = group.items[0]?.status ?? 'pending';
+  const { order, lines, totalQty } = ticket;
+  const status = order.status as OrderStatus;
   const mins = Math.max(
     0,
     Math.floor((now - new Date(order.created_at).getTime()) / 60000)
   );
 
-  let overdueClass = '';
-  if (status === 'pending' && mins >= OVERDUE_MIN_PENDING) {
-    overdueClass = 'kds-overdue';
-  } else if (status === 'preparing' && mins >= OVERDUE_MIN_PREPARING) {
-    overdueClass = 'kds-taking-long';
-  }
+  // Scan Grid corner colors — status → identity accent (clay/saffron/teal)
+  const accent =
+    status === 'pending'
+      ? 'var(--color-danger)'
+      : status === 'preparing'
+        ? 'var(--color-primary)'
+        : 'var(--color-success)';
 
-  // Order summary — item count + total (uses the first item's unit price × qty).
-  const orderItems = order.order_items ?? [];
-  const orderTotal = orderItems.reduce(
-    (s, it) => s + Number(it.unit_price) * it.quantity,
-    0
-  );
+  let overdue = false;
+  if (status === 'pending' && mins >= OVERDUE_MIN_PENDING) overdue = true;
+  if (status === 'preparing' && mins >= OVERDUE_MIN_PREPARING) overdue = true;
+
+  const statusLabel =
+    status === 'pending' ? 'جديد' : status === 'preparing' ? 'قيد التحضير' : 'جاهز';
+
+  const tableLabel = order.tables
+    ? `TABLE·${String(order.tables.number).padStart(2, '0')}`
+    : order.type === 'drivethru'
+      ? `DRIVE-${String(order.order_number).padStart(2, '0')}`
+      : `WALKIN·${String(order.order_number).padStart(2, '0')}`;
+
+  const timeLabel = mins < 1 ? 'الآن' : `قبل ${mins} دقيقة`;
 
   return (
-    <article className={`kds-card p-3 ${status} ${overdueClass}`}>
-      <div className="mb-1.5 flex items-start justify-between gap-2">
-        <p className="text-[12px] font-bold text-[#9CA3AF]" dir="ltr">
-          #{order.order_number}
-          {order.tables ? ` · طاولة ${order.tables.number}` : ''}
-        </p>
-        <p className="text-[11px] text-[#6B7280]">
-          <span className={overdueClass ? 'font-bold text-[#EF4444]' : ''}>
-            {mins} د
-          </span>
-          {overdueClass && (
-            <span className="mr-1 font-bold text-[#EF4444]">متأخر!</span>
-          )}
-        </p>
+    <article
+      className={`scan-corners border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-[0_1px_3px_rgba(23,20,15,0.05)] ${
+        overdue ? 'ring-1 ring-[var(--color-danger)]/40' : ''
+      }`}
+      style={{ ['--scan-accent' as string]: accent, ['--badge-accent' as string]: accent }}
+    >
+      {/* Head: order badge + table/time */}
+      <div className="mb-2.5 flex items-start justify-between gap-2">
+        <span className="order-badge">#{String(order.order_number).padStart(3, '0')}</span>
+        <div className="text-end">
+          <p className="font-mono text-[12px] font-semibold tabular-nums text-[var(--color-text-secondary)]" dir="ltr">
+            {tableLabel}
+          </p>
+          <p className={`text-[11px] ${overdue ? 'font-bold text-[var(--color-danger)]' : 'text-[var(--color-text-muted)]'}`}>
+            {timeLabel}
+            {overdue && ' · متأخر!'}
+          </p>
+        </div>
       </div>
 
-      <p className="mb-1 text-[15px] font-extrabold leading-snug text-white">
-        <span className="ml-1 inline-block min-w-[28px] text-right text-[#F59E0B]">
-          {group.quantity}×
-        </span>
-        {group.productName}
-      </p>
-      {group.addons.length > 0 && (
-        <p className="mb-0.5 text-[11px] text-[#6B7280]">
-          {group.addons.map((a) => a.name).join(' · ')}
-        </p>
-      )}
-      {group.notes && (
-        <p className="mb-0.5 text-[11px] text-[#F59E0B]/80">📝 {group.notes}</p>
-      )}
-      {order.notes && (
-        <p className="mb-1 rounded bg-[#1E2330]/50 px-2 py-1 text-[11px] text-[#F59E0B]/80">
-          {order.notes}
-        </p>
-      )}
-      {orderItems.length > 1 && (
-        <p className="mb-1 text-[10px] text-[#6B7280]">
-          {orderItems.length} أصناف ·{' '}
-          <span dir="ltr">{formatMoney(orderTotal, currency)}</span>
-        </p>
-      )}
-      {/* Touch targets ≥ 44px */}
-      <div className="mt-2 flex gap-2">
-        <button
-          type="button"
-          onClick={onAdvance}
-          className={`min-h-[44px] flex-1 rounded-[7px] px-4 text-[11.5px] font-bold transition-colors ${
-            status === 'ready'
-              ? 'bg-[#10B981] text-white hover:bg-[#059669]'
-              : 'border border-[#323A4D] bg-[#232838] text-white hover:bg-[#2a3040]'
-          }`}
-        >
-          {advanceLabel}
-        </button>
-        {onCancel && (
+      {/* Status tag — filled accent square */}
+      <span
+        className="mb-2.5 inline-block px-2 py-0.5 text-[10.5px] font-bold text-[var(--color-surface)]"
+        style={{ background: accent }}
+      >
+        {statusLabel}
+      </span>
+
+      {/* Items — one line per merged product */}
+      <ul className="mb-3 list-none p-0">
+        {lines.map((l) => (
+          <li
+            key={l.key}
+            className="flex items-start justify-between gap-2 border-b border-dashed border-[var(--color-border)] py-1.5 text-[14px] last:border-b-0"
+          >
+            <span>
+              {l.productName}
+              {l.addons.length > 0 && (
+                <span className="block text-[11.5px] text-[var(--color-text-muted)]">
+                  {l.addons.map((a) => a.name).join(' · ')}
+                </span>
+              )}
+              {l.notes && (
+                <span className="mt-0.5 block text-[11.5px] text-[var(--color-danger)]">
+                  {l.notes}
+                </span>
+              )}
+            </span>
+            <span className="shrink-0 font-mono text-[13px] font-bold tabular-nums text-[var(--color-primary)]" dir="ltr">
+              ×{l.quantity}
+            </span>
+          </li>
+        ))}
+        {order.notes && (
+          <li className="mt-1.5 border-0 bg-[var(--color-bg)] px-2 py-1.5 text-[11.5px] text-[var(--color-danger)]">
+            {order.notes}
+          </li>
+        )}
+      </ul>
+
+      {/* Actions — one primary per stage; ghost "تأخير" only while cooking */}
+      <div className="flex gap-2">
+        {status === 'pending' && (
           <button
             type="button"
-            onClick={onCancel}
-            className="min-h-[44px] min-w-[80px] rounded-[7px] border border-[#323A4D] bg-[#232838] px-4 text-[11.5px] font-semibold text-[#9CA3AF] transition-colors hover:bg-[#2a3040]"
+            onClick={onStart}
+            className="min-h-[44px] flex-1 rounded-[7px] px-4 text-[13px] font-bold text-[var(--color-surface)] transition-colors"
+            style={{ background: accent }}
           >
-            إلغاء
+            بدء التحضير
+          </button>
+        )}
+        {status === 'preparing' && (
+          <>
+            <button
+              type="button"
+              onClick={onReady}
+              className="min-h-[44px] flex-1 rounded-[7px] px-4 text-[13px] font-bold text-[var(--color-surface)] transition-colors"
+              style={{ background: accent }}
+            >
+              جاهز للتسليم
+            </button>
+            <button
+              type="button"
+              onClick={() => toast.message('⏱ تأخير', { description: `#${order.order_number} — سنذكّرك لاحقًا` })}
+              className="min-h-[44px] min-w-[96px] rounded-[7px] border border-[var(--color-border)] bg-transparent px-4 text-[13px] font-bold text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-text-secondary)] hover:text-[var(--color-text)]"
+            >
+              تأخير
+            </button>
+          </>
+        )}
+        {status === 'ready' && (
+          <button
+            type="button"
+            onClick={onDeliver}
+            className="min-h-[44px] flex-1 rounded-[7px] px-4 text-[13px] font-bold text-[var(--color-surface)] transition-colors"
+            style={{ background: accent }}
+          >
+            تم التسليم
           </button>
         )}
       </div>
