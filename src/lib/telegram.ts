@@ -45,10 +45,25 @@ export async function sendTelegramAlert(
   const admin = createAdminClient() as any;
   const { data: links } = await admin
     .from('telegram_links')
-    .select('chat_id')
+    .select('chat_id, user_id')
     .eq('project_id', projectId);
 
   if (!links?.length) return { sent: 0, failed: 0 };
+
+  // Per-staff telegram pref: user-linked chats respect notify_telegram.
+  // Group chats and legacy links (user_id NULL) are project-level — always on.
+  const { data: staffPrefs } = await admin
+    .from('staff_members')
+    .select('user_id, notify_telegram')
+    .eq('project_id', projectId);
+  const telegramPref = new Map(
+    (staffPrefs ?? []).map((s: any) => [s.user_id, s.notify_telegram !== false])
+  );
+  const recipients = links.filter(
+    (link: any) => !link.user_id || telegramPref.get(link.user_id) !== false
+  );
+
+  if (!recipients.length) return { sent: 0, failed: 0 };
 
   const text = [
     '🔔 طلب جديد',
@@ -60,7 +75,7 @@ export async function sendTelegramAlert(
 
   let sent = 0;
   let failed = 0;
-  for (const link of links) {
+  for (const link of recipients) {
     const result = await callTelegram('sendMessage', {
       chat_id: link.chat_id,
       text,

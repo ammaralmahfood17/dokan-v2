@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Toggle } from '@/components/ui/toggle';
 import { PushNotificationManager } from '@/components/push-notification-manager';
 import { TelegramManager } from '@/components/telegram-manager';
+import { NotificationPrefs } from '@/components/notification-prefs';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 
@@ -91,6 +92,11 @@ export function SettingsClient({
       {/* Telegram Alert Settings */}
       <div className="mb-4 max-w-lg">
         <TelegramManager projectId={projectId} />
+      </div>
+
+      {/* Per-staff notification channel prefs */}
+      <div className="mb-4 max-w-lg">
+        <NotificationPrefs projectId={projectId} />
       </div>
 
       <form onSubmit={onSubmit} className="card card-body max-w-lg">

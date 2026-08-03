@@ -37,10 +37,19 @@ export async function sendPushToProject(
 
   const admin = createAdminClient() as any;
 
+  // Only staff who opted in for push (notify_push) receive order alerts.
   const { data: subs } = await admin
     .from('push_subscriptions')
     .select('endpoint, p256dh, auth')
-    .eq('project_id', projectId);
+    .eq('project_id', projectId)
+    .in(
+      'user_id',
+      admin
+        .from('staff_members')
+        .select('user_id')
+        .eq('project_id', projectId)
+        .eq('notify_push', true)
+    );
 
   if (!subs?.length) return { sent: 0, failed: 0, cleaned: 0 };
 

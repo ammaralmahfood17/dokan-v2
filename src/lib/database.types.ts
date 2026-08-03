@@ -404,6 +404,7 @@ export type Database = {
           kind: string
           label: string | null
           project_id: string
+          user_id: string | null
         }
         Insert: {
           chat_id: string
@@ -412,6 +413,7 @@ export type Database = {
           kind?: string
           label?: string | null
           project_id: string
+          user_id?: string | null
         }
         Update: {
           chat_id?: string
@@ -420,6 +422,7 @@ export type Database = {
           kind?: string
           label?: string | null
           project_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -512,6 +515,8 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          notify_push: boolean
+          notify_telegram: boolean
           project_id: string
           role: string
           user_id: string
@@ -519,6 +524,8 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          notify_push?: boolean
+          notify_telegram?: boolean
           project_id: string
           role: string
           user_id: string
@@ -526,6 +533,8 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          notify_push?: boolean
+          notify_telegram?: boolean
           project_id?: string
           role?: string
           user_id?: string

@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     const { data: linkCode, error: codeErr } = await admin
       .from('telegram_link_codes')
-      .select('project_id, expires_at')
+      .select('project_id, expires_at, created_by')
       .eq('code', code)
       .maybeSingle();
 
@@ -90,7 +90,15 @@ export async function POST(request: NextRequest) {
     const { error: insertErr } = await admin
       .from('telegram_links')
       .upsert(
-        { project_id: linkCode.project_id, chat_id: chatId, kind, label },
+        {
+          project_id: linkCode.project_id,
+          chat_id: chatId,
+          kind,
+          label,
+          // Who initiated the link (from the one-time code). Group chats and
+          // legacy links keep NULL → treated as project-level alerts.
+          user_id: kind === 'group' ? null : (linkCode.created_by ?? null),
+        },
         { onConflict: 'project_id,chat_id' }
       );
 
