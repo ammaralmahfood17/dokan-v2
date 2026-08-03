@@ -3,6 +3,11 @@ import { createAnonClient } from '@/lib/supabase/anon';
 import { MenuClient } from './menu-client';
 import type { Category, Product, ProductAddon, Project, Table } from '@/lib/types';
 
+// ISR: menu data changes rarely (owner edits), while this page serves the
+// public QR traffic. Rebuild once a minute and serve from CDN in between —
+// kills the per-visit 4× Supabase round-trips + serverless cold start.
+export const revalidate = 60;
+
 export default async function PublicMenuPage({
   params,
 }: {
