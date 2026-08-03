@@ -179,32 +179,6 @@ export type Database = {
           },
         ]
       }
-      order_sequences: {
-        Row: {
-          day: string
-          last_n: number
-          project_id: string
-        }
-        Insert: {
-          day: string
-          last_n?: number
-          project_id: string
-        }
-        Update: {
-          day?: string
-          last_n?: number
-          project_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "order_sequences_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       orders: {
         Row: {
           created_at: string
