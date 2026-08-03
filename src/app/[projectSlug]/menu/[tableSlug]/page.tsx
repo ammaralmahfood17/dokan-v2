@@ -7,6 +7,15 @@ import type { Category, Product, ProductAddon, Project, Table } from '@/lib/type
 // public QR traffic. Rebuild once a minute and serve from CDN in between —
 // kills the per-visit 4× Supabase round-trips + serverless cold start.
 export const revalidate = 60;
+export const dynamicParams = true;
+
+// Enable ISR for any slug combination: without generateStaticParams, async
+// `params` force dynamic rendering (cache-control: no-store) regardless of
+// revalidate. An empty list + dynamicParams=true opts into on-demand
+// static generation: first visit builds the page, then it's cached & revalidated.
+export async function generateStaticParams() {
+  return [];
+}
 
 export default async function PublicMenuPage({
   params,
