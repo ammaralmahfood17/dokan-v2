@@ -29,8 +29,11 @@ export async function POST(request: Request) {
     }
 
     const supabase = await createClient();
+    // NEVER trust the Origin header for a security-critical email link — an
+    // attacker controls it and could harvest the recovery code. Use a fixed
+    // production origin (mirrors the previous fallback constant).
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${request.headers.get('origin') || 'https://www.dokanstore.xyz'}/auth/callback?next=/update-password`,
+      redirectTo: 'https://www.dokanstore.xyz/auth/callback?next=/update-password',
     });
 
     if (error) {

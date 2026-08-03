@@ -65,11 +65,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Perform the cancellation using admin client
+    // Perform the cancellation using admin client — re-scope by project_id
+    // (defense in depth) and re-check the status INSIDE the UPDATE so a
+    // concurrent deliver/cancel between the read above and this write cannot
+    // cancel an already-delivered order (TOCTOU).
     const { error: updateErr } = await supabase
       .from('orders')
       .update({ status: 'cancelled' })
-      .eq('id', orderId);
+      .eq('id', orderId)
+      .eq('project_id', membership.project_id)
+      .in('status', ['pending', 'preparing']);
 
     if (updateErr) {
       console.error('[Cancel] DB update error:', updateErr);

@@ -397,8 +397,8 @@ export function MenuClient({
               className="relative px-2.5 py-1 font-mono text-[12px] font-semibold tabular-nums text-[var(--color-primary)]"
               style={{ border: '1.5px solid var(--color-accent)' }}
             >
-              <span className="absolute -top-[1.5px] -right-[1.5px] h-[6px] w-[6px] border-t-[1.5px] border-r-[1.5px] border-[var(--color-accent)]" />
-              <span className="absolute -bottom-[1.5px] -left-[1.5px] h-[6px] w-[6px] border-b-[1.5px] border-l-[1.5px] border-[var(--color-accent)]" />
+              <span className="absolute -top-[1.5px] -end-[1.5px] h-[6px] w-[6px] border-t-[1.5px] border-s-[1.5px] border-[var(--color-accent)]" />
+              <span className="absolute -bottom-[1.5px] -start-[1.5px] h-[6px] w-[6px] border-b-[1.5px] border-e-[1.5px] border-[var(--color-accent)]" />
               TABLE·{String(table.number).padStart(2, '0')}
             </div>
             <button
@@ -516,8 +516,8 @@ export function MenuClient({
               className="relative flex w-full items-center justify-between bg-[var(--color-text)] px-4 py-3.5 text-[var(--color-bg)] shadow-lg transition-transform active:scale-[0.98]"
             >
               {/* Corner brackets — saffron scan corners */}
-              <span className="absolute -top-[2px] -right-[2px] h-[10px] w-[10px] border-t-2 border-r-2 border-[var(--color-accent)]" />
-              <span className="absolute -bottom-[2px] -left-[2px] h-[10px] w-[10px] border-b-2 border-l-2 border-[var(--color-accent)]" />
+              <span className="absolute -top-[2px] -end-[2px] h-[10px] w-[10px] border-t-2 border-s-2 border-[var(--color-accent)]" />
+              <span className="absolute -bottom-[2px] -start-[2px] h-[10px] w-[10px] border-b-2 border-e-2 border-[var(--color-accent)]" />
 
               <span className="flex items-center gap-2.5">
                 <span className="flex h-[26px] w-[26px] items-center justify-center bg-[var(--color-accent)] font-mono text-[13px] font-bold tabular-nums text-[var(--color-text)]">
@@ -734,7 +734,7 @@ function Sheet({
     [onClose]
   );
 
-  // Scroll lock + keyboard listener
+  // Scroll lock + keyboard listener + focus management
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown);
     const scrollY = window.scrollY;
@@ -742,6 +742,15 @@ function Sheet({
     document.body.style.top = `-${scrollY}px`;
     document.body.style.width = '100%';
     document.body.style.overflowY = 'scroll';
+
+    // Focus trap: move focus INTO the sheet on open so the first Tab lands
+    // inside the dialog, not on background controls behind the overlay.
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const panel = sheetRef.current?.querySelector<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    panel?.focus();
+
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.position = '';
@@ -749,6 +758,8 @@ function Sheet({
       document.body.style.width = '';
       document.body.style.overflowY = '';
       window.scrollTo(0, scrollY);
+      // Restore focus to whatever opened the sheet.
+      previouslyFocused?.focus?.();
     };
   }, [handleKeyDown]);
 

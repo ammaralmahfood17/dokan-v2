@@ -24,8 +24,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'بيانات ناقصة' }, { status: 400 });
     }
 
-    // Strict rate limit for waiter calls (anti-abuse)
-    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+    // Strict rate limit for waiter calls (anti-abuse) — first IP only; a
+    // comma-list header would otherwise make the key vary per proxy hop.
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || 'unknown';
     const rateKey = `${projectSlug}:${tableSlug}:${ip}`;
     const limitResult = await rateLimit(rateKey, { limit: 8, windowMs: 60 * 1000, keyPrefix: 'public-waiter' });
 

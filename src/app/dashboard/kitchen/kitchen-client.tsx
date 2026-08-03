@@ -40,6 +40,7 @@ const TAB_LABELS: Record<string, string> = {
   all: 'الكل',
   dinein: 'الطاولات',
   drivethru: 'الدرايف ثرو',
+  walkin: 'كاونتر',
 };
 
 /* ========== Audio System Hook ========== */
@@ -189,30 +190,13 @@ function useAudioSystem() {
 function useTitleFlash() {
   const originalTitleRef = useRef('');
   const flashIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const stopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const flashTitle = useCallback((count: number) => {
-    if (!originalTitleRef.current) originalTitleRef.current = document.title;
-    if (flashIntervalRef.current) clearInterval(flashIntervalRef.current);
-
-    let showAlert = true;
-    flashIntervalRef.current = setInterval(() => {
-      document.title = showAlert
-        ? `🔔 ${count} طلب جديد | ${originalTitleRef.current}`
-        : originalTitleRef.current;
-      showAlert = !showAlert;
-    }, 1000);
-
-    // Stop flashing after 10 seconds
-    setTimeout(() => {
-      if (flashIntervalRef.current) {
-        clearInterval(flashIntervalRef.current);
-        flashIntervalRef.current = null;
-      }
-      document.title = originalTitleRef.current;
-    }, 10000);
-  }, []);
-
-  const clearFlash = useCallback(() => {
+  const stopFlash = useCallback(() => {
+    if (stopTimeoutRef.current) {
+      clearTimeout(stopTimeoutRef.current);
+      stopTimeoutRef.current = null;
+    }
     if (flashIntervalRef.current) {
       clearInterval(flashIntervalRef.current);
       flashIntervalRef.current = null;
@@ -220,14 +204,48 @@ function useTitleFlash() {
     if (originalTitleRef.current) document.title = originalTitleRef.current;
   }, []);
 
+  const flashTitle = useCallback(
+    (count: number) => {
+      if (!originalTitleRef.current) originalTitleRef.current = document.title;
+      // Cancel any in-flight flash first — otherwise the OLD 10s timeout
+      // would fire mid-new-flash, kill the new interval and restore the
+      // title early.
+      stopFlash();
+
+      let showAlert = true;
+      flashIntervalRef.current = setInterval(() => {
+        document.title = showAlert
+          ? `🔔 ${count} طلب جديد | ${originalTitleRef.current}`
+          : originalTitleRef.current;
+        showAlert = !showAlert;
+      }, 1000);
+
+      stopTimeoutRef.current = setTimeout(stopFlash, 10000);
+    },
+    [stopFlash]
+  );
+
+  const clearFlash = useCallback(() => {
+    stopFlash();
+  }, [stopFlash]);
+
   const syncTitle = useCallback(() => {
     originalTitleRef.current = document.title;
   }, []);
 
   const resetTitle = useCallback(() => {
-    clearFlash();
+    stopFlash();
     originalTitleRef.current = '';
-  }, [clearFlash]);
+  }, [stopFlash]);
+
+  // Never survive the component: a late timeout firing after unmount would
+  // clobber the next page's title.
+  useEffect(() => {
+    return () => {
+      stopFlash();
+      originalTitleRef.current = '';
+    };
+  }, [stopFlash]);
 
   return { flashTitle, clearFlash, syncTitle, resetTitle };
 }
@@ -247,13 +265,16 @@ export function KitchenClient({
 }) {
   const [orders, setOrders] = useState(initialOrders);
   const knownIds = useRef(new Set(initialOrders.map((o) => o.id)));
+  // Ids added via realtime INSERT — fullRefresh must preserve them even if a
+  // poll snapshot was taken before their commit (see fullRefresh merge).
+  const realtimeAddedRef = useRef<Set<string>>(new Set());
   const [soundOn, setSoundOn] = useState(true);
   const [newOrderCount, setNewOrderCount] = useState(0);
   const [time, setTime] = useState(() =>
     new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
   );
   const [now, setNow] = useState(() => Date.now());
-  const [tab, setTab] = useState<'all' | 'dinein' | 'drivethru'>('all');
+  const [tab, setTab] = useState<'all' | 'dinein' | 'drivethru' | 'walkin'>('all');
 
   const { playChime, ensureAudioReady, preloadChime, attachAudioResumeOnInteraction } = useAudioSystem();
   const { flashTitle, clearFlash, syncTitle, resetTitle } = useTitleFlash();
@@ -327,7 +348,19 @@ export function KitchenClient({
     if (knownIds.current.size > 300) {
       knownIds.current = new Set(rows.map((o) => o.id));
     }
-    setOrders(rows);
+    // Merge instead of wholesale replace: a ticket inserted via realtime
+    // between this snapshot and its commit must not vanish from the board
+    // just because the poll response arrived without it.
+    setOrders((prev) => {
+      const byId = new Map(rows.map((o) => [o.id, o]));
+      for (const o of prev) {
+        if (realtimeAddedRef.current.has(o.id) && !byId.has(o.id)) {
+          byId.set(o.id, o);
+        }
+      }
+      return [...byId.values()];
+    });
+    realtimeAddedRef.current.clear();
   }, [projectId, notifyNewOrder]);
 
   // Fetch single order
@@ -379,6 +412,7 @@ export function KitchenClient({
           if (!fullOrder) return;
 
           knownIds.current.add(newId);
+          realtimeAddedRef.current.add(newId);
           notifyNewOrder(fullOrder.order_number);
           setOrders((prev) => [fullOrder, ...prev]);
         }
@@ -449,7 +483,8 @@ export function KitchenClient({
       const { error: orderErr } = await supabase
         .from('orders')
         .update({ status: toOrder })
-        .eq('id', orderId);
+        .eq('id', orderId)
+        .eq('project_id', projectId);
       if (orderErr) {
         toast.error('فشل تحديث حالة الطلب');
         return;
@@ -466,22 +501,26 @@ export function KitchenClient({
         )
       );
     },
-    []
+    [projectId]
   );
 
   // Deliver — order leaves the kitchen board.
-  const deliverOrder = useCallback(async (orderId: string) => {
-    const supabase = createClient();
-    const { error } = await supabase
-      .from('orders')
-      .update({ status: 'delivered' })
-      .eq('id', orderId);
-    if (error) {
-      toast.error('فشل التحديث');
-      return;
-    }
-    setOrders((prev) => prev.filter((o) => o.id !== orderId));
-  }, []);
+  const deliverOrder = useCallback(
+    async (orderId: string) => {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: 'delivered' })
+        .eq('id', orderId)
+        .eq('project_id', projectId);
+      if (error) {
+        toast.error('فشل التحديث');
+        return;
+      }
+      setOrders((prev) => prev.filter((o) => o.id !== orderId));
+    },
+    [projectId]
+  );
 
   // Build tickets — one per order, identical lines merged inside.
   const buildTicket = useCallback((o: OrderRow): Ticket => {
@@ -526,13 +565,14 @@ export function KitchenClient({
     const { error: orderErr } = await supabase
       .from('orders')
       .update({ status: 'preparing' })
-      .in('id', orderIds);
+      .in('id', orderIds)
+      .eq('project_id', projectId);
     if (orderErr) {
       toast.error('فشل تحديث الحالات');
       return;
     }
     await fullRefresh();
-  }, [orders, fullRefresh]);
+  }, [orders, fullRefresh, projectId]);
 
   // ---------- Derived view ----------
 
@@ -542,6 +582,7 @@ export function KitchenClient({
     all: tickets.length,
     dinein: tickets.filter((t) => t.order.type === 'dinein').length,
     drivethru: tickets.filter((t) => t.order.type === 'drivethru').length,
+    walkin: tickets.filter((t) => t.order.type === 'walkin').length,
   };
 
   const visibleTickets =
@@ -571,7 +612,7 @@ export function KitchenClient({
       {/* Header — Scan Grid: tabs + display title + clock */}
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border)] bg-[var(--color-surface)] px-6 py-4">
         <nav className="flex items-center gap-5 text-[13px]" aria-label="تصنيف الطلبات">
-          {(['all', 'dinein', 'drivethru'] as const).map((t) => (
+          {(['all', 'dinein', 'drivethru', 'walkin'] as const).map((t) => (
             <button
               key={t}
               type="button"
@@ -687,10 +728,12 @@ function KitchenTicket({
 }) {
   const { order, lines, totalQty } = ticket;
   const status = order.status as OrderStatus;
-  const mins = Math.max(
-    0,
-    Math.floor((now - new Date(order.created_at).getTime()) / 60000)
-  );
+  // Guard against a malformed/absent created_at — a NaN diff would silently
+  // read "قبل NaN دقيقة" and never flag overdue.
+  const createdMs = new Date(order.created_at).getTime();
+  const mins = Number.isFinite(createdMs)
+    ? Math.max(0, Math.floor((now - createdMs) / 60000))
+    : 0;
 
   // Scan Grid corner colors — status → identity accent (clay/saffron/teal)
   const accent =

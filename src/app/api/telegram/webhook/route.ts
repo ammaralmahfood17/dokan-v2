@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import * as Sentry from '@sentry/nextjs';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { replyToChat } from '@/lib/telegram';
+import { rateLimit, createRateLimitResponse } from '@/lib/rate-limit';
 
 /**
  * POST /api/telegram/webhook
@@ -12,9 +13,11 @@ import { replyToChat } from '@/lib/telegram';
  * public endpoint; the one-time code IS the authorization).
  */
 export async function POST(request: NextRequest) {
-  // Optional shared secret guards against spoofed requests when configured
+  // Shared secret guards against spoofed requests — REQUIRED in production.
   const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
-  if (secret && request.headers.get('x-telegram-bot-api-secret-token') !== secret) {
+  if (!secret) {
+    console.warn('[Telegram Webhook] TELEGRAM_WEBHOOK_SECRET not set — endpoint is open');
+  } else if (request.headers.get('x-telegram-bot-api-secret-token') !== secret) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
@@ -31,6 +34,19 @@ export async function POST(request: NextRequest) {
 
     // Only /start <CODE> is meaningful; ignore everything else
     if (!chat) return NextResponse.json({ ok: true });
+
+    // Rate limit per chat (and IP when available) — public endpoint that
+    // performs DB writes with a service-role client.
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const limitResult = await rateLimit(`${String(chat.id)}:${ip}`, {
+      limit: 10,
+      windowMs: 60 * 1000,
+      keyPrefix: 'tg-webhook',
+    });
+    if (!limitResult.allowed) {
+      const res = createRateLimitResponse(limitResult.resetIn);
+      return NextResponse.json({ error: res.error }, { status: res.status });
+    }
 
     // Expect "/start <CODE>" (Telegram may send "/start@botname <CODE>")
     const match = text.match(/^\/start(?:@\w+)?\s*([A-Za-z0-9]{6,12})$/);

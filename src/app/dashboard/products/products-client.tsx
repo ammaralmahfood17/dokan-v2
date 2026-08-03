@@ -312,23 +312,26 @@ export function ProductsClient({
     const name = quickCatName.trim();
     if (!name) return;
     setLoading(true);
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from('categories')
-      .insert({ project_id: projectId, name, sort_order: categories.length })
-      .select('*')
-      .single();
-    setLoading(false);
-    if (error || !data) {
-      toast.error('فشل إنشاء التصنيف');
-      return;
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('categories')
+        .insert({ project_id: projectId, name, sort_order: categories.length })
+        .select('*')
+        .single();
+      if (error || !data) {
+        toast.error('فشل إنشاء التصنيف');
+        return;
+      }
+      const cat = data as Category;
+      setCategories((prev) => [...prev, cat]);
+      setCategoryId(cat.id);
+      setQuickCatName('');
+      setShowQuickCat(false);
+      toast.success(`تم إنشاء «${cat.name}»`);
+    } finally {
+      setLoading(false);
     }
-    const cat = data as Category;
-    setCategories((prev) => [...prev, cat]);
-    setCategoryId(cat.id);
-    setQuickCatName('');
-    setShowQuickCat(false);
-    toast.success(`تم إنشاء «${cat.name}»`);
   }
 
   // ----- Save Product -----
@@ -351,7 +354,7 @@ export function ProductsClient({
     const parsedPrice = Number(price);
     setLoading(true);
     const supabase = createClient();
-
+    try {
     const updatePayload: Database['public']['Tables']['products']['Update'] = {
       name: name.trim(),
       name_en: nameEn.trim() || null,
@@ -381,7 +384,6 @@ export function ProductsClient({
         .single();
 
       if (error || !data) {
-        setLoading(false);
         toast.error('فشل التحديث');
         return;
       }
@@ -402,7 +404,6 @@ export function ProductsClient({
         if (deleteAddonErr) {
           console.error('[Products] Failed to delete removed addons:', deleteAddonErr);
           toast.error('فشل تحديث الإضافات');
-          setLoading(false);
           return;
         }
       }
@@ -417,7 +418,6 @@ export function ProductsClient({
           if (updErr) {
             console.error('[Products] Failed to update addon:', updErr);
             toast.error('فشل تحديث الإضافات');
-            setLoading(false);
             return;
           }
         } else {
@@ -430,7 +430,6 @@ export function ProductsClient({
           if (insErr) {
             console.error('[Products] Failed to insert new addon:', insErr);
             toast.error('فشل إضافة الإضافات');
-            setLoading(false);
             return;
           }
         }
@@ -469,13 +468,12 @@ export function ProductsClient({
         .single();
 
       if (error || !data) {
-        setLoading(false);
         toast.error('فشل الإضافة');
         return;
       }
 
       if (processedAddons.length > 0) {
-        await supabase.from('product_addons').insert(
+        const { error: insAddonErr } = await supabase.from('product_addons').insert(
           processedAddons.map((a) => ({
             product_id: data.id,
             name: a.name,
@@ -483,6 +481,10 @@ export function ProductsClient({
             is_available: true,
           }))
         );
+        if (insAddonErr) {
+          console.error('[Products] Failed to insert addons:', insAddonErr);
+          toast.error('أُضيف المنتج لكن فشلت الإضافات');
+        }
       }
 
       const { data: withAddons } = await supabase
@@ -497,8 +499,13 @@ export function ProductsClient({
       ]);
       toast.success('تمت إضافة المنتج');
     }
-    setLoading(false);
-    setShowProductForm(false);
+    } catch {
+      console.error('[Products] saveProduct unexpected error');
+      toast.error('خطأ غير متوقع — حاول مجددًا');
+    } finally {
+      setLoading(false);
+      setShowProductForm(false);
+    }
   }
 
   // Delete confirmation state
@@ -537,49 +544,56 @@ export function ProductsClient({
   async function duplicateProduct(p: ProductWithAddons) {
     if (duplicatingId) return;
     setDuplicatingId(p.id);
-    const supabase = createClient();
-    const insertPayload: Database['public']['Tables']['products']['Insert'] = {
-      project_id: projectId,
-      name: `${p.name} (نسخة)`,
-      name_en: p.name_en ? `${p.name_en} (copy)` : null,
-      description: p.description,
-      price: p.price,
-      category_id: p.category_id,
-      is_available: p.is_available,
-      image_url: p.image_url,
-      sort_order: products.length,
-    };
-    const { data, error } = await supabase
-      .from('products')
-      .insert(insertPayload)
-      .select('*')
-      .single();
-    if (error || !data) {
-      setDuplicatingId(null);
+    try {
+      const supabase = createClient();
+      const insertPayload: Database['public']['Tables']['products']['Insert'] = {
+        project_id: projectId,
+        name: `${p.name} (نسخة)`,
+        name_en: p.name_en ? `${p.name_en} (copy)` : null,
+        description: p.description,
+        price: p.price,
+        category_id: p.category_id,
+        is_available: p.is_available,
+        image_url: p.image_url,
+        sort_order: products.length,
+      };
+      const { data, error } = await supabase
+        .from('products')
+        .insert(insertPayload)
+        .select('*')
+        .single();
+      if (error || !data) {
+        toast.error('فشل نسخ المنتج');
+        return;
+      }
+      if (p.product_addons?.length) {
+        const { error: addonErr } = await supabase.from('product_addons').insert(
+          p.product_addons.map((a) => ({
+            product_id: data.id,
+            name: a.name,
+            price: a.price,
+            is_available: a.is_available,
+          }))
+        );
+        if (addonErr) {
+          toast.error('نُسخ المنتج لكن فشلت الإضافات');
+        }
+      }
+      const { data: withAddons } = await supabase
+        .from('products')
+        .select('*, product_addons(*)')
+        .eq('id', data.id)
+        .single();
+      setProducts((prev) => [
+        ...prev,
+        (withAddons ?? { ...data, product_addons: [] }) as ProductWithAddons,
+      ]);
+      toast.success('تم نسخ المنتج');
+    } catch {
       toast.error('فشل نسخ المنتج');
-      return;
+    } finally {
+      setDuplicatingId(null);
     }
-    if (p.product_addons?.length) {
-      await supabase.from('product_addons').insert(
-        p.product_addons.map((a) => ({
-          product_id: data.id,
-          name: a.name,
-          price: a.price,
-          is_available: a.is_available,
-        }))
-      );
-    }
-    const { data: withAddons } = await supabase
-      .from('products')
-      .select('*, product_addons(*)')
-      .eq('id', data.id)
-      .single();
-    setProducts((prev) => [
-      ...prev,
-      (withAddons ?? { ...data, product_addons: [] }) as ProductWithAddons,
-    ]);
-    setDuplicatingId(null);
-    toast.success('تم نسخ المنتج');
   }
 
   // ----- Bulk selection (select mode → toggle availability / delete) -----
@@ -621,43 +635,50 @@ export function ProductsClient({
   async function bulkSetAvailability(available: boolean) {
     if (selectedIds.size === 0) return;
     setBulkBusy(true);
-    const supabase = createClient();
-    const { error } = await supabase
-      .from('products')
-      .update({ is_available: available })
-      .in('id', [...selectedIds])
-      .eq('project_id', projectId);
-    setBulkBusy(false);
-    if (error) {
-      toast.error('فشل التحديث');
-      return;
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('products')
+        .update({ is_available: available })
+        .in('id', [...selectedIds])
+        .eq('project_id', projectId);
+      if (error) {
+        toast.error('فشل التحديث');
+        return;
+      }
+      setProducts((prev) =>
+        prev.map((p) =>
+          selectedIds.has(p.id) ? { ...p, is_available: available } : p
+        )
+      );
+      toast.success(available ? 'تم تفعيل المنتجات' : 'تم إيقاف المنتجات');
+      exitBulk();
+    } finally {
+      setBulkBusy(false);
     }
-    setProducts((prev) =>
-      prev.map((p) =>
-        selectedIds.has(p.id) ? { ...p, is_available: available } : p
-      )
-    );
-    toast.success(available ? 'تم تفعيل المنتجات' : 'تم إيقاف المنتجات');
-    exitBulk();
   }
 
   async function bulkDelete() {
     if (selectedIds.size === 0) return;
     setBulkBusy(true);
-    const supabase = createClient();
-    const { error } = await supabase
-      .from('products')
-      .delete()
-      .in('id', [...selectedIds]);
-    setBulkBusy(false);
-    setConfirmBulkDelete(false);
-    if (error) {
-      toast.error('فشل الحذف');
-      return;
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .in('id', [...selectedIds])
+        .eq('project_id', projectId);
+      setConfirmBulkDelete(false);
+      if (error) {
+        toast.error('فشل الحذف');
+        return;
+      }
+      setProducts((prev) => prev.filter((p) => !selectedIds.has(p.id)));
+      toast.success('تم حذف المنتجات');
+      exitBulk();
+    } finally {
+      setBulkBusy(false);
     }
-    setProducts((prev) => prev.filter((p) => !selectedIds.has(p.id)));
-    toast.success('تم حذف المنتجات');
-    exitBulk();
   }
 
   async function saveCategory(e: FormEvent) {
@@ -668,54 +689,62 @@ export function ProductsClient({
     }
     setCatError('');
     setLoading(true);
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from('categories')
-      .insert({
-        project_id: projectId,
-        name: catName.trim(),
-        sort_order: categories.length,
-      })
-      .select('*')
-      .single();
-    setLoading(false);
-    if (error || !data) {
-      toast.error('فشل إنشاء التصنيف');
-      return;
-    }
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('categories')
+        .insert({
+          project_id: projectId,
+          name: catName.trim(),
+          sort_order: categories.length,
+        })
+        .select('*')
+        .single();
+      if (error || !data) {
+        toast.error('فشل إنشاء التصنيف');
+        return;
+      }
     setCategories((prev) => [...prev, data as Category]);
     setCatName('');
     setShowCategoryForm(false);
     toast.success('تم إنشاء التصنيف');
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function updateCategory() {
     const name = editCatName.trim();
     if (!name || !editingCat) return;
     setLoading(true);
-    const supabase = createClient();
-    const { error } = await supabase
-      .from('categories')
-      .update({ name })
-      .eq('id', editingCat.id)
-      .eq('project_id', projectId);
-    setLoading(false);
-    if (error) { toast.error('فشل التحديث'); return; }
-    setCategories((prev) => prev.map((c) => c.id === editingCat.id ? { ...c, name } : c));
-    setEditingCat(null);
-    toast.success('تم تحديث التصنيف');
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('categories')
+        .update({ name })
+        .eq('id', editingCat.id)
+        .eq('project_id', projectId);
+      if (error) { toast.error('فشل التحديث'); return; }
+      setCategories((prev) => prev.map((c) => c.id === editingCat.id ? { ...c, name } : c));
+      setEditingCat(null);
+      toast.success('تم تحديث التصنيف');
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function deleteCategory() {
     if (!confirmDeleteCat) return;
     setLoading(true);
-    const supabase = createClient();
-    const { error } = await supabase.from('categories').delete().eq('id', confirmDeleteCat.id).eq('project_id', projectId);
-    setLoading(false);
-    if (error) { toast.error('فشل الحذف — تأكد من عدم وجود منتجات مرتبطة'); return; }
-    setCategories((prev) => prev.filter((c) => c.id !== confirmDeleteCat.id));
-    setConfirmDeleteCat(null);
-    toast.success('تم حذف التصنيف');
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.from('categories').delete().eq('id', confirmDeleteCat.id).eq('project_id', projectId);
+      if (error) { toast.error('فشل الحذف — تأكد من عدم وجود منتجات مرتبطة'); return; }
+      setCategories((prev) => prev.filter((c) => c.id !== confirmDeleteCat.id));
+      toast.success('تم حذف التصنيف');
+    } finally {
+      setLoading(false);
+    }
   }
 
 
@@ -861,12 +890,22 @@ export function ProductsClient({
         <>
           <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3">
             {filteredProducts.map((p) => (
-              <button
+              <div
                 key={p.id}
-                type="button"
-                disabled={bulkMode}
-                onClick={() => openEdit(p)}
-                aria-label={`تعديل ${p.name}`}
+                role={bulkMode ? undefined : 'button'}
+                tabIndex={bulkMode ? undefined : 0}
+                onClick={bulkMode ? undefined : () => openEdit(p)}
+                onKeyDown={
+                  bulkMode
+                    ? undefined
+                    : (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          openEdit(p);
+                        }
+                      }
+                }
+                aria-label={bulkMode ? undefined : `تعديل ${p.name}`}
                 className={`dashboard-card card overflow-hidden text-start transition-all active:scale-[0.98] ${
                   bulkMode && selectedIds.has(p.id) ? 'ring-2 ring-[var(--color-primary)]' : ''
                 } ${!p.is_available ? 'opacity-60' : ''}`}
@@ -893,13 +932,13 @@ export function ProductsClient({
                       type="button"
                       onClick={() => toggleSelect(p.id)}
                       aria-label={`اختيار ${p.name}`}
-                      className={`absolute start-2 top-2 flex h-9 w-9 items-center justify-center rounded-full border-2 bg-[var(--color-surface)] shadow-sm transition-colors ${
+                      className={`absolute start-2 top-2 flex h-11 w-11 items-center justify-center rounded-full border-2 bg-[var(--color-surface)] shadow-sm transition-colors ${
                         selectedIds.has(p.id)
                           ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white'
                           : 'border-[var(--color-border)] text-transparent'
                       }`}
                     >
-                      <Check className="h-4 w-4" />
+                      <Check className="h-5 w-5" />
                     </button>
                   ) : (
                     !p.is_available && (
@@ -939,7 +978,7 @@ export function ProductsClient({
                     </div>
                   )}
                 </div>
-              </button>
+              </div>
             ))}
           </div>
 
@@ -1073,7 +1112,7 @@ export function ProductsClient({
                       const err = validateProduct(name, price);
                       if (err.price) setFieldErrors((prev) => ({ ...prev, price: err.price }));
                     }}
-                    placeholder="0.000"
+                    placeholder={`0.${'0'.repeat(currencyDecimals(currency))}`}
                   />
                 </div>
                 {fieldErrors.price && <p className="error-text">{fieldErrors.price}</p>}
@@ -1248,7 +1287,7 @@ export function ProductsClient({
                       min="0"
                       dir="ltr"
                       inputMode="decimal"
-                      placeholder="0.000"
+                      placeholder={`0.${'0'.repeat(currencyDecimals(currency))}`}
                       value={addon.price}
                       onChange={(e) => updateFormAddon(addon.key, 'price', e.target.value)}
                     />

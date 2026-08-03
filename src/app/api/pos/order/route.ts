@@ -62,10 +62,14 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = createAdminClient();
+    // Currency comes from the nested membership.projects select above — no
+    // second projects fetch needed.
+    const currency =
+      (membership as unknown as { projects?: { currency?: string } }).projects
+        ?.currency || 'BHD';
     const result = await createSecureOrder(supabase, {
       projectId: membership.project_id,
-      currency: (membership as unknown as { projects?: { currency?: string } }).projects
-        ?.currency,
+      currency,
       tableId: null,
       type,
       items: body.items,
@@ -91,14 +95,6 @@ export async function POST(request: NextRequest) {
     } catch (auditErr) {
       console.warn('[Audit] Failed to write order audit log', auditErr);
     }
-
-    const { data: project } = await supabase
-      .from('projects')
-      .select('currency')
-      .eq('id', membership.project_id)
-      .single();
-
-    const currency = project?.currency || 'BHD';
 
     // Push notification to all staff — MUST await: Vercel freezes the function
     // on response return, so fire-and-forget promises never complete.

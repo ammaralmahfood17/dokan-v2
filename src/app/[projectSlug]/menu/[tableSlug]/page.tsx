@@ -26,7 +26,7 @@ export default async function PublicMenuPage({
   // Resolve active table inside project
   const { data: table } = await supabase
     .from('tables')
-    .select('*')
+    .select('id, number, slug, is_active, project_id')
     .eq('project_id', project.id)
     .eq('slug', tableSlug)
     .eq('is_active', true)

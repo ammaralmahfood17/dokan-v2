@@ -14,13 +14,17 @@ function buildWeekBuckets(dayFmt: Intl.DateTimeFormat) {
   for (let i = 6; i >= 0; i--) {
     dayKeys.push(dayFmt.format(new Date(now - i * 86_400_000)));
   }
+  const weekdayFmt = new Intl.DateTimeFormat('ar-BH', {
+    weekday: 'short',
+    timeZone: 'Asia/Bahrain',
+  });
   return {
     weekAgo: new Date(now - 7 * 86_400_000),
     byDay7: dayKeys.map((key) => ({
       key,
-      label: new Date(`${key}T00:00:00+03:00`).toLocaleDateString('ar-BH', {
-        weekday: 'short',
-      }),
+      // Format the UTC instant with an explicit timeZone — without it a UTC
+      // server would show the previous day's weekday (off-by-one).
+      label: weekdayFmt.format(new Date(`${key}T00:00:00+03:00`)),
       revenue: 0,
     })),
   };
@@ -35,20 +39,23 @@ function buildHourBuckets() {
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
-    hour12: false,
+    hourCycle: 'h23',
+  });
+  // Arabic hour label from the same instant — explicit timeZone, NO manual
+  // +3h shift (that double-converts on UTC+3 hosts and is wrong everywhere
+  // except pure-UTC servers).
+  const labelFmt = new Intl.DateTimeFormat('ar-BH', {
+    hour: 'numeric',
+    timeZone: 'Asia/Bahrain',
   });
   const buckets: { key: string; label: string; revenue: number }[] = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date(now.getTime() - i * 3_600_000);
     const parts = hourFmt.formatToParts(d);
     const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
-    const key = `${get('year')}-${get('month')}-${get('day')}T${get('hour').padStart(2, '0')}`;
-    // Arabic hour label: ٩ص / ١٢م — approximate meridiem from local hour
-    const hour = Number(get('hour'));
-    const label = new Intl.DateTimeFormat('ar-BH', { hour: 'numeric' }).format(
-      new Date(d.getTime() + 3 * 3_600_000)
-    );
-    buckets.push({ key, label, revenue: 0 });
+    const hour = get('hour');
+    const key = `${get('year')}-${get('month')}-${get('day')}T${hour.padStart(2, '0')}`;
+    buckets.push({ key, label: labelFmt.format(d), revenue: 0 });
   }
   return buckets;
 }
@@ -169,16 +176,18 @@ export default async function DashboardPage() {
   // ---- Hourly sales today (Asia/Bahrain, last 7 hours) ----
   const hourBuckets = buildHourBuckets();
   const hourIndex = new Map(hourBuckets.map((b, i) => [b.key, i]));
+  // Same formatter as buildHourBuckets — hourCycle:'h23' guarantees keys
+  // match (hour12:false can yield "24" on some ICU engines).
+  const hFmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Bahrain',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    hourCycle: 'h23',
+  });
   for (const o of (todaySalesData ?? []) as { total_amount: number; created_at: string }[]) {
     const d = new Date(o.created_at);
-    const hFmt = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Asia/Bahrain',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      hour12: false,
-    });
     const parts = hFmt.formatToParts(d);
     const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
     const key = `${get('year')}-${get('month')}-${get('day')}T${get('hour').padStart(2, '0')}`;
@@ -214,15 +223,19 @@ export default async function DashboardPage() {
   const top3 = [...weekTop.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
   const maxDayRevenue = Math.max(...byDay7.map((d) => d.revenue), 0.001);
 
+  // Vercel runs UTC — without an explicit timeZone the TODAY chip would show
+  // UTC and the date would flip a day between 00:00–03:00 Bahrain time.
   const nowTime = new Date().toLocaleTimeString('ar-BH', {
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: 'Asia/Bahrain',
   });
   const todayLabel = new Date().toLocaleDateString('ar-BH', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
+    timeZone: 'Asia/Bahrain',
   });
 
   // Status badge → Scan Grid accent

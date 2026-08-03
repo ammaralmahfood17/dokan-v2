@@ -109,6 +109,12 @@ export async function rateLimit(
   const record = store.get(key);
 
   if (!record || now > record.resetAt) {
+    // Opportunistic eviction — expired keys otherwise grow unbounded.
+    if (store.size > 10_000) {
+      for (const [k, v] of store) {
+        if (now > v.resetAt) store.delete(k);
+      }
+    }
     store.set(key, { count: 1, resetAt: now + options.windowMs });
     return { allowed: true, remaining: options.limit - 1, resetIn: options.windowMs };
   }

@@ -53,8 +53,11 @@ export async function createSecureOrder(
     return { ok: false, error: 'عدد الأصناف كبير جداً', status: 400 };
   }
 
-  // Order-level notes share the menu's 500-char limit (item notes: 200)
-  if (notes && notes.length > 500) {
+  // Order-level notes share the menu's 500-char limit (item notes: 200).
+  // Guard the type first — a numeric/object notes value would throw inside
+  // .trim()/.length and surface as a 500 instead of a clean 400.
+  const orderNotes = typeof notes === 'string' ? notes : '';
+  if (orderNotes.length > 500) {
     return { ok: false, error: 'ملاحظات الطلب طويلة جداً (الحد 500 حرف)', status: 400 };
   }
 
@@ -76,8 +79,9 @@ export async function createSecureOrder(
       return { ok: false, error: 'الكمية غير مسموحة', status: 400 };
     }
 
-    // Additional input hardening (Phase 1)
-    if (item.notes && item.notes.length > 200) {
+    // Additional input hardening (Phase 1) — type-guard item notes too
+    const itemNotes = typeof item.notes === 'string' ? item.notes : '';
+    if (itemNotes.length > 200) {
       return { ok: false, error: 'ملاحظات الصنف طويلة جداً (الحد 200 حرف)', status: 400 };
     }
 
@@ -160,7 +164,7 @@ export async function createSecureOrder(
       type,
       status: 'pending',
       total_amount: totalAmount,
-      notes: notes?.trim() || null,
+      notes: orderNotes.trim() || null,
       order_number: numData,
     })
     .select('id, status, total_amount, order_number')

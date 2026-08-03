@@ -39,15 +39,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: res.error }, { status: res.status });
     }
 
+    // IP cap too — mass account creation across many emails from one IP
+    // (spam / email bombing) bypasses the per-email limit entirely.
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const ipLimit = await rateLimit(`signup-ip:${ip}`, {
+      limit: 10,
+      windowMs: 60 * 60 * 1000,
+      keyPrefix: 'auth-signup-ip',
+    });
+    if (!ipLimit.allowed) {
+      const res = createRateLimitResponse(ipLimit.resetIn);
+      return NextResponse.json({ error: res.error }, { status: res.status });
+    }
+
     const admin = createAdminClient();
 
     // Create user using admin client (reliable, works with email_confirm disabled)
     const { data: createData, error: createError } = await admin.auth.admin.createUser({
       email: email.trim().toLowerCase(),
-      password,
+      password: String(password),
       email_confirm: true, // confirmation is disabled in this project
       user_metadata: {
-        full_name: fullName?.trim() || '',
+        full_name: String(fullName?.trim?.() || ''),
         from_api: 'true',       // safety trigger skips users from the main API
       },
     });

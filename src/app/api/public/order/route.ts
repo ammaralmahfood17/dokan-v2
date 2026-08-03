@@ -23,9 +23,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'بيانات غير صالحة' }, { status: 400 });
     }
 
-    // Rate limit per project + per IP
+    // Cap slug length — a 1MB slug would blow up the rate-limit key/query.
+    if (projectSlug.length > 100 || tableSlug.length > 100) {
+      return NextResponse.json({ error: 'بيانات غير صالحة' }, { status: 400 });
+    }
+
+    // Rate limit per project + per IP (keyPrefix is applied by rateLimit, so
+    // no duplicate 'public-order:' prefix in the key itself)
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-    const rateKey = `public-order:${projectSlug}`;
+    const rateKey = projectSlug;
     const limitResult = await rateLimit(rateKey, { limit: 20, windowMs: 60 * 1000, keyPrefix: 'public-order' });
     const ipLimitResult = await rateLimit(`ip:${ip}`, { limit: 10, windowMs: 60 * 1000, keyPrefix: 'public-order-ip' });
 

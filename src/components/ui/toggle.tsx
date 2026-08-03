@@ -36,7 +36,9 @@ export function Toggle({
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(
-        'relative inline-flex h-[28px] w-[52px] shrink-0 items-center rounded-full border-2 border-transparent transition-colors duration-200',
+        // p-2/-m-2: visual track stays 28×52 but the touch/click target grows
+        // to ≥44px (AGENTS.md non-negotiable).
+        'relative inline-flex h-[28px] w-[52px] shrink-0 items-center rounded-full border-2 border-transparent p-2 -m-2 transition-colors duration-200',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface)]',
         'motion-reduce:transition-none',
         checked ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-border)]',
