@@ -281,7 +281,7 @@ export function PosClient({
               placeholder="ابحث عن منتج… ( / )"
               aria-label="ابحث عن منتج"
               maxLength={60}
-              className="input min-h-[44px] w-full ps-9 pe-9"
+              className="input min-h-[44px] w-full ps-10 pe-12"
             />
             {query && (
               <button
