@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import * as Sentry from '@sentry/nextjs';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createSecureOrder } from '@/lib/order-pricing';
@@ -91,43 +91,46 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: result.error }, { status: result.status });
     }
 
-    // Post-create side effects (audit, push, telegram) are independent —
-    // run in PARALLEL. Serializing them added ~1.2s user-visible latency.
-    await Promise.all([
-      // Phase 3: Audit log
-      (async () => {
-        try {
-          await supabase.from('order_audit_logs').insert({
-            order_id: result.order.id,
-            project_id: project.id,
-            event: 'created',
-            new_status: result.order.status,
-            metadata: { type: 'dinein', item_count: items?.length || 0 },
-          });
-        } catch (auditErr) {
-          console.warn('[Audit] Failed to write order audit log', auditErr);
-        }
-      })(),
+    // Post-create side effects (audit, push, telegram) run AFTER the response
+    // via after() — the customer sees the confirmation immediately instead
+    // of waiting for external push/telegram HTTP calls. after() is guaranteed
+    // on Vercel (fire-and-forget gets frozen). Order already created above.
+    after(async () => {
+      await Promise.all([
+        // Phase 3: Audit log
+        (async () => {
+          try {
+            await supabase.from('order_audit_logs').insert({
+              order_id: result.order.id,
+              project_id: project.id,
+              event: 'created',
+              new_status: result.order.status,
+              metadata: { type: 'dinein', item_count: items?.length || 0 },
+            });
+          } catch (auditErr) {
+            console.warn('[Audit] Failed to write order audit log', auditErr);
+          }
+        })(),
 
-      // Push notification to all staff — MUST complete before response
-      // return: Vercel freezes the function, fire-and-forget dies.
-      sendPushToProject(project.id, {
-        title: '🔔 طلب جديد',
-        body: `طلب #${result.order.orderNumber} من القائمة — ${formatMoney(
-          result.order.totalAmount,
-          project.currency
-        )}`,
-        url: '/dashboard/kitchen',
-        tag: `order-${result.order.id}`,
-      }).catch(() => {}),
+        // Push notification to all staff
+        sendPushToProject(project.id, {
+          title: '🔔 طلب جديد',
+          body: `طلب #${result.order.orderNumber} من القائمة — ${formatMoney(
+            result.order.totalAmount,
+            project.currency
+          )}`,
+          url: '/dashboard/kitchen',
+          tag: `order-${result.order.id}`,
+        }).catch(() => {}),
 
-      // Telegram alert — free, reliable (works app-closed). Same note.
-      sendTelegramAlert(project.id, {
-        orderNumber: result.order.orderNumber,
-        totalText: formatMoney(result.order.totalAmount, project.currency),
-        tableNumber: table.number,
-      }).catch(() => {}),
-    ]);
+        // Telegram alert — free, reliable (works app-closed).
+        sendTelegramAlert(project.id, {
+          orderNumber: result.order.orderNumber,
+          totalText: formatMoney(result.order.totalAmount, project.currency),
+          tableNumber: table.number,
+        }).catch(() => {}),
+      ]);
+    });
 
     return NextResponse.json({
       order: {
