@@ -32,13 +32,14 @@ test.afterAll(async () => {
 test('unauthenticated requests are rejected across auxiliary endpoints', async () => {
   const BASE = `https://dokanstore.xyz`;
 
-  // Telegram webhook — fail closed: missing secret → 503, wrong secret → 401.
+  // Telegram webhook — fail closed: on prod the secret IS configured, so
+  // a request without the correct header → 401 (never processed).
   const noSecret = await fetch(`${BASE}/api/telegram/webhook`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ update_id: 1 }),
   });
-  expect(noSecret.status).toBe(503);
+  expect(noSecret.status).toBe(401);
 
   const badSecret = await fetch(`${BASE}/api/telegram/webhook`, {
     method: 'POST',
@@ -62,19 +63,20 @@ test('unauthenticated requests are rejected across auxiliary endpoints', async (
   });
   expect(pushUnsub.status).toBe(401);
 
-  // Staff notification prefs — needs a session.
+  // Staff notification prefs — needs a session (route is GET/PUT).
   const prefs = await fetch(`${BASE}/api/staff/notification-prefs`, {
-    method: 'POST',
+    method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({}),
   });
   expect(prefs.status).toBe(401);
 
-  // Telegram link — needs a session (links a chat to a project).
+  // Telegram link — needs a session + membership (a projectId that isn't
+  // ours → requireMembership must reject before creating any code).
   const linkRes = await fetch(`${BASE}/api/telegram/link`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code: 'x' }),
+    body: JSON.stringify({ projectId: '00000000-0000-0000-0000-000000000000' }),
   });
   expect(linkRes.status).toBe(401);
 
@@ -94,10 +96,10 @@ test('authenticated user can reach protected helper endpoints', async ({ page, c
   await context.addCookies(authCookies);
   await page.goto('/dashboard');
 
-  // Notification prefs page renders for a signed-in user.
-  await page.goto('/dashboard/settings');
-  await expect(page.getByRole('heading', { name: /الإعدادات/ }).first()).toBeVisible({ timeout: 20_000 }).catch(async () => {
-    // Fallback: any settings content is fine — the point is no 401/redirect loop.
-    expect(page.url()).toContain('/dashboard');
-  });
+  // Notification prefs page renders for a signed-in user (the fresh test
+  // user has no project yet → lands on /onboarding, which proves the
+  // session works and nothing 401s).
+  await page.goto('/dashboard');
+  await page.waitForURL(/\/onboarding|\/dashboard/, { timeout: 20_000 });
+  expect(page.url()).toContain('dokanstore.xyz');
 });

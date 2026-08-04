@@ -32,8 +32,15 @@ export async function POST(request: Request) {
     // NEVER trust the Origin header for a security-critical email link — an
     // attacker controls it and could harvest the recovery code. Use a fixed
     // production origin (mirrors the previous fallback constant).
+    //
+    // IMPORTANT: redirect straight to /update-password, NOT /auth/callback.
+    // The verify 303 lands with the session in the URL FRAGMENT
+    // (#access_token=...) — fragments never reach the server, so a server
+    // callback route would drop the token and bounce to /login. The browser
+    // client (createBrowserClient) parses the fragment on load, which is
+    // exactly what /update-password does.
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'https://www.dokanstore.xyz/auth/callback?next=/update-password',
+      redirectTo: 'https://www.dokanstore.xyz/update-password',
     });
 
     if (error) {

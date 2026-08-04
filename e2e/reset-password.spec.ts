@@ -52,7 +52,16 @@ test('reset endpoint: rate-limited, no account enumeration', async () => {
   });
   expect(res2.status).toBe(200);
 
-  // Third request within the window → rate limited (2 per email / 5 min).
+  // Second request for the SAME email within the window → still allowed
+  // (limit is 2 per email / 5 min).
+  const res2b = await fetch(`https://dokanstore.xyz/api/auth/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  expect(res2b.status).toBe(200);
+
+  // Third request for the same email → rate limited (2 per email / 5 min).
   const res3 = await fetch(`https://dokanstore.xyz/api/auth/reset-password`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -65,18 +74,23 @@ test('recovery link → set new password → new password works, old does not', 
   const newPassword = `${TEST_PASSWORD}-new2`;
 
   // 1. Mint a REAL recovery link via the admin API (what the email contains).
+  // options.redirectTo IS honored (prod Site URL + allow list now include
+  // dokanstore.xyz — verified live; previously the link landed on a 404
+  // preview domain). The app redirects straight to /update-password because
+  // the session arrives in the URL fragment (server callback would drop it).
   const { data: link, error: linkErr } = await admin.auth.admin.generateLink({
     type: 'recovery',
     email,
-    options: { redirectTo: 'https://www.dokanstore.xyz/auth/callback?next=/update-password' },
+    options: { redirectTo: 'https://www.dokanstore.xyz/update-password' },
   });
   expect(linkErr, linkErr?.message).toBeNull();
-  expect(link?.properties?.action_link).toBeTruthy();
+  const actionLink = link?.properties?.action_link;
+  expect(actionLink).toBeTruthy();
 
   // 2. Open the recovery link in a fresh browser (no prior session).
   const ctx = await context.browser()!.newContext();
   const page2 = await ctx.newPage();
-  await page2.goto(link!.properties!.action_link!);
+  await page2.goto(actionLink!);
   await page2.waitForURL('**/update-password**', { timeout: 20_000 });
 
   // 3. Set the new password.
