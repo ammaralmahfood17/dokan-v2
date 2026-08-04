@@ -13,6 +13,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 export async function POST(request: NextRequest) {
   try {
     const userClient = await createClient();
+    // NOTE: keep getUser() — the proxy matcher does NOT cover /api/*, so no
+    // middleware JWT verification here. getUser() is the only signature check.
     const {
       data: { user },
     } = await userClient.auth.getUser();

@@ -105,9 +105,12 @@ test('POS: add product + addon → confirm → order lands with correct price', 
   const totalText = await page.getByText(/1\.750|1\.75/).first().textContent().catch(() => '');
   expect(totalText, `cart total should include addon: ${totalText}`).toBeTruthy();
 
-  // 7. Confirm the order → success toast with the order number.
+  // 7. Confirm the order → success toast with the order number. Measure the
+  // user-visible latency (click → toast) as a perf regression check.
+  const t0 = Date.now();
   await page.getByRole('button', { name: 'تأكيد الطلب', exact: true }).click();
   await expect(page.getByText(/تم الطلب order-/).first()).toBeVisible({ timeout: 20_000 });
+  console.log(`⏱ POS order latency (confirm→toast): ${Date.now() - t0}ms`);
 
   // 8. Verify in DB: order exists, total = 1.75, item + addon persisted.
   const { data: orders } = await admin

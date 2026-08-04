@@ -18,6 +18,10 @@ import type { OrderType, PublicOrderItemInput } from '@/lib/types';
 export async function POST(request: NextRequest) {
   try {
     const userClient = await createClient();
+    // NOTE: keep getUser() here — the proxy matcher does NOT cover /api/*
+    // routes, so there is no middleware JWT verification on this endpoint.
+    // getUser() (Auth API) is the only signature check; getSession() would
+    // trust an unverified cookie. Correctness over a few hundred ms.
     const {
       data: { user },
     } = await userClient.auth.getUser();
