@@ -249,3 +249,117 @@ test('Phase C: impersonation — start, banner, audit, end (session restored)', 
   const { data: row } = await admin.from('impersonation_sessions').select('ended_at').eq('id', data.sessionId).single();
   expect(row?.ended_at).toBeTruthy();
 });
+
+test('Phase D: create → archive (soft) → staff blocked → hard delete (name-confirmed)', async ({ page, context }) => {
+  const adminCookies = await getAuthCookies(adminEmail, TEST_PASSWORD);
+  const cookieHeader = adminCookies.map((c) => `${c.name}=${c.value}`).join('; ');
+  const createdSlug = `e2e-d-${Date.now() % 1_000_000}`;
+
+  // Owner must be a dedicated user with NO other project, so the archived
+  // project is the one their dashboard resolves to.
+  const ownerEmail = makeEmail();
+  const owner = await createTestUser(ownerEmail);
+  let dProjectId: string;
+
+  try {
+    // 1. Create — owner must exist.
+    const badCreate = await fetch(`https://dokanstore.xyz/api/super-admin/create-project`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: cookieHeader },
+      body: JSON.stringify({ name: 'D Test', ownerEmail: 'nobody@dokan.test' }),
+    });
+    expect(badCreate.status).toBe(404);
+
+    const createRes = await fetch(`https://dokanstore.xyz/api/super-admin/create-project`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: cookieHeader },
+      body: JSON.stringify({ name: 'D Test Store', ownerEmail, slug: createdSlug }),
+    });
+    const created = await createRes.json();
+    expect(createRes.status, JSON.stringify(created)).toBe(200);
+    expect(created.project?.id).toBeTruthy();
+    dProjectId = created.project.id;
+
+    // Audit create row.
+    const { data: createLogs } = await admin
+      .from('super_admin_audit_log')
+      .select('action, metadata')
+      .eq('action', 'project.create')
+      .eq('target_project_id', dProjectId);
+    expect((createLogs ?? []).length).toBe(1);
+    expect((createLogs?.[0].metadata as { ownerEmail?: string })?.ownerEmail).toBe(ownerEmail);
+
+    // 2. Archive — reason required.
+    const noReason = await fetch(`https://dokanstore.xyz/api/super-admin/archive-project`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: cookieHeader },
+      body: JSON.stringify({ projectId: dProjectId }),
+    });
+    expect(noReason.status).toBe(400);
+
+    const archiveRes = await fetch(`https://dokanstore.xyz/api/super-admin/archive-project`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: cookieHeader },
+      body: JSON.stringify({ projectId: dProjectId, reason: 'اختبار أرشفة' }),
+    });
+    expect(archiveRes.status).toBe(200);
+
+    // Project soft-deleted: data retained, is_active=false, deleted_at set.
+    const { data: archived } = await admin
+      .from('projects')
+      .select('id, is_active, deleted_at')
+      .eq('id', dProjectId)
+      .single();
+    expect(archived?.deleted_at).toBeTruthy();
+    expect(archived?.is_active).toBe(false);
+
+    // Audit archive row with reason.
+    const { data: archiveLogs } = await admin
+      .from('super_admin_audit_log')
+      .select('action, metadata')
+      .eq('action', 'project.archive')
+      .eq('target_project_id', dProjectId);
+    expect((archiveLogs ?? []).length).toBe(1);
+    expect((archiveLogs?.[0].metadata as { reason?: string })?.reason).toBe('اختبار أرشفة');
+
+    // 3. Owner (staff of the archived project) → blocked at /store-unavailable.
+    const ownerCookies = await getAuthCookies(ownerEmail, TEST_PASSWORD);
+    const ctx2 = await context.browser()!.newContext();
+    await ctx2.addCookies(ownerCookies);
+    const page2 = await ctx2.newPage();
+    await page2.goto('/dashboard');
+    await page2.waitForURL('**/store-unavailable**', { timeout: 20_000 });
+    await expect(page2.getByText('المتجر غير متاح').first()).toBeVisible();
+    await ctx2.close();
+
+    // 4. Hard delete — wrong confirm name rejected.
+    const wrongName = await fetch(`https://dokanstore.xyz/api/super-admin/hard-delete-project`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: cookieHeader },
+      body: JSON.stringify({ projectId: dProjectId, confirmName: 'WRONG', reason: 'تنظيف' }),
+    });
+    expect(wrongName.status).toBe(400);
+
+    // Correct name → deleted.
+    const delRes = await fetch(`https://dokanstore.xyz/api/super-admin/hard-delete-project`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: cookieHeader },
+      body: JSON.stringify({ projectId: dProjectId, confirmName: 'D Test Store', reason: 'تنظيف نهائي' }),
+    });
+    expect(delRes.status).toBe(200);
+
+    const { data: gone } = await admin.from('projects').select('id').eq('id', dProjectId).maybeSingle();
+    expect(gone).toBeNull();
+
+    // Audit hard-delete row with reason.
+    const { data: delLogs } = await admin
+      .from('super_admin_audit_log')
+      .select('action, metadata')
+      .eq('action', 'project.hard_delete')
+      .eq('target_project_id', dProjectId);
+    expect((delLogs ?? []).length).toBe(1);
+    expect((delLogs?.[0].metadata as { reason?: string })?.reason).toBe('تنظيف نهائي');
+  } finally {
+    await cleanupTestUser(ownerEmail);
+  }
+});

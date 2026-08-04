@@ -364,6 +364,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           currency: string
+          deleted_at: string | null
           id: string
           is_active: boolean
           logo_url: string | null
@@ -376,6 +377,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           currency?: string
+          deleted_at?: string | null
           id?: string
           is_active?: boolean
           logo_url?: string | null
@@ -388,6 +390,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           currency?: string
+          deleted_at?: string | null
           id?: string
           is_active?: boolean
           logo_url?: string | null
@@ -759,7 +762,15 @@ export type Database = {
         }
         Returns: string
       }
+      super_admin_archive_project: {
+        Args: { p_caller_user_id?: string; p_project_id: string }
+        Returns: boolean
+      }
       super_admin_deactivate_project: {
+        Args: { p_caller_user_id?: string; p_project_id: string }
+        Returns: boolean
+      }
+      super_admin_hard_delete_project: {
         Args: { p_caller_user_id?: string; p_project_id: string }
         Returns: boolean
       }

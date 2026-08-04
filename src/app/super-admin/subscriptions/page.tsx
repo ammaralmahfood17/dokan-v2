@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireSuperAdmin } from '@/lib/super-admin';
 import { ImpersonateButton } from '@/components/impersonate-button';
+import { CreateProjectForm, ProjectRowActions } from '@/components/project-admin-actions';
 import type { Json } from '@/lib/database.types';
 
 /**
@@ -17,6 +18,7 @@ type ProjectRow = {
   slug: string;
   is_active: boolean;
   subscription_expires_at: string | null;
+  deleted_at: string | null;
   created_at: string;
 };
 
@@ -44,19 +46,25 @@ const dateFmt = new Intl.DateTimeFormat('ar', {
 export default async function SuperAdminSubscriptionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; archived?: string }>;
 }) {
   await requireSuperAdmin();
-  const { q } = await searchParams;
+  const { q, archived } = await searchParams;
   const query = (q ?? '').trim();
+  const showArchived = archived === '1';
 
   const admin = createAdminClient();
 
   let queryBuilder = admin
     .from('projects')
-    .select('id, name, slug, is_active, subscription_expires_at, created_at')
+    .select('id, name, slug, is_active, subscription_expires_at, deleted_at, created_at')
     .order('created_at', { ascending: false })
     .limit(300);
+
+  // Archived projects hidden by default — shown only via ?archived=1.
+  if (!showArchived) {
+    queryBuilder = queryBuilder.is('deleted_at', null);
+  }
 
   if (query) {
     queryBuilder = queryBuilder.ilike('name', `%${query}%`);
@@ -91,25 +99,36 @@ export default async function SuperAdminSubscriptionsPage({
 
   return (
     <div>
+      <CreateProjectForm />
+
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold">الاشتراكات</h1>
           <p className="text-xs text-[var(--color-text-secondary)]">
-            كل مشاريع المنصة — {rows.length} مشروع
+            {showArchived ? 'المشاريع المؤرشفة' : 'المشاريع النشطة'} — {rows.length} مشروع
           </p>
         </div>
-        <form method="get" className="flex gap-2">
-          <input
-            name="q"
-            defaultValue={query}
-            placeholder="ابحث باسم المتجر…"
-            className="input h-10 w-56"
-            maxLength={80}
-          />
-          <button type="submit" className="btn btn-primary">
-            بحث
-          </button>
-        </form>
+        <div className="flex flex-wrap items-center gap-2">
+          <form method="get" className="flex gap-2">
+            {showArchived && <input type="hidden" name="archived" value="1" />}
+            <input
+              name="q"
+              defaultValue={query}
+              placeholder="ابحث باسم المتجر…"
+              className="input h-10 w-56"
+              maxLength={80}
+            />
+            <button type="submit" className="btn btn-primary">
+              بحث
+            </button>
+          </form>
+          <Link
+            href={showArchived ? '/super-admin/subscriptions' : '/super-admin/subscriptions?archived=1'}
+            className="btn btn-ghost btn-sm"
+          >
+            {showArchived ? 'إخفاء المؤرشفة' : 'المؤرشفة'}
+          </Link>
+        </div>
       </div>
 
       <div className="card overflow-x-auto">
@@ -179,6 +198,14 @@ export default async function SuperAdminSubscriptionsPage({
                             إيقاف
                           </button>
                         </form>
+                      )}
+                      {!p.deleted_at && (
+                        <ProjectRowActions projectId={p.id} projectName={p.name} />
+                      )}
+                      {p.deleted_at && (
+                        <span className="inline-flex items-center rounded-full bg-[var(--color-surface-sunken)] px-2 py-0.5 text-[10px] font-bold text-[var(--color-text-muted)]">
+                          مؤرشف
+                        </span>
                       )}
                     </div>
                   </td>

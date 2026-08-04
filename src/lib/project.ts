@@ -50,6 +50,12 @@ export async function getCurrentProject(): Promise<ProjectContext | null> {
 
   if (!project) return null;
 
+  // Phase D: archived project (soft-deleted by super-admin) → no dashboard
+  // access for its staff. Redirect to a clean "unavailable" page.
+  if (project.deleted_at) {
+    redirect('/store-unavailable');
+  }
+
   // Subscription cutoff: expired subscription → no dashboard access.
   // Deliberately keyed on subscription_expires_at, NOT is_active — the
   // owner can toggle is_active manually to close the store (vacation,
