@@ -62,10 +62,13 @@ export default async function PublicMenuPage({
   // so signed-in users see other restaurants' menus too
   const supabase = createAnonClient();
 
-  // Resolve active project by slug
+  // Resolve active project by slug. Explicit column list (NOT select('*')):
+  // anon has column-scoped grants on projects (0006 hides created_by), and
+  // subscription_expires_at is not in that list either — the public menu
+  // needs none of those.
   const { data: project } = await supabase
     .from('projects')
-    .select('*')
+    .select('id, name, slug, currency, primary_color, logo_url, is_active')
     .eq('slug', projectSlug)
     .eq('is_active', true)
     .maybeSingle();
