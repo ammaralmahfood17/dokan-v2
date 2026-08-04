@@ -84,13 +84,15 @@ test('POS: add product + addon → confirm → order lands with correct price', 
   await expect(card).toBeVisible({ timeout: 20_000 });
   await card.click();
 
-  // 3. Addon picker appears → select the addon.
-  const addonBtn = page.getByRole('button', { name: /نعناع إضافي/ }).first();
-  await expect(addonBtn).toBeVisible({ timeout: 15_000 });
-  await addonBtn.click();
+  // 3. Addon picker appears (dialog) → check the addon checkbox.
+  const picker = page.getByRole('dialog', { name: /إضافات — موهيتو/ });
+  await expect(picker).toBeVisible({ timeout: 15_000 });
+  const addonCheckbox = picker.getByText('نعناع إضافي', { exact: false });
+  await expect(addonCheckbox).toBeVisible({ timeout: 15_000 });
+  await addonCheckbox.click();
 
   // 4. Confirm adding to cart.
-  await page.getByRole('button', { name: /إضافة|أضف|تأكيد/i }).first().click();
+  await picker.getByRole('button', { name: 'إضافة للسلة', exact: true }).click();
 
   // 5. Open the cart (mobile bottom sheet / desktop panel).
   await page.getByRole('button', { name: 'عرض السلة' }).click().catch(async () => {
@@ -103,12 +105,9 @@ test('POS: add product + addon → confirm → order lands with correct price', 
   const totalText = await page.getByText(/1\.750|1\.75/).first().textContent().catch(() => '');
   expect(totalText, `cart total should include addon: ${totalText}`).toBeTruthy();
 
-  // 7. Confirm the order.
+  // 7. Confirm the order → success toast with the order number.
   await page.getByRole('button', { name: 'تأكيد الطلب', exact: true }).click();
-  await expect(page.getByText(/تم إرسال|تم إنشاء|تم استلام|ناجح/i).first()).toBeVisible({ timeout: 20_000 }).catch(async () => {
-    // Fallback: wait for a success toast via sonner.
-    await expect(page.locator('[data-sonner-toast]').first()).toBeVisible({ timeout: 20_000 });
-  });
+  await expect(page.getByText(/تم الطلب order-/).first()).toBeVisible({ timeout: 20_000 });
 
   // 8. Verify in DB: order exists, total = 1.75, item + addon persisted.
   const { data: orders } = await admin
@@ -124,7 +123,8 @@ test('POS: add product + addon → confirm → order lands with correct price', 
   const items = order?.order_items as { product_name: string; unit_price: number; addons: unknown }[];
   expect(items?.length).toBe(1);
   expect(items?.[0]?.product_name).toBe('موهيتو');
-  expect(Number(items?.[0]?.unit_price)).toBeCloseTo(1.5, 3);
+  // Design: unit_price = product price + addons (line-level total).
+  expect(Number(items?.[0]?.unit_price)).toBeCloseTo(1.75, 3);
   const addons = (items?.[0]?.addons ?? []) as { name: string; price: number }[];
   expect(addons?.length).toBe(1);
   expect(addons?.[0]?.name).toBe('نعناع إضافي');
