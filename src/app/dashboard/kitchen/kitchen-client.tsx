@@ -429,11 +429,17 @@ export function KitchenClient({
   useEffect(() => {
     const supabase = createClient();
 
+    // NOTE: no project_id filter on these channels. RLS (orders_staff_*
+    // policies) already isolates events per tenant — verified live with a
+    // probe: filter+RLS on the same column made realtime drop EVERY event,
+    // so orders took up to 30s to appear (30s fallback poll). Without the
+    // filter, events arrive in ~1s and cross-tenant events are still
+    // blocked by RLS. See migration 0018 note.
     const channel = supabase
       .channel(`kds-${projectId}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'orders', filter: `project_id=eq.${projectId}` },
+        { event: 'INSERT', schema: 'public', table: 'orders' },
         async (payload) => {
           const newOrder = payload.new as Partial<OrderRow>;
           const newId = newOrder.id as string;
@@ -456,7 +462,7 @@ export function KitchenClient({
       )
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'orders', filter: `project_id=eq.${projectId}` },
+        { event: 'UPDATE', schema: 'public', table: 'orders' },
         (payload) => {
           const updated = payload.new as Partial<OrderRow>;
           if (updated.id) realtimeTouchedRef.current.add(updated.id);
@@ -470,7 +476,7 @@ export function KitchenClient({
       )
       .on(
         'postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'orders', filter: `project_id=eq.${projectId}` },
+        { event: 'DELETE', schema: 'public', table: 'orders' },
         (payload) => {
           const deletedId = payload.old?.id as string;
           setOrders((prev) => prev.filter((o) => o.id !== deletedId));

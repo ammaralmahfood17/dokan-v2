@@ -142,7 +142,10 @@ export function OrdersClient({
           event: '*',
           schema: 'public',
           table: 'orders',
-          filter: `project_id=eq.${projectId}`,
+          // NOTE: no project_id filter here. RLS (orders_staff_* policies)
+          // already isolates events to the caller's projects — verified
+          // live. Combining filter+RLS on the same column made realtime
+          // drop ALL events (kitchen orders took up to 30s to appear).
         },
         () => {
           if (!isToday) return;
