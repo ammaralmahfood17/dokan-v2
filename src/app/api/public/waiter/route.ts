@@ -25,6 +25,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'بيانات ناقصة' }, { status: 400 });
     }
 
+    // Slug hardening: DB slugs are generated lowercase [a-z0-9-], bounded.
+    // Reject oversized/malformed input before it reaches rate-limit keys or
+    // the DB (defense against log/DB abuse via arbitrary-length payloads).
+    if (projectSlug.length > 64 || !/^[a-z0-9-]+$/.test(projectSlug)) {
+      return NextResponse.json({ error: 'معرّف المتجر غير صالح' }, { status: 400 });
+    }
+    if (tableSlug.length > 64 || !/^[a-z0-9-]+$/.test(tableSlug)) {
+      return NextResponse.json({ error: 'معرّف الطاولة غير صالح' }, { status: 400 });
+    }
+
     // Strict rate limit for waiter calls (anti-abuse) — first IP only; a
     // comma-list header would otherwise make the key vary per proxy hop.
     const ip = getClientIp(request);

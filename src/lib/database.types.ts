@@ -606,6 +606,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_order_transactional: {
+        Args: {
+          p_project_id: string
+          p_table_id: string | null
+          p_type: string
+          p_status: string
+          p_total_amount: number
+          p_notes: string | null
+          p_order_number: number
+          p_items: Json[]
+        }
+        Returns: Json
+      }
       generate_basic_slug: { Args: { input: string }; Returns: string }
       is_project_member: { Args: { p_project_id: string }; Returns: boolean }
       is_project_owner: { Args: { p_project_id: string }; Returns: boolean }

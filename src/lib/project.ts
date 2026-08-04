@@ -11,19 +11,19 @@ export type ProjectContext = {
 /**
  * Resolve the current user's primary project (first membership).
  * Returns null if unauthenticated or no project yet.
- * 
- * PERFORMANCE: Uses getSession() (~1ms local) instead of getUser()
- * (200-800ms network call). Queries staff_members + projects in parallel.
+ *
+ * SECURITY: getUser() verifies the session with the Auth server (catches
+ * revoked/expired tokens that a locally-decoded JWT would still accept).
+ * getSession() alone trusts the unsigned cookie claims — fine for a fast
+ * redirect in middleware, NOT for gating protected data.
  */
 export async function getCurrentProject(): Promise<ProjectContext | null> {
   const supabase = await createClient();
 
-  // getSession() reads JWT from cookie locally - no network call
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  const user = session?.user ?? null;
   if (!user) return null;
 
   // Parallel queries: staff_members + projects together

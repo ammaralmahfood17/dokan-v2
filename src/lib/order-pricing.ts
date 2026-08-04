@@ -156,51 +156,49 @@ export async function createSecureOrder(
     return { ok: false, error: 'فشل إنشاء رقم الطلب', status: 500 };
   }
 
-  const { data: order, error: orderErr } = await supabase
-    .from('orders')
-    .insert({
-      project_id: projectId,
-      table_id: tableId,
-      type,
-      status: 'pending',
-      total_amount: totalAmount,
-      notes: orderNotes.trim() || null,
-      order_number: numData,
-    })
-    .select('id, status, total_amount, order_number')
-    .single();
+  // One transactional RPC: order + order_items inserted atomically.
+  // (The previous two-step insert had a crash window that could leave an
+  // orphan order with no items — the manual delete rollback was best-effort.)
+  const { data: created, error: createErr } = await supabase.rpc(
+    'create_order_transactional',
+    {
+      p_project_id: projectId,
+      p_table_id: tableId,
+      p_type: type,
+      p_status: 'pending',
+      p_total_amount: totalAmount,
+      p_notes: orderNotes.trim() || null,
+      p_order_number: numData,
+      p_items: validated.map((line) => ({
+        product_id: line.product_id,
+        product_name: line.product_name,
+        quantity: line.quantity,
+        unit_price: line.unit_price,
+        addons: line.addons as unknown as Json,
+        notes: line.notes,
+      })),
+    }
+  );
 
-  if (orderErr || !order) {
-    console.error('Order insert error:', orderErr);
+  if (createErr || !created) {
+    console.error('Order create error:', createErr);
     return { ok: false, error: 'فشل إنشاء الطلب', status: 500 };
   }
 
-  const rows = validated.map((line) => ({
-    order_id: order.id,
-    product_id: line.product_id,
-    product_name: line.product_name,
-    quantity: line.quantity,
-    unit_price: line.unit_price,
-    addons: line.addons as unknown as Json,
-    notes: line.notes,
-  }));
-
-  const { error: itemsErr } = await supabase.from('order_items').insert(rows);
-
-  if (itemsErr) {
-    console.error('Order items insert error:', itemsErr);
-    // Best-effort cleanup
-    await supabase.from('orders').delete().eq('id', order.id);
-    return { ok: false, error: 'فشل إضافة أصناف الطلب', status: 500 };
-  }
+  const createdOrder = created as {
+    id: string;
+    status: string;
+    total_amount: number;
+    order_number: number;
+  };
 
   return {
     ok: true,
     order: {
-      id: order.id,
-      status: order.status,
-      totalAmount: money(Number(order.total_amount), decimals),
-      orderNumber: Number(order.order_number),
+      id: createdOrder.id,
+      status: createdOrder.status,
+      totalAmount: money(Number(createdOrder.total_amount), decimals),
+      orderNumber: Number(createdOrder.order_number),
     },
   };
 }
