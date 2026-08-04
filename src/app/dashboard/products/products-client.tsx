@@ -910,8 +910,9 @@ export function ProductsClient({
                   bulkMode && selectedIds.has(p.id) ? 'ring-2 ring-[var(--color-primary)]' : ''
                 } ${!p.is_available ? 'opacity-60' : ''}`}
               >
-                {/* Image / placeholder — 4:3 like the POS grid */}
-                <div className="relative aspect-[4/3] w-full overflow-hidden bg-[var(--color-bg)]">
+                {/* Image / placeholder — 4:3 like the POS grid. surface so no-image
+                    cards read as one clean card instead of bleeding into the page bg */}
+                <div className="relative aspect-[4/3] w-full overflow-hidden bg-[var(--color-surface)]">
                   {p.image_url ? (
                     <Image
                       src={p.image_url}
