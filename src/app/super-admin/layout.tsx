@@ -36,6 +36,12 @@ export default async function SuperAdminLayout({
               الاشتراكات
             </Link>
             <Link
+              href="/super-admin/analytics"
+              className="rounded-[8px] px-3 py-2 text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-sunken)] hover:text-[var(--color-text)]"
+            >
+              التحليلات
+            </Link>
+            <Link
               href="/super-admin/audit"
               className="rounded-[8px] px-3 py-2 text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-sunken)] hover:text-[var(--color-text)]"
             >

@@ -158,3 +158,26 @@ test('super-admin renew + deactivate work and write audit rows', async () => {
   expect(deactLog?.actor_user_id).toBe(adminUserId);
   expect((deactLog?.metadata as { slug?: string })?.slug).toBe(`e2e-sa-${runId}`);
 });
+
+test('Phase B: analytics page renders for super-admin, rejected for non-admin', async ({ page, context }) => {
+  // Super-admin sees the aggregate cards + per-project table.
+  const adminCookies = await getAuthCookies(adminEmail, TEST_PASSWORD);
+  await context.addCookies(adminCookies);
+  await page.goto('/super-admin/analytics');
+  await expect(page.getByRole('heading', { name: 'التحليلات' })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText('مشاريع نشطة').first()).toBeVisible();
+  await expect(page.getByText(/إيرادات اليوم/).first()).toBeVisible();
+
+  // Sortable table headers present.
+  await expect(page.getByText('الإيرادات', { exact: true }).first()).toBeVisible();
+
+  // Non-admin never lands on the page.
+  const normalCookies = await getAuthCookies(normalEmail, TEST_PASSWORD);
+  const ctx2 = await context.browser()!.newContext();
+  await ctx2.addCookies(normalCookies);
+  const page2 = await ctx2.newPage();
+  await page2.goto('/super-admin/analytics');
+  await page2.waitForTimeout(2500);
+  expect(page2.url()).not.toContain('/super-admin/analytics');
+  await ctx2.close();
+});
