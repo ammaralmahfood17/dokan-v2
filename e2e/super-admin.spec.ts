@@ -70,17 +70,17 @@ async function authCookieHeader(): Promise<string> {
 }
 
 test('non-super-admin is rejected at every super-admin route', async ({ page, context }) => {
-  // Page routes → redirect to /login (server-side guard).
+  // Page routes → NOT /super-admin (guard fires). A signed-in non-admin gets
+  // bounced: /super-admin → requireSuperAdmin → /login → middleware (signed-in
+  // user on auth page) → /dashboard. The invariant: never lands on /super-admin.
   const normalCookies = await getAuthCookies(normalEmail, TEST_PASSWORD);
   await context.addCookies(normalCookies);
-  await page.goto('/super-admin/subscriptions');
-  await page.waitForURL('**/login**', { timeout: 15_000 });
 
-  await page.goto('/super-admin/audit');
-  await page.waitForURL('**/login**', { timeout: 15_000 });
-
-  await page.goto('/super-admin');
-  await page.waitForURL('**/login**', { timeout: 15_000 });
+  for (const path of ['/super-admin/subscriptions', '/super-admin/audit', '/super-admin']) {
+    await page.goto(path);
+    await page.waitForTimeout(2500);
+    expect(page.url()).not.toContain('/super-admin');
+  }
 });
 
 test('non-super-admin is rejected at every super-admin API action', async () => {
