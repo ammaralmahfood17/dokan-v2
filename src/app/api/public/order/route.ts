@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     const ip = getClientIp(request);
     const rateKey = projectSlug;
     const limitResult = await rateLimit(rateKey, { limit: 20, windowMs: 60 * 1000, keyPrefix: 'public-order' });
-    const ipLimitResult = await rateLimit(`ip:${ip}`, { limit: 10, windowMs: 60 * 1000, keyPrefix: 'public-order-ip' });
+    const ipLimitResult = await rateLimit(`ip:${ip}`, { limit: 30, windowMs: 60 * 1000, keyPrefix: 'public-order-ip' });
 
     if (!limitResult.allowed) {
       const res = createRateLimitResponse(limitResult.resetIn);
