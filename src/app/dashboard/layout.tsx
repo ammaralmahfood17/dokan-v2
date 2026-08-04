@@ -13,6 +13,17 @@ export default async function DashboardLayout({
     redirect('/onboarding');
   }
 
+  // Subscription warning banner (7-day grace). Runs server-side so it shows
+  // for every staff member without extra data fetching. Null expiry = perpetual.
+  let expiryWarn = '';
+  const daysLeft = ctx.subscriptionDaysLeft;
+  if (daysLeft !== null && daysLeft <= 7) {
+    expiryWarn =
+      daysLeft <= 0
+        ? 'انتهى الاشتراك — تواصل مع إدارة دكان للتجديد.'
+        : `ينتهي الاشتراك خلال ${daysLeft} ${daysLeft === 1 ? 'يوم واحد' : 'أيام'} — جدّد قبل انقطاع الخدمة.`;
+  }
+
   return (
     <div className="flex min-h-dvh bg-[var(--color-bg)]">
       {/* Sidebar */}
@@ -36,6 +47,12 @@ export default async function DashboardLayout({
             دكان
           </span>
         </header>
+
+        {expiryWarn && (
+          <div className="border-b border-[var(--color-danger)]/20 bg-[var(--color-danger-tint)] px-4 py-2.5 text-center text-xs font-semibold text-[var(--color-danger)]">
+            {expiryWarn}
+          </div>
+        )}
 
         {/* Main */}
         <main className="flex-1">

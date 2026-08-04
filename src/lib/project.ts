@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import type { Project, StaffMember } from '@/lib/types';
 import type { ChecklistItem } from '@/lib/types';
@@ -6,6 +7,10 @@ export type ProjectContext = {
   project: Project;
   membership: StaffMember;
   userId: string;
+  /** Whole days until subscription expiry, or null for perpetual. Computed
+   *  here (a plain function) so server components never call Date.now()
+   *  during render (react-hooks/purity). */
+  subscriptionDaysLeft: number | null;
 };
 
 /**
@@ -45,10 +50,30 @@ export async function getCurrentProject(): Promise<ProjectContext | null> {
 
   if (!project) return null;
 
+  // Subscription cutoff: expired subscription → no dashboard access.
+  // Deliberately keyed on subscription_expires_at, NOT is_active — the
+  // owner can toggle is_active manually to close the store (vacation,
+  // maintenance) without being locked out of the dashboard. The cron job
+  // flips is_active=false on expiry, which cuts public ordering/menu via
+  // the existing RLS + route checks; this check cuts the dashboard itself.
+  if (
+    project.subscription_expires_at &&
+    new Date(project.subscription_expires_at) < new Date()
+  ) {
+    redirect('/subscription-expired');
+  }
+
+  const subscriptionDaysLeft = project.subscription_expires_at
+    ? Math.ceil(
+        (new Date(project.subscription_expires_at).getTime() - Date.now()) / 86400e3
+      )
+    : null;
+
   return {
     project: project as Project,
     membership: membership as StaffMember,
     userId: user.id,
+    subscriptionDaysLeft,
   };
 }
 

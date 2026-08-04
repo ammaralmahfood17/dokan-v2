@@ -22,6 +22,10 @@ interface RateLimitOptions {
   limit: number;      // max requests
   windowMs: number;   // time window in ms
   keyPrefix?: string;
+  /** Optional tenant context forwarded to the DB guard on the
+   * rate_limit_check RPC (defense-in-depth when the route knows the caller). */
+  projectId?: string;
+  callerUserId?: string;
 }
 
 interface RateLimitResult {
@@ -78,12 +82,20 @@ async function supabaseRateLimit(
       p_key: key,
       p_limit: options.limit,
       p_window_ms: options.windowMs,
+      ...(options.projectId ? { p_project_id: options.projectId } : {}),
+      ...(options.callerUserId ? { p_caller_user_id: options.callerUserId } : {}),
     });
     if (error) return null;
+    const result = data as unknown as {
+      allowed: boolean;
+      remaining: number;
+      reset_in: number;
+    } | null;
+    if (!result) return null;
     return {
-      allowed: data.allowed,
-      remaining: data.remaining,
-      resetIn: Math.round(data.reset_in),
+      allowed: result.allowed,
+      remaining: result.remaining,
+      resetIn: Math.round(result.reset_in),
     };
   } catch {
     return null; // Fall through to in-memory

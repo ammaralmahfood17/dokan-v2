@@ -39,9 +39,13 @@ export async function createSecureOrder(
     type: OrderType;
     items: PublicOrderItemInput[];
     notes?: string | null;
+    /** Authenticated staff id — passed to the RPCs so the DB-side
+     * membership guard can verify the caller. Omit for the anonymous
+     * public-order path (route-level validation applies there). */
+    callerUserId?: string;
   }
 ): Promise<CreateOrderResult> {
-  const { projectId, currency, tableId, type, items, notes } = params;
+  const { projectId, currency, tableId, type, items, notes, callerUserId } = params;
   // Server-side rounding per the project's currency (BHD=3, SAR/AED/QAR=2…)
   const decimals = currencyDecimals(currency ?? 'BHD');
 
@@ -147,9 +151,11 @@ export async function createSecureOrder(
     });
   }
 
-  // Get daily sequential order number
-  const { data: numData, error: numErr } = await supabase
-    .rpc('next_order_number', { p_project_id: projectId });
+  // Get daily sequential order number (pass caller id for the DB-side guard)
+  const { data: numData, error: numErr } = await supabase.rpc('next_order_number', {
+    p_project_id: projectId,
+    p_caller_user_id: callerUserId,
+  });
 
   if (numErr || !numData) {
     console.error('Order number error:', numErr);
@@ -163,12 +169,13 @@ export async function createSecureOrder(
     'create_order_transactional',
     {
       p_project_id: projectId,
-      p_table_id: tableId,
+      p_table_id: tableId ?? undefined,
       p_type: type,
       p_status: 'pending',
       p_total_amount: totalAmount,
-      p_notes: orderNotes.trim() || null,
+      p_notes: orderNotes.trim() || undefined,
       p_order_number: numData,
+      p_caller_user_id: callerUserId,
       p_items: validated.map((line) => ({
         product_id: line.product_id,
         product_name: line.product_name,

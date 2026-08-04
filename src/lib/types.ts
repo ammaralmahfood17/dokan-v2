@@ -27,6 +27,7 @@ export interface Project {
   primary_color: string;
   logo_url: string | null;
   is_active: boolean;
+  subscription_expires_at: string | null;
   created_at: string;
 }
 

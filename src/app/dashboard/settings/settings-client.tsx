@@ -29,12 +29,135 @@ function validateSettings(name: string, color: string): FieldErrors {
   return errors;
 }
 
+const expiryFmt = new Intl.DateTimeFormat('ar', {
+  timeZone: 'Asia/Bahrain',
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
+
+function SubscriptionCard({
+  project,
+  isOwner,
+  expiryDaysLeft,
+}: {
+  project: Project;
+  isOwner: boolean;
+  expiryDaysLeft: number | null;
+}) {
+  const [renewing, setRenewing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+
+  const expiry = project.subscription_expires_at
+    ? new Date(project.subscription_expires_at)
+    : null;
+  const daysLeft = expiryDaysLeft ?? Infinity;
+
+  async function renew() {
+    setRenewing(true);
+    try {
+      const res = await fetch('/api/admin/renew-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: project.id, days: 30 }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || 'فشل التجديد');
+        return;
+      }
+      toast.success('تم تجديد الاشتراك');
+      window.location.reload();
+    } catch {
+      toast.error('ما قدرت نجدد — حاول مرة ثانية');
+    } finally {
+      setRenewing(false);
+    }
+  }
+
+  return (
+    <div className="card card-body mb-4 max-w-lg">
+      <h2 className="mb-1 text-sm font-bold">الاشتراك</h2>
+      {expiry ? (
+        <p className="mb-1 text-sm text-[var(--color-text-secondary)]">
+          ينتهي الاشتراك في{' '}
+          <span className="font-semibold text-[var(--color-text)]">
+            {expiryFmt.format(expiry)}
+          </span>
+          {daysLeft <= 7 && (
+            <span className="mt-1 block text-xs font-medium text-[var(--color-danger)]">
+              {daysLeft <= 0 ? 'الاشتراك منتهٍ' : daysLeft === 1 ? 'ينتهي غدًا' : `متبقي ${daysLeft} أيام`}
+            </span>
+          )}
+        </p>
+      ) : (
+        <p className="mb-1 text-sm text-[var(--color-text-secondary)]">اشتراك دائم (بدون تاريخ انتهاء)</p>
+      )}
+
+      {isOwner && (
+        <Button
+          variant="secondary"
+          className="mt-3"
+          disabled={renewing}
+          onClick={() => setConfirming(true)}
+        >
+          {renewing ? 'جاري التجديد…' : 'تسجيل تجديد 30 يوم'}
+        </Button>
+      )}
+      {!isOwner && (
+        <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
+          التجديد متاح لمالك المتجر فقط.
+        </p>
+      )}
+
+      {confirming && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="تأكيد التجديد"
+          onClick={() => setConfirming(false)}
+        >
+          <div
+            className="w-full max-w-xs rounded-xl bg-[var(--color-surface)] p-5 text-center shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[var(--color-primary-tint)]">
+              <span className="text-lg font-bold text-[var(--color-primary)]">$</span>
+            </div>
+            <p className="mb-1 text-sm font-bold">تأكيد التجديد</p>
+            <p className="mb-5 text-xs text-[var(--color-text-secondary)]">
+              تأكد من تحصيل القيمة النقدية قبل تسجيل تجديد الاشتراك 30 يوم.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                block
+                disabled={renewing}
+                onClick={renew}
+              >
+                {renewing ? 'جاري…' : 'تأكيد التجديد'}
+              </Button>
+              <Button variant="secondary" onClick={() => setConfirming(false)}>
+                رجوع
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function SettingsClient({
   project,
   projectId,
+  isOwner,
+  expiryDaysLeft,
 }: {
   project: Project;
   projectId: string;
+  isOwner: boolean;
+  expiryDaysLeft: number | null;
 }) {
   const router = useRouter();
   const [name, setName] = useState(project.name);
@@ -103,6 +226,9 @@ export function SettingsClient({
       <div className="mb-4 max-w-lg">
         <NotificationPrefs projectId={projectId} />
       </div>
+
+      {/* Subscription (owner-only renewal) */}
+      <SubscriptionCard project={project} isOwner={isOwner} expiryDaysLeft={expiryDaysLeft} />
 
       <form onSubmit={onSubmit} className="card card-body max-w-lg">
         <div className="field">

@@ -54,7 +54,13 @@ export async function POST(request: NextRequest) {
 
     // Rate limit POS orders per staff user (prevent spam)
     const rateKey = `${membership.project_id}:${user.id}`;
-    const limitResult = await rateLimit(rateKey, { limit: 30, windowMs: 60 * 1000, keyPrefix: 'pos-order' });
+    const limitResult = await rateLimit(rateKey, {
+      limit: 30,
+      windowMs: 60 * 1000,
+      keyPrefix: 'pos-order',
+      projectId: membership.project_id,
+      callerUserId: user.id,
+    });
 
     if (!limitResult.allowed) {
       const res = createRateLimitResponse(limitResult.resetIn);
@@ -74,6 +80,7 @@ export async function POST(request: NextRequest) {
       type,
       items: body.items,
       notes: body.notes,
+      callerUserId: user.id,
     });
 
     if (!result.ok) {

@@ -497,38 +497,33 @@ export function KitchenClient({
   // ---------- Ticket-level KDS ----------
 
   // Advance a WHOLE order: every line → toItem, order → toOrder status.
+  // Uses the transactional advance_order_status RPC — status-checked
+  // (a stale screen can't revive a cancelled order) and atomic
+  // (order + items advance together; no stuck-items window).
   const advanceOrder = useCallback(
     async (orderId: string, toItem: OrderItemStatus, toOrder: OrderStatus) => {
       const supabase = createClient();
-      // Order first, then items — if the order update fails, no item is touched.
-      const { error: orderErr } = await supabase
-        .from('orders')
-        .update({ status: toOrder })
-        .eq('id', orderId)
-        .eq('project_id', projectId);
-      if (orderErr) {
-        toast.error('فشل تحديث حالة الطلب');
+      // Expected state = what THIS screen believes is current. If the DB has
+      // moved on (cancelled/advanced elsewhere), the RPC rejects it.
+      const current = orders.find((o) => o.id === orderId)?.status;
+      if (!current) return; // not on the board anymore
+      const { data, error } = await supabase.rpc('advance_order_status', {
+        p_order_id: orderId,
+        p_expected_status: current,
+        p_new_status: toOrder,
+      });
+      if (error) {
+        if (error.message.includes('STALE_STATUS')) {
+          toast.error('تم تحديث حالة هذا الطلب من جهاز آخر', {
+            description: 'جارٍ تحديث الشاشة…',
+          });
+          await fullRefresh();
+        } else {
+          toast.error('فشل تحديث حالة الطلب');
+        }
         return;
       }
-      // order_items has no project_id — resolve the scoped order ids first so
-      // the item update can never leak across projects.
-      const { data: scopedOrders } = await supabase
-        .from('orders')
-        .select('id')
-        .eq('project_id', projectId)
-        .in('id', [orderId]);
-      if (!scopedOrders?.length) {
-        toast.error('فشل تحديث الطلب');
-        return;
-      }
-      const { error: itemErr } = await supabase
-        .from('order_items')
-        .update({ status: toItem })
-        .in('order_id', scopedOrders.map((o) => o.id));
-      if (itemErr) {
-        toast.error('فشل التحديث');
-        return;
-      }
+      if (!data) return;
       setOrders((prev) =>
         prev.map((o) =>
           o.id === orderId
@@ -541,25 +536,35 @@ export function KitchenClient({
         )
       );
     },
-    [projectId]
+    [orders, fullRefresh]
   );
 
-  // Deliver — order leaves the kitchen board.
+  // Deliver — order leaves the kitchen board. Status-checked via RPC:
+  // only advances from 'ready', so a stale screen can't deliver a cancelled order.
   const deliverOrder = useCallback(
     async (orderId: string) => {
       const supabase = createClient();
-      const { error } = await supabase
-        .from('orders')
-        .update({ status: 'delivered' })
-        .eq('id', orderId)
-        .eq('project_id', projectId);
+      const current = orders.find((o) => o.id === orderId)?.status;
+      if (!current) return;
+      const { error } = await supabase.rpc('advance_order_status', {
+        p_order_id: orderId,
+        p_expected_status: current,
+        p_new_status: 'delivered',
+      });
       if (error) {
-        toast.error('فشل التحديث');
+        if (error.message.includes('STALE_STATUS')) {
+          toast.error('تم تحديث حالة هذا الطلب من جهاز آخر', {
+            description: 'جارٍ تحديث الشاشة…',
+          });
+          await fullRefresh();
+        } else {
+          toast.error('فشل التحديث');
+        }
         return;
       }
       setOrders((prev) => prev.filter((o) => o.id !== orderId));
     },
-    [projectId]
+    [orders, fullRefresh]
   );
 
   // Build tickets — one per order, identical lines merged inside.
@@ -589,42 +594,49 @@ export function KitchenClient({
   }, []);
 
   // Start EVERY pending order in one tap (fast-service flow).
+  // Per-order RPC calls so a stale/cancelled order can't fail the whole
+  // batch — failures are collected and surfaced, the rest still advance.
   const startAll = useCallback(async () => {
     const pendingOrders = orders.filter((o) => o.status === 'pending');
     if (!pendingOrders.length) return;
-    const orderIds = pendingOrders.map((o) => o.id);
     const supabase = createClient();
-    // Order statuses first, then items — if the order update fails, no item is touched.
-    const { error: orderErr } = await supabase
-      .from('orders')
-      .update({ status: 'preparing' })
-      .in('id', orderIds)
-      .eq('project_id', projectId);
-    if (orderErr) {
-      toast.error('فشل تحديث الحالات');
-      return;
+    const results = await Promise.all(
+      pendingOrders.map(async (o) => {
+        const { data, error } = await supabase.rpc('advance_order_status', {
+          p_order_id: o.id,
+          p_expected_status: 'pending',
+          p_new_status: 'preparing',
+        });
+        return { orderId: o.id, orderNumber: o.order_number, data, error };
+      })
+    );
+    const failed = results.filter((r) => r.error);
+    const staleCount = failed.filter((r) => r.error?.message.includes('STALE_STATUS')).length;
+    const otherCount = failed.length - staleCount;
+    if (staleCount > 0) {
+      toast.error(`تغيّرت حالة ${staleCount} من الطلبات على جهاز آخر`, {
+        description: 'لم يتم تشغيلها — جارٍ تحديث الشاشة…',
+      });
     }
-    // order_items has no project_id — resolve the scoped order ids first so
-    // the item update can never leak across projects.
-    const { data: scopedOrders } = await supabase
-      .from('orders')
-      .select('id')
-      .eq('project_id', projectId)
-      .in('id', orderIds);
-    if (!scopedOrders?.length) {
-      toast.error('فشل تحديث الحالات');
-      return;
+    if (otherCount > 0) {
+      toast.error(`فشل تشغيل ${otherCount} من الطلبات`);
     }
-    const { error: itemErr } = await supabase
-      .from('order_items')
-      .update({ status: 'preparing' })
-      .in('order_id', scopedOrders.map((o) => o.id));
-    if (itemErr) {
-      toast.error('فشل التحديث');
-      return;
+    if (failed.length > 0) {
+      await fullRefresh();
+    } else {
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.status === 'pending'
+            ? {
+                ...o,
+                status: 'preparing',
+                order_items: (o.order_items ?? []).map((it) => ({ ...it, status: 'preparing' })),
+              }
+            : o
+        )
+      );
     }
-    await fullRefresh();
-  }, [orders, fullRefresh, projectId]);
+  }, [orders, fullRefresh]);
 
   // ---------- Derived view ----------
 

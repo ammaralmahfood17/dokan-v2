@@ -36,6 +36,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          is_active?: boolean
           name?: string
           name_en?: string | null
           project_id?: string
@@ -333,6 +334,7 @@ export type Database = {
           name: string
           primary_color: string
           slug: string
+          subscription_expires_at: string
         }
         Insert: {
           created_at?: string
@@ -344,6 +346,7 @@ export type Database = {
           name: string
           primary_color?: string
           slug: string
+          subscription_expires_at?: string
         }
         Update: {
           created_at?: string
@@ -355,16 +358,9 @@ export type Database = {
           name?: string
           primary_color?: string
           slug?: string
+          subscription_expires_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "projects_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          }
-        ]
+        Relationships: []
       }
       push_subscriptions: {
         Row: {
@@ -407,78 +403,23 @@ export type Database = {
           },
         ]
       }
-      telegram_links: {
+      rate_limits: {
         Row: {
-          chat_id: string
-          created_at: string
-          id: string
-          kind: string
-          label: string | null
-          project_id: string
-          user_id: string | null
+          count: number
+          key: string
+          reset_at: string
         }
         Insert: {
-          chat_id: string
-          created_at?: string
-          id?: string
-          kind?: string
-          label?: string | null
-          project_id: string
-          user_id?: string | null
+          count?: number
+          key: string
+          reset_at: string
         }
         Update: {
-          chat_id?: string
-          created_at?: string
-          id?: string
-          kind?: string
-          label?: string | null
-          project_id?: string
-          user_id?: string | null
+          count?: number
+          key?: string
+          reset_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "telegram_links_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      telegram_link_codes: {
-        Row: {
-          code: string
-          created_at: string
-          created_by: string | null
-          expires_at: string
-          id: string
-          project_id: string
-        }
-        Insert: {
-          code: string
-          created_at?: string
-          created_by?: string | null
-          expires_at: string
-          id?: string
-          project_id: string
-        }
-        Update: {
-          code?: string
-          created_at?: string
-          created_by?: string | null
-          expires_at?: string
-          id?: string
-          project_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "telegram_link_codes_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       service_requests: {
         Row: {
@@ -560,6 +501,21 @@ export type Database = {
           },
         ]
       }
+      super_admins: {
+        Row: {
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       tables: {
         Row: {
           branch_id: string | null
@@ -601,50 +557,146 @@ export type Database = {
           },
         ]
       }
+      telegram_link_codes: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          id: string
+          project_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by?: string | null
+          expires_at: string
+          id?: string
+          project_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telegram_link_codes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      telegram_links: {
+        Row: {
+          chat_id: string
+          created_at: string
+          id: string
+          kind: string
+          label: string | null
+          project_id: string
+          user_id: string | null
+        }
+        Insert: {
+          chat_id: string
+          created_at?: string
+          id?: string
+          kind?: string
+          label?: string | null
+          project_id: string
+          user_id?: string | null
+        }
+        Update: {
+          chat_id?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          label?: string | null
+          project_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telegram_links_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      create_order_transactional: {
+      advance_order_status: {
         Args: {
-          p_project_id: string
-          p_table_id: string | null
-          p_type: string
-          p_status: string
-          p_total_amount: number
-          p_notes: string | null
-          p_order_number: number
-          p_items: Json[]
+          p_caller_user_id?: string
+          p_expected_status: string
+          p_new_status: string
+          p_order_id: string
         }
         Returns: Json
       }
+      create_order_transactional: {
+        Args: {
+          p_caller_user_id?: string
+          p_items: Json
+          p_notes?: string
+          p_order_number: number
+          p_project_id: string
+          p_status: string
+          p_table_id?: string
+          p_total_amount: number
+          p_type: string
+        }
+        Returns: Json
+      }
+      expire_subscriptions: { Args: never; Returns: number }
       generate_basic_slug: { Args: { input: string }; Returns: string }
       is_project_member: { Args: { p_project_id: string }; Returns: boolean }
+      is_project_member_for: {
+        Args: { p_project_id: string; p_user_id: string }
+        Returns: boolean
+      }
       is_project_owner: { Args: { p_project_id: string }; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
-      next_order_number: { Args: { p_project_id: string }; Returns: number }
+      next_order_number: {
+        Args: { p_caller_user_id?: string; p_project_id: string }
+        Returns: number
+      }
       project_has_no_members: {
         Args: { p_project_id: string }
         Returns: boolean
       }
       rate_limit_check: {
         Args: {
+          p_caller_user_id?: string
           p_key: string
           p_limit: number
+          p_project_id?: string
           p_window_ms: number
         }
-        Returns: {
-          allowed: boolean
-          remaining: number
-          reset_in: number
+        Returns: Json
+      }
+      renew_subscription: {
+        Args: {
+          p_caller_user_id?: string
+          p_days?: number
+          p_project_id: string
         }
+        Returns: string
       }
       unaccent: { Args: { "": string }; Returns: string }
     }
     Enums: {
       app_role: "super_admin" | "owner" | "manager" | "staff"
-      business_status: "pending" | "active" | "suspended"
       notification_type: "call_staff" | "bill_request" | "new_order" | "system"
       order_status:
         | "pending"
@@ -653,9 +705,7 @@ export type Database = {
         | "delivered"
         | "cancelled"
       order_type: "dinein" | "walkin" | "drivethru"
-      plan_interval: "monthly" | "yearly"
       service_request_type: "waiter" | "bill"
-      subscription_status: "trialing" | "active" | "past_due" | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -784,13 +834,10 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["super_admin", "owner", "manager", "staff"],
-      business_status: ["pending", "active", "suspended"],
       notification_type: ["call_staff", "bill_request", "new_order", "system"],
       order_status: ["pending", "preparing", "ready", "delivered", "cancelled"],
       order_type: ["dinein", "walkin", "drivethru"],
-      plan_interval: ["monthly", "yearly"],
       service_request_type: ["waiter", "bill"],
-      subscription_status: ["trialing", "active", "past_due", "cancelled"],
     },
   },
 } as const
