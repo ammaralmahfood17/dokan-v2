@@ -501,6 +501,36 @@ export type Database = {
           },
         ]
       }
+      super_admin_audit_log: {
+        Row: {
+          action: string
+          actor_user_id: string | null
+          created_at: string
+          id: string
+          metadata: Json
+          target_project_id: string | null
+          target_user_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          target_project_id?: string | null
+          target_user_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          target_project_id?: string | null
+          target_user_id?: string | null
+        }
+        Relationships: []
+      }
       super_admins: {
         Row: {
           created_at: string
@@ -692,6 +722,10 @@ export type Database = {
           p_project_id: string
         }
         Returns: string
+      }
+      super_admin_deactivate_project: {
+        Args: { p_caller_user_id?: string; p_project_id: string }
+        Returns: boolean
       }
       unaccent: { Args: { "": string }; Returns: string }
     }
