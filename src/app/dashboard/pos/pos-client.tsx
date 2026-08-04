@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ShoppingBag, X } from 'lucide-react';
+import { Search, ShoppingBag, X } from 'lucide-react';
 import { formatMoney, money, currencyDecimals } from '@/lib/utils';
 import type { OrderType, Product, ProductAddon } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -34,7 +34,9 @@ export function PosClient({
   const [picker, setPicker] = useState<ProductWithAddons | null>(null);
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
+  const [query, setQuery] = useState('');
   const pickerRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const pickerKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape') { setPicker(null); return; }
@@ -74,6 +76,48 @@ export function PosClient({
     () => products.filter((p) => p.is_available),
     [products]
   );
+
+  // Cashier search — filters by Arabic/English name; Enter quick-adds the top hit.
+  const q = query.trim().toLowerCase();
+  const filtered = useMemo(
+    () =>
+      q
+        ? available.filter(
+            (p) =>
+              p.name.toLowerCase().includes(q) ||
+              (p.name_en ?? '').toLowerCase().includes(q)
+          )
+        : available,
+    [available, q]
+  );
+
+  // Cashier keyboard shortcuts (desktop): "/" focuses search, Enter in the
+  // search field quick-adds the top filtered product (addon products open the
+  // picker — same behavior as tapping the card).
+  const onSearchKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+        const hit = filtered[0];
+        if (!hit) return;
+        e.preventDefault();
+        openProduct(hit);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filtered, openProduct, picker, cartOpen]
+  );
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (picker || cartOpen) return;
+      if (e.key === '/' && document.activeElement?.tagName !== 'INPUT') {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [picker, cartOpen]);
 
   const total = useMemo(
     () => money(lines.reduce((s, l) => s + l.unitPrice * l.quantity, 0), currencyDecimals(currency)),
@@ -224,14 +268,43 @@ export function PosClient({
             ))}
           </div>
 
-          {!available.length ? (
+          {/* Cashier search — desktop "/" shortcut, Enter quick-adds top hit */}
+          <div className="relative mb-3">
+            <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
+            <input
+              ref={searchRef}
+              type="search"
+              inputMode="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={onSearchKeyDown}
+              placeholder="ابحث عن منتج… ( / )"
+              aria-label="ابحث عن منتج"
+              maxLength={60}
+              className="input min-h-[44px] w-full ps-9 pe-9"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery('')}
+                aria-label="مسح البحث"
+                className="absolute end-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-[var(--color-text-muted)] hover:bg-[var(--color-surface-sunken)] hover:text-[var(--color-text)]"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
+          {!filtered.length ? (
             <div className="card empty">
-              <h3>ما فيه منتجات متاحة حالياً</h3>
-              <p className="text-sm">أضف منتجاتك من صفحة المنتجات.</p>
+              <h3>{q ? 'لا توجد نتائج مطابقة' : 'ما فيه منتجات متاحة حالياً'}</h3>
+              <p className="text-sm">
+                {q ? `لا يوجد منتج باسم «${query.trim()}».` : 'أضف منتجاتك من صفحة المنتجات.'}
+              </p>
             </div>
           ) : (
             <div data-pos-grid className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3">
-              {available.map((p) => (
+              {filtered.map((p) => (
                 <ProductCard
                   key={p.id}
                   product={p}

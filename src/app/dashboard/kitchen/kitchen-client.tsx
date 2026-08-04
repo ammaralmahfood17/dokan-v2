@@ -7,6 +7,7 @@ import {
   type OrderItem,
   type OrderItemStatus,
   type OrderStatus,
+  ORDER_STATUS_LABELS,
 } from '@/lib/types';
 import { toast } from 'sonner';
 
@@ -802,9 +803,7 @@ function KitchenTicket({
   const badgeTone = overdue ? 'danger' : tone;
   const badgeLabel =
     overdue ? 'متأخر'
-    : status === 'pending' ? 'جديد'
-    : status === 'preparing' ? 'قيد التحضير'
-    : 'جاهز';
+    : ORDER_STATUS_LABELS[status];
 
   // Timer color gradient — success → warning → danger (5 / 12 / 20 min)
   const timerTone =

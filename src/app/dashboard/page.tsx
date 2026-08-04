@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { formatMoney } from '@/lib/utils';
 import { redirect } from 'next/navigation';
 import { EmptyState } from '@/components/ui/empty-state';
+import { StatusChip } from '@/components/ui/status-chip';
 
 /** Last-7-days buckets (Asia/Bahrain) — built outside the component so the
  * react-hooks purity rule doesn't flag Date.now() during render. */
@@ -238,15 +239,8 @@ export default async function DashboardPage() {
     timeZone: 'Asia/Bahrain',
   });
 
-  // Status badge → Enterprise pills (§6.3)
-  const statusBadge = (status: string) => {
-    const base = 'inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold';
-    if (status === 'pending') return <span className={`${base} bg-[var(--color-warn-tint)] text-[var(--color-warn)]`}>جديد</span>;
-    if (status === 'preparing') return <span className={`${base} bg-[var(--color-info-tint)] text-[var(--color-info)]`}>تحضير</span>;
-    if (status === 'ready') return <span className={`${base} bg-[var(--color-success-tint)] text-[var(--color-success)]`}>جاهز</span>;
-    if (status === 'delivered') return <span className={`${base} bg-[var(--color-surface-sunken)] text-[var(--color-text-muted)]`}>تم التسليم</span>;
-    return <span className={`${base} bg-[var(--color-danger-tint)] text-[var(--color-danger)]`}>ملغي</span>;
-  };
+  // Status badge → Enterprise pills (§6.3) — labels + tones centralized in StatusChip
+  const statusBadge = (status: string) => <StatusChip status={status} />;
 
   const tableLabel = (o: {
     tables?: { number: number } | null;
