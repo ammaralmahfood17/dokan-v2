@@ -113,19 +113,15 @@ $$;
 -- ---------------------------------------------------------------------------
 -- 2. Kill the default-privilege backdoor on FUTURE objects
 -- ---------------------------------------------------------------------------
--- These run for the two roles that create objects in this database.
+-- These run for the role that creates objects via migrations (`postgres`).
+-- (supabase_admin is platform-managed; its default privileges cannot be
+-- altered from `postgres`. All tables/sequences/functions deployed through
+-- supabase migrations are owned by `postgres`, so this fully covers them.)
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
   REVOKE ALL ON TABLES FROM anon, authenticated;
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
   REVOKE ALL ON SEQUENCES FROM anon, authenticated;
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
-  REVOKE ALL ON FUNCTIONS FROM anon, authenticated;
-
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public
-  REVOKE ALL ON TABLES FROM anon, authenticated;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public
-  REVOKE ALL ON SEQUENCES FROM anon, authenticated;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public
   REVOKE ALL ON FUNCTIONS FROM anon, authenticated;
 
 -- ---------------------------------------------------------------------------
