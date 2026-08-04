@@ -68,6 +68,43 @@ export async function createSecureOrder(
   const validated: ValidatedOrderLine[] = [];
   let totalAmount = 0;
 
+  // ── Bulk pre-fetch (latency fix) ─────────────────────────────────────
+  // The old per-item loop fired 2 sequential queries PER line (product
+  // fetch + addons fetch) — a 3-item order = 6 round-trips ≈ 1.5s of pure
+  // query time (each ~250ms Vercel→Supabase). Fetch ALL products and ALL
+  // addons in two parallel queries instead, then resolve lines in memory.
+  const productIds = [...new Set(items.map((i) => String(i.productId).trim()))];
+  const addonIds = [
+    ...new Set(
+      items.flatMap((i) =>
+        (Array.isArray(i.addonIds) ? i.addonIds : []).map((a) => String(a).trim())
+      )
+    ),
+  ];
+
+  const [productsRes, addonsRes] = await Promise.all([
+    supabase
+      .from('products')
+      .select('id, name, price, is_available, project_id')
+      .in('id', productIds)
+      .eq('project_id', projectId),
+    addonIds.length > 0
+      ? supabase
+          .from('product_addons')
+          .select('id, name, price, is_available, product_id')
+          .in('id', addonIds)
+          .eq('is_available', true)
+      : Promise.resolve({ data: [] as never[] }),
+  ]);
+  const productsById = new Map((productsRes.data ?? []).map((p) => [p.id, p]));
+  // Group addons by product so each line can validate its own set.
+  const addonsByProduct = new Map<string, NonNullable<typeof addonsRes.data>[number][]>();
+  for (const a of addonsRes.data ?? []) {
+    const list = addonsByProduct.get(a.product_id) ?? [];
+    list.push(a);
+    addonsByProduct.set(a.product_id, list);
+  }
+
   for (const item of items) {
     const quantity = Number(item.quantity);
     // Require a positive integer quantity (reject 1.5, NaN, etc.)
@@ -89,14 +126,9 @@ export async function createSecureOrder(
       return { ok: false, error: 'ملاحظات الصنف طويلة جداً (الحد 200 حرف)', status: 400 };
     }
 
-    const { data: product, error: prodErr } = await supabase
-      .from('products')
-      .select('id, name, price, is_available, project_id')
-      .eq('id', item.productId)
-      .eq('project_id', projectId)
-      .single();
+    const product = productsById.get(String(item.productId).trim());
 
-    if (prodErr || !product || !product.is_available) {
+    if (!product || !product.is_available) {
       return {
         ok: false,
         error: 'منتج غير متاح أو لا ينتمي لهذا المتجر',
@@ -104,21 +136,19 @@ export async function createSecureOrder(
       };
     }
 
-    const addonIds = Array.isArray(item.addonIds) ? item.addonIds : [];
+    const addonIdsForLine = Array.isArray(item.addonIds) ? item.addonIds.map((a) => String(a).trim()) : [];
     const addonDetails: OrderItemAddon[] = [];
     let addonTotal = 0;
 
-    if (addonIds.length > 0) {
-      const { data: addons } = await supabase
-        .from('product_addons')
-        .select('id, name, price, is_available, product_id')
-        .in('id', addonIds)
-        .eq('product_id', product.id)
-        .eq('is_available', true);
+    if (addonIdsForLine.length > 0) {
+      // Only addons belonging to THIS product, from the pre-fetched set.
+      const productAddons = (addonsByProduct.get(product.id) ?? []).filter((a) =>
+        addonIdsForLine.includes(a.id)
+      );
+      const found = productAddons;
 
-      const found = addons ?? [];
       // Reject if any requested addon is missing or wrong product
-      if (found.length !== addonIds.length) {
+      if (found.length !== addonIdsForLine.length) {
         return {
           ok: false,
           error: 'إضافة غير صالحة',

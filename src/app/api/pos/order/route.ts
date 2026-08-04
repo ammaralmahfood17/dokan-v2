@@ -89,35 +89,43 @@ export async function POST(request: NextRequest) {
 
     const { id: orderId, status: orderStatus, totalAmount, orderNumber } = result.order;
 
-    // Phase 3: Audit log
-    try {
-      await supabase.from('order_audit_logs').insert({
-        order_id: orderId,
-        project_id: membership.project_id,
-        event: 'created',
-        new_status: orderStatus,
-        actor_user_id: user.id,
-        metadata: { type, item_count: body.items?.length || 0 },
-      });
-    } catch (auditErr) {
-      console.warn('[Audit] Failed to write order audit log', auditErr);
-    }
+    // Post-create side effects are independent — run them in PARALLEL
+    // (audit log, push, telegram). The old sequential awaits added ~1.2s
+    // of user-visible latency (push + telegram are external HTTP calls).
+    await Promise.all([
+      // Phase 3: Audit log
+      (async () => {
+        try {
+          await supabase.from('order_audit_logs').insert({
+            order_id: orderId,
+            project_id: membership.project_id,
+            event: 'created',
+            new_status: orderStatus,
+            actor_user_id: user.id,
+            metadata: { type, item_count: body.items?.length || 0 },
+          });
+        } catch (auditErr) {
+          console.warn('[Audit] Failed to write order audit log', auditErr);
+        }
+      })(),
 
-    // Push notification to all staff — MUST await: Vercel freezes the function
-    // on response return, so fire-and-forget promises never complete.
-    await sendPushToProject(membership.project_id, {
-      title: '🔔 طلب جديد',
-      body: `طلب #${orderNumber} — ${formatMoney(totalAmount, currency)}`,
-      url: '/dashboard/kitchen',
-      tag: `order-${orderId}`,
-    }).catch(() => {});
+      // Push notification to all staff — MUST complete before response
+      // return: Vercel freezes the function, fire-and-forget dies. Runs in
+      // parallel with audit + telegram so it doesn't serialize latency.
+      sendPushToProject(membership.project_id, {
+        title: '🔔 طلب جديد',
+        body: `طلب #${orderNumber} — ${formatMoney(totalAmount, currency)}`,
+        url: '/dashboard/kitchen',
+        tag: `order-${orderId}`,
+      }).catch(() => {}),
 
-    // Telegram alert — free, reliable (works app-closed). MUST await (Vercel).
-    await sendTelegramAlert(membership.project_id, {
-      orderNumber,
-      totalText: formatMoney(totalAmount, currency),
-      context: type === 'drivethru' ? '🚗 سفري' : '🛒 كاشير',
-    }).catch(() => {});
+      // Telegram alert — free, reliable (works app-closed). Same note.
+      sendTelegramAlert(membership.project_id, {
+        orderNumber,
+        totalText: formatMoney(totalAmount, currency),
+        context: type === 'drivethru' ? '🚗 سفري' : '🛒 كاشير',
+      }).catch(() => {}),
+    ]);
 
     return NextResponse.json({
       order: {

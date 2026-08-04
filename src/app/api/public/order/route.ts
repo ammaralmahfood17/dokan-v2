@@ -33,8 +33,12 @@ export async function POST(request: NextRequest) {
     // no duplicate 'public-order:' prefix in the key itself)
     const ip = getClientIp(request);
     const rateKey = projectSlug;
-    const limitResult = await rateLimit(rateKey, { limit: 20, windowMs: 60 * 1000, keyPrefix: 'public-order' });
-    const ipLimitResult = await rateLimit(`ip:${ip}`, { limit: 30, windowMs: 60 * 1000, keyPrefix: 'public-order-ip' });
+    // Two independent rate-limit checks — run in parallel (each is a DB
+    // round-trip; serializing them added ~250ms of pure latency).
+    const [limitResult, ipLimitResult] = await Promise.all([
+      rateLimit(rateKey, { limit: 20, windowMs: 60 * 1000, keyPrefix: 'public-order' }),
+      rateLimit(`ip:${ip}`, { limit: 30, windowMs: 60 * 1000, keyPrefix: 'public-order-ip' }),
+    ]);
 
     if (!limitResult.allowed) {
       const res = createRateLimitResponse(limitResult.resetIn);
@@ -87,37 +91,43 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: result.error }, { status: result.status });
     }
 
-    // Phase 3: Audit log
-    try {
-      await supabase.from('order_audit_logs').insert({
-        order_id: result.order.id,
-        project_id: project.id,
-        event: 'created',
-        new_status: result.order.status,
-        metadata: { type: 'dinein', item_count: items?.length || 0 },
-      });
-    } catch (auditErr) {
-      console.warn('[Audit] Failed to write order audit log', auditErr);
-    }
+    // Post-create side effects (audit, push, telegram) are independent —
+    // run in PARALLEL. Serializing them added ~1.2s user-visible latency.
+    await Promise.all([
+      // Phase 3: Audit log
+      (async () => {
+        try {
+          await supabase.from('order_audit_logs').insert({
+            order_id: result.order.id,
+            project_id: project.id,
+            event: 'created',
+            new_status: result.order.status,
+            metadata: { type: 'dinein', item_count: items?.length || 0 },
+          });
+        } catch (auditErr) {
+          console.warn('[Audit] Failed to write order audit log', auditErr);
+        }
+      })(),
 
-    // Push notification to all staff — MUST await: Vercel freezes the function
-    // on response return, so fire-and-forget promises never complete.
-    await sendPushToProject(project.id, {
-      title: '🔔 طلب جديد',
-      body: `طلب #${result.order.orderNumber} من القائمة — ${formatMoney(
-        result.order.totalAmount,
-        project.currency
-      )}`,
-      url: '/dashboard/kitchen',
-      tag: `order-${result.order.id}`,
-    }).catch(() => {});
+      // Push notification to all staff — MUST complete before response
+      // return: Vercel freezes the function, fire-and-forget dies.
+      sendPushToProject(project.id, {
+        title: '🔔 طلب جديد',
+        body: `طلب #${result.order.orderNumber} من القائمة — ${formatMoney(
+          result.order.totalAmount,
+          project.currency
+        )}`,
+        url: '/dashboard/kitchen',
+        tag: `order-${result.order.id}`,
+      }).catch(() => {}),
 
-    // Telegram alert — free, reliable (works app-closed). MUST await (Vercel).
-    await sendTelegramAlert(project.id, {
-      orderNumber: result.order.orderNumber,
-      totalText: formatMoney(result.order.totalAmount, project.currency),
-      tableNumber: table.number,
-    }).catch(() => {});
+      // Telegram alert — free, reliable (works app-closed). Same note.
+      sendTelegramAlert(project.id, {
+        orderNumber: result.order.orderNumber,
+        totalText: formatMoney(result.order.totalAmount, project.currency),
+        tableNumber: table.number,
+      }).catch(() => {}),
+    ]);
 
     return NextResponse.json({
       order: {
