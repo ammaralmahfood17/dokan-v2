@@ -16,8 +16,6 @@ import {
   Store,
   Menu,
   X,
-  Moon,
-  Sun,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -45,41 +43,12 @@ const NAV_BOTTOM: NavItem[] = [
 
 export function AppSidebar({
   projectName,
-  primaryColor,
 }: {
   projectName: string;
-  primaryColor: string;
 }) {
   const pathname = usePathname();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
-  // Init dark mode lazily from localStorage (default light). Reading in the
-  // initializer avoids setState-inside-effect; the blocking script in
-  // layout.tsx already applied the class before paint.
-  const [isDark, setIsDark] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    try {
-      return localStorage.getItem('dokan-theme') === 'dark';
-    } catch {
-      return false;
-    }
-  });
-
-  // Keep <html> class in sync with state (no setState in this effect).
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', isDark);
-  }, [isDark]);
-
-  function toggleDark() {
-    const next = !isDark;
-    setIsDark(next);
-    document.documentElement.classList.toggle('dark', next);
-    try {
-      localStorage.setItem('dokan-theme', next ? 'dark' : 'light');
-    } catch {
-      // ignore — the theme still applies for this session
-    }
-  }
 
   useEffect(() => {
     try { router.prefetch('/dashboard/settings'); } catch {}
@@ -125,10 +94,10 @@ export function AppSidebar({
         <div className={cn(
           'flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] transition-all duration-200',
           active
-            ? 'bg-[var(--color-primary)] text-white'
+            ? 'bg-[var(--color-primary-tint-strong)] text-[var(--color-primary)]'
             : 'bg-transparent text-[var(--color-text-muted)] group-hover:text-[var(--color-text)]'
         )}>
-          <Icon className={cn('h-[15px] w-[15px]', active ? 'text-white' : '')} />
+          <Icon className={cn('h-[15px] w-[15px]', active ? 'text-[var(--color-primary)]' : '')} />
         </div>
         <span>{item.label}</span>
         {active && (
@@ -145,7 +114,7 @@ export function AppSidebar({
         type="button"
         onClick={() => setIsOpen(true)}
         className={cn(
-          'fixed left-3 top-3 z-40 flex h-9 w-9 items-center justify-center rounded-[10px] bg-[var(--color-surface)] shadow-md border border-[var(--color-border)] backdrop-blur-sm',
+          'fixed end-3 top-3 z-40 flex h-9 w-9 items-center justify-center rounded-[10px] bg-[var(--color-surface)] shadow-md border border-[var(--color-border)] backdrop-blur-sm',
           'lg:hidden',
           isOpen && 'hidden'
         )}
@@ -166,19 +135,16 @@ export function AppSidebar({
           a modal backdrop on mobile or intercepts its backdrop-click-to-close. */}
       <aside
         className={cn(
-          'fixed right-0 top-0 z-[45] flex h-dvh w-[270px] flex-col border-l border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl transition-transform duration-300',
+          'fixed start-0 top-0 z-[45] flex h-dvh w-[270px] flex-col border-e border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl transition-transform duration-300',
           isOpen ? 'translate-x-0' : 'translate-x-full',
-          'lg:static lg:z-auto lg:h-auto lg:w-56 lg:translate-x-0 lg:shadow-none lg:border-l',
+          'lg:static lg:z-auto lg:h-auto lg:w-56 lg:translate-x-0 lg:shadow-none lg:border-e',
           'print:hidden'
         )}
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[var(--color-border)] px-3 py-3 lg:px-4 lg:py-4">
           <div className="flex items-center gap-2.5">
-            <div
-              className="flex h-9 w-9 items-center justify-center rounded-[10px] text-white shadow-sm"
-              style={{ background: primaryColor || '#4338CA' }}
-            >
+            <div className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-[var(--color-primary)] text-white shadow-sm">
               <Store className="h-4 w-4" />
             </div>
             <div className="min-w-0">
@@ -210,18 +176,6 @@ export function AppSidebar({
         {/* Bottom */}
         <div className="border-t border-[var(--color-border)] p-2 space-y-0.5">
           {NAV_BOTTOM.map(navItem)}
-
-          {/* Dark mode toggle */}
-          <button
-            type="button"
-            onClick={toggleDark}
-            className="flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-[13px] font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)] transition-all duration-200"
-          >
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] text-[var(--color-text-muted)]">
-              {isDark ? <Sun className="h-[15px] w-[15px]" /> : <Moon className="h-[15px] w-[15px]" />}
-            </div>
-            <span>{isDark ? 'الوضع النهاري' : 'الوضع الليلي'}</span>
-          </button>
 
           {/* Logout */}
           <button

@@ -316,10 +316,10 @@ export function MenuClient({
   // ======== CART BAR BADGE ========
   const cartBadge = itemCount > 0;
 
-  /** Render a single product row — mockup: square 72px image, teal mono price, ink add-btn */
+  /** Render a single product row — mockup: square 72px image, price, add-btn */
   function renderProduct(p: ProductWithAddons, isFirst = false) {
     return (
-      <div key={p.id} className="flex items-center gap-3 border-b pb-3 pt-1" style={{ borderColor: 'rgba(61,58,52,.08)' }}>
+      <div key={p.id} className="flex items-center gap-3 border-b border-[var(--color-border)] pb-3 pt-1">
         <button
           type="button"
           onClick={() => quickAdd(p)}
@@ -339,7 +339,7 @@ export function MenuClient({
             />
           ) : (
             <div
-              className="flex h-[72px] w-[72px] shrink-0 items-center justify-center text-[22px] font-bold bg-[#EDE7D6]"
+              className="flex h-[72px] w-[72px] shrink-0 items-center justify-center text-[22px] font-bold bg-[var(--color-surface-sunken)]"
               style={{ color: 'var(--color-primary)' }}
             >
               {p.name.slice(0, 1)}
@@ -361,7 +361,7 @@ export function MenuClient({
           type="button"
           onClick={() => quickAdd(p)}
           aria-label={`إضافة ${p.name} إلى السلة`}
-          className={`flex h-[44px] w-[44px] shrink-0 items-center justify-center bg-[var(--color-text)] text-[20px] font-semibold leading-none text-[var(--color-accent)] transition-transform duration-200 active:scale-95 ${
+          className={`flex h-[44px] w-[44px] shrink-0 items-center justify-center bg-[var(--color-text)] text-[20px] font-semibold leading-none text-[var(--color-primary)] transition-transform duration-200 active:scale-95 ${
             lastAddedKey === p.id ? 'scale-110' : ''
           }`}
         >
@@ -374,15 +374,14 @@ export function MenuClient({
   // ======== MAIN MENU ========
   return (
     <div className="min-h-dvh bg-[var(--color-bg)] pb-24 page-enter">
-      {/* HEADER — Scan Grid: ink round brand mark + TABLE chip */}
+      {/* HEADER — brand mark + TABLE chip */}
       <header
-        className="sticky top-0 z-20 border-b bg-[var(--color-bg)] px-4 py-3.5"
-        style={{ borderColor: 'rgba(61,58,52,.12)' }}
+        className="sticky top-0 z-20 border-b border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3.5"
       >
         <div className="mx-auto flex max-w-[480px] items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2.5">
             <div
-              className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full bg-[var(--color-text)] font-display text-[18px] font-bold text-[var(--color-accent)]"
+              className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full bg-[var(--color-text)] font-display text-[18px] font-bold text-[var(--color-primary)]"
             >
               {project.name.slice(0, 1)}
             </div>
@@ -393,14 +392,12 @@ export function MenuClient({
               </p>
             </div>
           </div>
-          {/* Table chip — corner brackets like the mockup */}
+          {/* Table chip */}
           <div className="flex items-center gap-1.5">
             <div
               className="relative px-2.5 py-1 font-mono text-[12px] font-semibold tabular-nums text-[var(--color-primary)]"
-              style={{ border: '1.5px solid var(--color-accent)' }}
+              style={{ border: '1.5px solid var(--color-primary)' }}
             >
-              <span className="absolute -top-[1.5px] -end-[1.5px] h-[6px] w-[6px] border-t-[1.5px] border-s-[1.5px] border-[var(--color-accent)]" />
-              <span className="absolute -bottom-[1.5px] -start-[1.5px] h-[6px] w-[6px] border-b-[1.5px] border-e-[1.5px] border-[var(--color-accent)]" />
               TABLE·{String(table.number).padStart(2, '0')}
             </div>
             <button
@@ -423,17 +420,17 @@ export function MenuClient({
         </div>
       </header>
 
-      {/* CATEGORIES — pills, active = ink with saffron text (mockup) */}
+      {/* CATEGORIES — pills, active = primary (mockup) */}
       {categories.length > 0 && (
-        <div className="sticky top-[57px] z-10 border-b bg-[var(--color-bg)]" style={{ borderColor: 'rgba(61,58,52,.12)' }}>
+        <div className="sticky top-[57px] z-10 border-b border-[var(--color-border)] bg-[var(--color-bg)]">
           <div className="mx-auto flex max-w-[480px] gap-2 overflow-x-auto px-3 pb-1 pt-1" style={{ scrollbarWidth: 'none' }}>
             <button
               type="button"
               onClick={() => handleCategoryChange('all')}
               className={`min-h-[44px] shrink-0 whitespace-nowrap rounded-full px-4 text-[13px] font-semibold transition-colors ${
                 activeCategory === 'all'
-                  ? 'bg-[var(--color-text)] text-[var(--color-accent)]'
-                  : 'bg-[#EDE7D6] text-[var(--color-text)] hover:bg-[var(--color-border)]'
+                  ? 'bg-[var(--color-text)] text-[var(--color-primary)]'
+                  : 'bg-[var(--color-surface-sunken)] text-[var(--color-text)] hover:bg-[var(--color-border)]'
               }`}
             >
               الكل
@@ -445,8 +442,8 @@ export function MenuClient({
                 onClick={() => handleCategoryChange(c.id)}
                 className={`min-h-[44px] shrink-0 whitespace-nowrap rounded-full px-4 text-[13px] font-semibold transition-colors ${
                   activeCategory === c.id
-                    ? 'bg-[var(--color-text)] text-[var(--color-accent)]'
-                    : 'bg-[#EDE7D6] text-[var(--color-text)] hover:bg-[var(--color-border)]'
+                    ? 'bg-[var(--color-text)] text-[var(--color-primary)]'
+                    : 'bg-[var(--color-surface-sunken)] text-[var(--color-text)] hover:bg-[var(--color-border)]'
                 }`}
               >
                 {c.name}
@@ -508,7 +505,7 @@ export function MenuClient({
         )}
       </main>
 
-      {/* CART FLOATING BAR — ink bar with saffron corner brackets (mockup) */}
+      {/* CART FLOATING BAR — ink bar (mockup), primary accents */}
       {cartBadge && (
         <div className="fixed inset-x-0 bottom-0 z-30 p-3 pb-safe-bottom">
           <div className="mx-auto w-full max-w-[480px] px-1 pb-1">
@@ -517,12 +514,9 @@ export function MenuClient({
               onClick={() => setCartOpen(true)}
               className="relative flex w-full items-center justify-between bg-[var(--color-text)] px-4 py-3.5 text-[var(--color-bg)] shadow-lg transition-transform active:scale-[0.98]"
             >
-              {/* Corner brackets — saffron scan corners */}
-              <span className="absolute -top-[2px] -end-[2px] h-[10px] w-[10px] border-t-2 border-s-2 border-[var(--color-accent)]" />
-              <span className="absolute -bottom-[2px] -start-[2px] h-[10px] w-[10px] border-b-2 border-e-2 border-[var(--color-accent)]" />
 
               <span className="flex items-center gap-2.5">
-                <span className="flex h-[26px] w-[26px] items-center justify-center bg-[var(--color-accent)] font-mono text-[13px] font-bold tabular-nums text-[var(--color-text)]">
+                <span className="flex h-[26px] w-[26px] items-center justify-center bg-[var(--color-primary)] font-mono text-[13px] font-bold tabular-nums text-[var(--color-text)]">
                   {itemCount}
                 </span>
                 <span className="text-start">
@@ -532,7 +526,7 @@ export function MenuClient({
                   </span>
                 </span>
               </span>
-              <span className="font-mono text-[15px] font-bold tabular-nums text-[var(--color-accent)]" dir="ltr">
+              <span className="font-mono text-[15px] font-bold tabular-nums text-[var(--color-primary)]" dir="ltr">
                 {formatMoney(total, currency)}
               </span>
             </button>

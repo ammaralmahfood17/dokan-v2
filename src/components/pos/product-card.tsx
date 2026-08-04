@@ -26,9 +26,9 @@ export function ProductCard({
       data-pos-card
       aria-label={`${product.name} — ${formatMoney(Number(product.price), currency)}`}
       className={cn(
-        'group flex w-full flex-col overflow-hidden rounded-[8px] border border-[var(--pos-border)] bg-[var(--pos-surface)] text-start',
+        'group flex w-full flex-col overflow-hidden rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)] text-start',
         'transition-[transform,box-shadow,border-color] duration-150 will-change-transform',
-        'hover:-translate-y-px hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)] hover:border-[var(--pos-text-subdued)]',
+        'hover:-translate-y-px hover:shadow-sm hover:border-[var(--color-text-secondary)]',
         'active:scale-[0.97]',
         'min-h-[44px]',
         className
@@ -40,10 +40,10 @@ export function ProductCard({
           src={product.image_url}
           alt=""
           loading="lazy"
-          className="aspect-[4/3] w-full shrink-0 bg-[var(--pos-bg)] object-cover"
+          className="aspect-[4/3] w-full shrink-0 bg-[var(--color-surface-sunken)] object-cover"
         />
       ) : (
-        <div className="flex aspect-[4/3] w-full shrink-0 items-center justify-center bg-[var(--pos-bg)] text-[var(--pos-text-subdued)]">
+        <div className="flex aspect-[4/3] w-full shrink-0 items-center justify-center bg-[var(--color-surface-sunken)] text-[var(--color-text-secondary)]">
           <svg
             viewBox="0 0 24 24"
             fill="none"
@@ -63,13 +63,13 @@ export function ProductCard({
       <div className="flex min-w-0 flex-1 flex-col gap-1 p-2.5">
         <p
           data-pos-name
-          className="line-clamp-2 min-h-[2.5rem] text-[13px] font-semibold leading-5 text-[var(--pos-text-primary)]"
+          className="line-clamp-2 min-h-[2.5rem] text-[13px] font-semibold leading-5 text-[var(--color-text)]"
         >
           {product.name}
         </p>
         <p
           data-pos-price
-          className="mt-auto text-[15px] font-bold tabular-nums text-[var(--pos-text-primary)]"
+          className="mt-auto text-[15px] font-bold tabular-nums text-[var(--color-text)]"
         >
           {formatMoney(Number(product.price), currency)}
         </p>

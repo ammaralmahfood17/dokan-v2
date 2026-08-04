@@ -58,16 +58,16 @@ export function CartPanel({
   return (
     <section
       className={cn(
-        'flex h-full min-h-0 flex-col bg-[var(--pos-surface)]',
+        'flex h-full min-h-0 flex-col bg-[var(--color-surface)]',
         className
       )}
       aria-label="سلة الطلب"
     >
       {/* Header */}
-      <header className="shrink-0 border-b border-[var(--pos-border)] px-4 py-3">
+      <header className="shrink-0 border-b border-[var(--color-border)] px-4 py-3">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <h2 className="text-[20px] font-bold leading-7 text-[var(--pos-text-primary)]">
+            <h2 className="text-[20px] font-bold leading-7 text-[var(--color-text)]">
               السلة
             </h2>
             <POSBadge variant={lines.length ? 'success' : 'neutral'}>
@@ -79,7 +79,7 @@ export function CartPanel({
             onClick={onClear}
             disabled={!lines.length}
             aria-label="تفريغ السلة"
-            className="flex h-11 items-center gap-1.5 rounded-[8px] px-2.5 text-sm font-semibold text-[var(--pos-text-subdued)] transition-colors hover:bg-[var(--pos-critical-tint)] hover:text-[var(--pos-red)] disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex h-11 items-center gap-1.5 rounded-[8px] px-2.5 text-sm font-semibold text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-danger-tint)] hover:text-[var(--color-danger)] disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Trash2 className="h-4 w-4" />
             <span className="hidden sm:inline">تفريغ</span>
@@ -89,7 +89,7 @@ export function CartPanel({
         {/* Order type — Polaris segmented control (desktop column only;
             mobile keeps it above the product grid). */}
         <div
-          className="mt-3 hidden gap-1 rounded-[8px] bg-[var(--pos-bg)] p-1 md:flex"
+          className="mt-3 hidden gap-1 rounded-[8px] bg-[var(--color-surface-sunken)] p-1 md:flex"
           role="tablist"
           aria-label="نوع الطلب"
         >
@@ -110,8 +110,8 @@ export function CartPanel({
               className={cn(
                 'min-h-[44px] flex-1 rounded-[6px] text-sm font-semibold transition-colors',
                 type === value
-                  ? 'bg-[var(--pos-surface)] text-[var(--pos-text-primary)] shadow-sm'
-                  : 'text-[var(--pos-text-subdued)] hover:text-[var(--pos-text-primary)]'
+                  ? 'bg-[var(--color-surface)] text-[var(--color-text)] shadow-sm'
+                  : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
               )}
             >
               {label}
@@ -123,16 +123,16 @@ export function CartPanel({
       {/* Line items / empty state */}
       {lines.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 py-12 text-center">
-          <ShoppingBag className="h-9 w-9 text-[var(--pos-text-subdued)]" strokeWidth={1.5} />
-          <p className="text-sm font-semibold text-[var(--pos-text-primary)]">
+          <ShoppingBag className="h-9 w-9 text-[var(--color-text-secondary)]" strokeWidth={1.5} />
+          <p className="text-sm font-semibold text-[var(--color-text)]">
             السلة فارغة
           </p>
-          <p className="max-w-[220px] text-xs leading-5 text-[var(--pos-text-subdued)]">
+          <p className="max-w-[220px] text-xs leading-5 text-[var(--color-text-secondary)]">
             اختر منتجات من القائمة وستظهر هنا
           </p>
         </div>
       ) : (
-        <ul className="min-h-0 flex-1 divide-y divide-[var(--pos-border)] overflow-y-auto px-4">
+        <ul className="min-h-0 flex-1 divide-y divide-[var(--color-border)] overflow-y-auto px-4">
           {lines.map((line) => (
             <CartLineItem
               key={line.key}
@@ -148,7 +148,7 @@ export function CartPanel({
       )}
 
       {/* Footer */}
-      <footer className="shrink-0 space-y-3 border-t border-[var(--pos-border)] px-4 py-4">
+      <footer className="shrink-0 space-y-3 border-t border-[var(--color-border)] px-4 py-4">
         <div className="field mb-0">
           <label className="label" htmlFor="pos-notes">
             ملاحظات
@@ -168,16 +168,16 @@ export function CartPanel({
         {/* Tax/discount rows intentionally omitted: pricing is server-side
             (/api/pos/order recomputes totals); client only shows subtotal. */}
         <div className="flex items-center justify-between text-sm">
-          <span className="text-[var(--pos-text-subdued)]">المجموع الفرعي</span>
-          <span className="font-semibold tabular-nums text-[var(--pos-text-primary)]">
+          <span className="text-[var(--color-text-secondary)]">المجموع الفرعي</span>
+          <span className="font-semibold tabular-nums text-[var(--color-text)]">
             {formatMoney(subtotal, currency)}
           </span>
         </div>
         <div className="flex items-baseline justify-between">
-          <span className="text-base font-semibold text-[var(--pos-text-primary)]">
+          <span className="text-base font-semibold text-[var(--color-text)]">
             الإجمالي
           </span>
-          <span className="text-xl font-bold tabular-nums text-[var(--pos-text-primary)]">
+          <span className="text-xl font-bold tabular-nums text-[var(--color-text)]">
             {formatMoney(subtotal, currency)}
           </span>
         </div>

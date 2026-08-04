@@ -111,7 +111,7 @@ export default function DashboardError({
                 <button
                   type="button"
                   onClick={handleCopyLog}
-                  className="flex items-center gap-1 font-sans text-[var(--color-accent)] hover:text-[var(--color-primary)]"
+                  className="flex items-center gap-1 font-sans text-[var(--color-primary)] hover:text-[var(--color-primary-hover)]"
                 >
                   {copied ? (
                     <Check className="h-3 w-3 text-emerald-400" />

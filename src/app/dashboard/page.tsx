@@ -238,14 +238,14 @@ export default async function DashboardPage() {
     timeZone: 'Asia/Bahrain',
   });
 
-  // Status badge → Scan Grid accent
+  // Status badge → Enterprise pills (§6.3)
   const statusBadge = (status: string) => {
-    const base = 'inline-block px-2 py-0.5 text-[10.5px] font-bold text-[var(--color-surface)]';
-    if (status === 'pending') return <span className={`${base} bg-[var(--color-danger)]`}>جديد</span>;
-    if (status === 'preparing') return <span className={`${base} bg-[var(--color-primary)]`}>تحضير</span>;
-    if (status === 'ready') return <span className={`${base} bg-[var(--color-success)]`}>جاهز</span>;
-    if (status === 'delivered') return <span className={`${base} bg-[var(--color-text-muted)]`}>تم التسليم</span>;
-    return <span className={`${base} bg-[var(--color-text-muted)]`}>ملغي</span>;
+    const base = 'inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold';
+    if (status === 'pending') return <span className={`${base} bg-[var(--color-warn-tint)] text-[var(--color-warn)]`}>جديد</span>;
+    if (status === 'preparing') return <span className={`${base} bg-[var(--color-info-tint)] text-[var(--color-info)]`}>تحضير</span>;
+    if (status === 'ready') return <span className={`${base} bg-[var(--color-success-tint)] text-[var(--color-success)]`}>جاهز</span>;
+    if (status === 'delivered') return <span className={`${base} bg-[var(--color-surface-sunken)] text-[var(--color-text-muted)]`}>تم التسليم</span>;
+    return <span className={`${base} bg-[var(--color-danger-tint)] text-[var(--color-danger)]`}>ملغي</span>;
   };
 
   const tableLabel = (o: {
@@ -278,9 +278,9 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* KPIs — Scan Grid cards with saffron corner bracket */}
+      {/* KPIs — Enterprise stat cards (border-first, no corners) */}
       <div className="mb-7 grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="scan-corners border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-[0_1px_3px_rgba(23,20,15,0.05)]">
+        <div className="border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
           <p className="mb-2 text-[12px] text-[var(--color-text-secondary)]">إجمالي مبيعات اليوم</p>
           <p className="font-mono text-[26px] font-bold tabular-nums leading-none" dir="ltr">
             {formatMoney(todaySales, ctx.project.currency)}
@@ -294,7 +294,7 @@ export default async function DashboardPage() {
           )}
         </div>
 
-        <div className="scan-corners border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-[0_1px_3px_rgba(23,20,15,0.05)]">
+        <div className="border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
           <p className="mb-2 text-[12px] text-[var(--color-text-secondary)]">عدد الطلبات</p>
           <p className="font-mono text-[26px] font-bold tabular-nums leading-none" dir="ltr">
             {todayOrders ?? 0}
@@ -308,7 +308,7 @@ export default async function DashboardPage() {
           )}
         </div>
 
-        <div className="scan-corners border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-[0_1px_3px_rgba(23,20,15,0.05)]">
+        <div className="border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
           <p className="mb-2 text-[12px] text-[var(--color-text-secondary)]">قيد التنفيذ</p>
           <p className="font-mono text-[26px] font-bold tabular-nums leading-none" dir="ltr">
             {pendingCount ?? 0}
@@ -322,7 +322,7 @@ export default async function DashboardPage() {
           )}
         </div>
 
-        <div className="scan-corners border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-[0_1px_3px_rgba(23,20,15,0.05)]">
+        <div className="border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
           <p className="mb-2 text-[12px] text-[var(--color-text-secondary)]">الطاولات النشطة</p>
           <p className="font-mono text-[26px] font-bold tabular-nums leading-none" dir="ltr">
             {occupiedCount}
@@ -425,7 +425,7 @@ export default async function DashboardPage() {
                     className="w-full transition-all group-hover:opacity-80"
                     style={{
                       height: `${Math.max((b.revenue / maxHourRevenue) * 100, b.revenue > 0 ? 8 : 2)}%`,
-                      background: 'linear-gradient(to top, var(--color-accent), #F3C67D)',
+                      background: 'linear-gradient(to top, var(--color-primary), #C7D2FE)',
                     }}
                   />
                   <span className="absolute -bottom-5 text-[10px] text-[var(--color-text-secondary)]">

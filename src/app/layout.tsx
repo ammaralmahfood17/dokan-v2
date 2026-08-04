@@ -1,39 +1,16 @@
 import type { Metadata, Viewport } from 'next';
-import { El_Messiri, IBM_Plex_Sans_Arabic, IBM_Plex_Mono, Inter } from 'next/font/google';
+import { Cairo } from 'next/font/google';
 import { Toaster } from 'sonner';
 import { ServiceWorkerRegister } from '@/components/service-worker-register';
 import { WebVitals } from '@/components/web-vitals';
 import './globals.css';
 
-// "شبكة المسح" — Scan Grid identity
-// Display: El Messiri (600/700) — عناوين كبيرة وشعار فقط
-// UI:      IBM Plex Sans Arabic (400/500/600) — واجهة ونصوص، وضوح تشغيلي
-// Mono:    IBM Plex Mono (500/600) — أرقام الطلبات والوقت والأسعار (طابع الإيصال)
-const elMessiri = El_Messiri({
+// "دكان" — Enterprise identity v1.0
+// Cairo only (400/500/600/700/800) — واجهة + أرقام + عناوين بخط واحد
+const cairo = Cairo({
   subsets: ['arabic', 'latin'],
-  weight: ['600', '700'],
-  variable: '--font-el-messiri',
-  display: 'swap',
-});
-
-const plexSansArabic = IBM_Plex_Sans_Arabic({
-  subsets: ['arabic', 'latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-plex-arabic',
-  display: 'swap',
-});
-
-const plexMono = IBM_Plex_Mono({
-  subsets: ['latin'],
-  weight: ['500', '600', '700'],
-  variable: '--font-plex-mono',
-  display: 'swap',
-});
-
-// POS keeps Inter for Latin/figures (Polaris-style cashier surface)
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-inter',
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-cairo',
   display: 'swap',
 });
 
@@ -54,7 +31,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: 'دكان',
-    statusBarStyle: 'black-translucent',
+    statusBarStyle: 'default',
   },
   other: { 'mobile-web-app-capable': 'yes' },
 };
@@ -62,10 +39,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#F5F1E6' },
-    { media: '(prefers-color-scheme: dark)', color: '#14110C' },
-  ],
+  themeColor: '#F8FAFC',
 };
 
 export default function RootLayout({
@@ -78,7 +52,7 @@ export default function RootLayout({
       lang="ar"
       dir="rtl"
       suppressHydrationWarning
-      className={`${elMessiri.variable} ${plexSansArabic.variable} ${plexMono.variable} ${inter.variable}`}
+      className={`${cairo.variable}`}
     >
       <head>
         {/* Supabase: early connect */}
@@ -90,19 +64,12 @@ export default function RootLayout({
         )}
         {/* iOS touch icons */}
         <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-maskable-512.png" />
-        <link rel="apple-touch-startup-image" media="(prefers-color-scheme: light)" href="/splash/light-1242x2688.png" />
-        <link rel="apple-touch-startup-image" media="(prefers-color-scheme: dark)" href="/splash/dark-1242x2688.png" />
+        <link rel="apple-touch-startup-image" href="/splash/light-1242x2688.png" />
         {/* Preload critical routes */}
         <link rel="prefetch" href="/dashboard" as="document" />
         <link rel="prefetch" href="/dashboard/kitchen" as="document" />
         <link rel="prefetch" href="/dashboard/pos" as="document" />
         <link rel="prefetch" href="/login" as="document" />
-        {/* Blocking script: apply dark mode before paint, prevent flash */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('dokan-theme');if(t==='dark')document.documentElement.classList.add('dark')}catch(e){}})()`,
-          }}
-        />
       </head>
       <body>
         {children}

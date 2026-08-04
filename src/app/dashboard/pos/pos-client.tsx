@@ -208,7 +208,7 @@ export function PosClient({
         {/* ── Left: product grid ─────────────────────────────────────── */}
         <div className="min-w-0">
           {/* Mobile order type — desktop keeps it in the cart header */}
-          <div className="mb-3 flex gap-1 rounded-[8px] bg-[var(--pos-bg)] p-1 md:hidden" role="tablist" aria-label="نوع الطلب">
+          <div className="mb-3 flex gap-1 rounded-[8px] bg-[var(--color-surface-sunken)] p-1 md:hidden" role="tablist" aria-label="نوع الطلب">
             {ORDER_TYPES.map(([value, label]) => (
               <button
                 key={value}
@@ -217,7 +217,7 @@ export function PosClient({
                 aria-selected={type === value}
                 onClick={() => setType(value)}
                 disabled={submitting}
-                className={`min-h-[44px] flex-1 rounded-[6px] text-sm font-semibold transition-colors ${type === value ? 'bg-[var(--pos-surface)] text-[var(--pos-text-primary)] shadow-sm' : 'text-[var(--pos-text-subdued)] hover:text-[var(--pos-text-primary)]'}`}
+                className={`min-h-[44px] flex-1 rounded-[6px] text-sm font-semibold transition-colors ${type === value ? 'bg-[var(--color-surface)] text-[var(--color-text)] shadow-sm' : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'}`}
               >
                 {label}
               </button>
@@ -260,14 +260,14 @@ export function PosClient({
               onRemove={(key) => setLines((prev) => prev.filter((x) => x.key !== key))}
               onSubmit={submit}
               submitting={submitting}
-              className="rounded-[10px] border border-[var(--pos-border)] shadow-sm"
+              className="rounded-[10px] border border-[var(--color-border)] shadow-sm"
             />
           </div>
         </aside>
       </div>
 
       {/* ── Mobile: floating total bar ───────────────────────────────── */}
-      <div data-pos-floating-bar className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--pos-border)] bg-[var(--pos-surface)]/95 p-3 pb-safe-bottom backdrop-blur-md md:hidden">
+      <div data-pos-floating-bar className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-border)] bg-[var(--color-surface)]/95 p-3 pb-safe-bottom backdrop-blur-md md:hidden">
         <button
           type="button"
           onClick={() => setCartOpen(true)}
@@ -295,9 +295,9 @@ export function PosClient({
           aria-label="سلة الطلب"
           onClick={(e) => { if (e.target === e.currentTarget) setCartOpen(false); }}
         >
-          <div className="flex h-[85dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-[var(--pos-surface)] animate-slide-up">
-            <div className="flex items-center justify-between border-b border-[var(--pos-border)] px-4 py-2">
-              <span className="mx-auto h-1 w-10 rounded-full bg-[var(--pos-border)]" aria-hidden="true" />
+          <div className="flex h-[85dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-[var(--color-surface)] animate-slide-up">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] px-4 py-2">
+              <span className="mx-auto h-1 w-10 rounded-full bg-[var(--color-border)]" aria-hidden="true" />
               <button
                 type="button"
                 onClick={() => setCartOpen(false)}

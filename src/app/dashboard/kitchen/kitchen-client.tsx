@@ -680,7 +680,7 @@ export function KitchenClient({
                 · {String(countByTab[t]).padStart(2, '0')}
               </span>
               {tab === t && (
-                <span className="absolute inset-x-0 bottom-0 h-0.5 bg-[var(--color-accent)]" />
+                <span className="absolute inset-x-0 bottom-0 h-0.5 bg-[var(--color-primary)]" />
               )}
             </button>
           ))}
@@ -739,7 +739,7 @@ export function KitchenClient({
         tabIndex={0}
       >
         {sorted.length === 0 && (
-          <div className="dotgrid col-span-full flex min-h-[40vh] flex-col items-center justify-center rounded-lg border border-dashed border-[var(--color-border)] text-[var(--color-text-muted)]">
+          <div className="col-span-full flex min-h-[40vh] flex-col items-center justify-center rounded-lg border border-dashed border-[var(--color-border)] text-[var(--color-text-muted)]">
             <span className="text-2xl">📡</span>
             <span className="mt-2 text-[13px]">بانتظار الطلبات…</span>
           </div>
@@ -786,20 +786,46 @@ function KitchenTicket({
     ? Math.max(0, Math.floor((now - createdMs) / 60000))
     : 0;
 
-  // Scan Grid corner colors — status → identity accent (clay/saffron/teal)
-  const accent =
+  // Enterprise §6.8 — ticket border & status badge by order status.
+  // mockup: جديد→success · قيد التحضير→warning · متأخر→danger
+  const tone =
     status === 'pending'
-      ? 'var(--color-danger)'
+      ? 'success'
       : status === 'preparing'
-        ? 'var(--color-primary)'
-        : 'var(--color-success)';
+        ? 'warning'
+        : 'success';
 
   let overdue = false;
   if (status === 'pending' && mins >= OVERDUE_MIN_PENDING) overdue = true;
   if (status === 'preparing' && mins >= OVERDUE_MIN_PREPARING) overdue = true;
 
-  const statusLabel =
-    status === 'pending' ? 'جديد' : status === 'preparing' ? 'قيد التحضير' : 'جاهز';
+  const badgeTone = overdue ? 'danger' : tone;
+  const badgeLabel =
+    overdue ? 'متأخر'
+    : status === 'pending' ? 'جديد'
+    : status === 'preparing' ? 'قيد التحضير'
+    : 'جاهز';
+
+  // Timer color gradient — success → warning → danger (5 / 12 / 20 min)
+  const timerTone =
+    mins < 5
+      ? 'var(--color-success)'
+      : mins < 12
+        ? 'var(--color-warn)'
+        : mins < 20
+          ? 'var(--color-warn-hover)'
+          : 'var(--color-danger)';
+
+  const toneBorder: Record<string, string> = {
+    success: 'border-[var(--color-success)]',
+    warning: 'border-[var(--color-warn)]',
+    danger: 'border-[var(--color-danger)]',
+  };
+  const toneBadge: Record<string, string> = {
+    success: 'bg-[var(--color-success-tint)] text-[var(--color-success)]',
+    warning: 'bg-[var(--color-warn-tint)] text-[var(--color-warn)]',
+    danger: 'bg-[var(--color-danger-tint)] text-[var(--color-danger)]',
+  };
 
   const tableLabel = order.tables
     ? `TABLE·${String(order.tables.number).padStart(2, '0')}`
@@ -811,31 +837,29 @@ function KitchenTicket({
 
   return (
     <article
-      className={`scan-corners border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-[0_1px_3px_rgba(23,20,15,0.05)] ${
-        overdue ? 'ring-1 ring-[var(--color-danger)]/40' : ''
-      }`}
-      style={{ ['--scan-accent' as string]: accent, ['--badge-accent' as string]: accent }}
+      className={`border-2 bg-[var(--color-surface)] p-4 ${toneBorder[badgeTone]}`}
     >
-      {/* Head: order badge + table/time */}
+      {/* Head: order number + table/time */}
       <div className="mb-2.5 flex items-start justify-between gap-2">
-        <span className="order-badge">#{String(order.order_number).padStart(3, '0')}</span>
+        <span className="rounded-md border border-[var(--color-border-strong)] bg-[var(--color-surface-sunken)] px-2 py-0.5 font-mono text-[12px] font-bold tabular-nums text-[var(--color-text)]" dir="ltr">
+          #{String(order.order_number).padStart(3, '0')}
+        </span>
         <div className="text-end">
           <p className="font-mono text-[12px] font-semibold tabular-nums text-[var(--color-text-secondary)]" dir="ltr">
             {tableLabel}
           </p>
-          <p className={`text-[11px] ${overdue ? 'font-bold text-[var(--color-danger)]' : 'text-[var(--color-text-muted)]'}`}>
+          <p className="text-[11px]" style={{ color: timerTone }}>
             {timeLabel}
             {overdue && ' · متأخر!'}
           </p>
         </div>
       </div>
 
-      {/* Status tag — filled accent square */}
+      {/* Status tag — pill (§6.3) */}
       <span
-        className="mb-2.5 inline-block px-2 py-0.5 text-[10.5px] font-bold text-[var(--color-surface)]"
-        style={{ background: accent }}
+        className={`mb-2.5 inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold ${toneBadge[badgeTone]}`}
       >
-        {statusLabel}
+        {badgeLabel}
       </span>
 
       {/* Items — one line per merged product */}
@@ -876,8 +900,7 @@ function KitchenTicket({
           <button
             type="button"
             onClick={onStart}
-            className="min-h-[44px] flex-1 rounded-[7px] px-4 text-[13px] font-bold text-[var(--color-surface)] transition-colors"
-            style={{ background: accent }}
+            className="min-h-[44px] flex-1 rounded-[7px] bg-[var(--color-primary)] px-4 text-[13px] font-bold text-white transition-colors hover:bg-[var(--color-primary-hover)]"
           >
             بدء التحضير
           </button>
@@ -887,8 +910,7 @@ function KitchenTicket({
             <button
               type="button"
               onClick={onReady}
-              className="min-h-[44px] flex-1 rounded-[7px] px-4 text-[13px] font-bold text-[var(--color-surface)] transition-colors"
-              style={{ background: accent }}
+              className="min-h-[44px] flex-1 rounded-[7px] bg-[var(--color-primary)] px-4 text-[13px] font-bold text-white transition-colors hover:bg-[var(--color-primary-hover)]"
             >
               جاهز للتسليم
             </button>
@@ -905,8 +927,7 @@ function KitchenTicket({
           <button
             type="button"
             onClick={onDeliver}
-            className="min-h-[44px] flex-1 rounded-[7px] px-4 text-[13px] font-bold text-[var(--color-surface)] transition-colors"
-            style={{ background: accent }}
+            className="min-h-[44px] flex-1 rounded-[7px] bg-[var(--color-primary)] px-4 text-[13px] font-bold text-white transition-colors hover:bg-[var(--color-primary-hover)]"
           >
             تم التسليم
           </button>

@@ -1,216 +1,87 @@
 @import "tailwindcss";
 
 /* ==========================================================================
-   دكان Design System — "شبكة المسح" (Scan Grid)
-   Gulf hospitality identity built from the product's core act: scanning a
-   QR code at a café table. Paper/ink/saffron/teal/clay — all light surfaces,
-   context distinction via layout & intensity, not dark/light mode switching.
-   Typography: El Messiri (display) + IBM Plex Sans Arabic (UI) + IBM Plex Mono (figures)
+   دكان Design System — Enterprise SaaS v1.0
+   Gulf hospitality multi-tenant restaurant SaaS.
+   Indigo primary, Cairo-only typography, LIGHT MODE ONLY (no .dark),
+   strict 8px spacing grid, border-first elevation.
+   Source of truth: DESIGN_SYSTEM.md (Enterprise v1.0).
    ========================================================================== */
 
 /* ==========================================================================
-   POS — Polaris-style cashier tokens (Shopify POS design language)
-   Light-first (POS is a fast, high-contrast surface); dark variants keep
-   the app's dark-mode contract. Exposed to Tailwind via @theme inline so
-   bg-pos-* / text-pos-* utilities resolve through the runtime vars.
+   Spacing scale — strict 8px grid (multiples of 4px, no exceptions)
    ========================================================================== */
 :root {
-  --pos-bg: #f6f6f7;
-  --pos-surface: #ffffff;
-  --pos-border: #dfe3e8;
-  --pos-text-primary: #202223;
-  --pos-text-subdued: #6d7175;
-  --pos-green: #008060;          /* semantic success (badges) */
-  --pos-green-hover: #006e52;
-  --pos-green-light: #f1f8f5;
-  --pos-blue: #006fbb;
-  --pos-red: #d82c0d;
-  /* CTA/checkout intentionally uses --color-primary (brand saffron) */
-  --pos-critical-tint: #fff4f4;
-}
-
-.dark {
-  --pos-bg: #0b0e14;
-  --pos-surface: #161b26;
-  --pos-border: #232838;
-  --pos-text-primary: #f8fafc;
-  --pos-text-subdued: #94a3b8;
-  --pos-green: #2fd08e;
-  --pos-green-hover: #27b47c;
-  --pos-green-light: #0b2b20;
-  --pos-blue: #60a5fa;
-  --pos-red: #f87171;
-  --pos-critical-tint: rgba(248, 113, 113, 0.1);
-}
-
-@theme inline {
-  --color-pos-bg: var(--pos-bg);
-  --color-pos-surface: var(--pos-surface);
-  --color-pos-border: var(--pos-border);
-  --color-pos-text-primary: var(--pos-text-primary);
-  --color-pos-text-subdued: var(--pos-text-subdued);
-  --color-pos-green: var(--pos-green);
-  --color-pos-green-hover: var(--pos-green-hover);
-  --color-pos-green-light: var(--pos-green-light);
-  --color-pos-blue: var(--pos-blue);
-  --color-pos-red: var(--pos-red);
-  --color-pos-critical-tint: var(--pos-critical-tint);
-
-  /* POS font: Inter for Latin/figures, Plex Sans Arabic fall back for Arabic */
-  --font-pos: var(--font-inter), "IBM Plex Sans Arabic", ui-sans-serif, system-ui, sans-serif;
+  --space-0-5: 2px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
 }
 
 @theme {
-  /* Core brand — Saffron (زعفران القهوة الخليجية) */
-  --color-primary: #C97A0F;
-  --color-primary-hover: #A8660C;
-  --color-primary-tint: #FBF3E6;
+  /* Brand — Indigo (used ONLY for action/focus/selection, never decoration) */
+  --color-primary: #4F46E5;
+  --color-primary-hover: #4338CA;
+  --color-primary-active: #3730A3;
+  --color-primary-tint: #EEF2FF;
+  --color-primary-tint-strong: #E0E7FF;
 
-  /* Semantic colors */
-  --color-success: #0F6B63;      /* Deep Teal — مياه الخليج */
-  --color-success-tint: #DCEFEC;
-  --color-success-hover: #0C5A53;
-  --color-warn: #B54834;         /* Burnt Clay — جديد/تنبيه */
-  --color-warn-tint: #F8E8E3;
-  --color-warn-hover: #98392A;
-  --color-danger: #B54834;       /* Burnt Clay — خطأ */
-  --color-danger-tint: #F8E8E3;
-  --color-danger-hover: #98392A;
+  /* Neutral — cool slate */
+  --color-bg: #F8FAFC;
+  --color-surface: #FFFFFF;
+  --color-surface-sunken: #F1F5F9;
+  --color-border: #E2E8F0;
+  --color-border-strong: #CBD5E1;
+  --color-text: #0F172A;
+  --color-text-secondary: #475569;
+  --color-text-muted: #94A3B8;
+  --color-text-disabled: #CBD5E1;
 
-  /* Accent — Saffron bright (خلفيات الزعفران) */
-  --color-accent: #E39A2D;
-  --color-accent-hover: #C97A0F;
-  --color-accent-tint: #FBF3E6;
+  /* Semantic — desaturated, no "game" colors */
+  --color-success: #059669;
+  --color-success-tint: #ECFDF5;
+  --color-success-hover: #047857;
+  --color-warn: #D97706;
+  --color-warn-tint: #FFFBEB;
+  --color-warn-hover: #B45309;
+  --color-danger: #DC2626;
+  --color-danger-tint: #FEF2F2;
+  --color-danger-hover: #B91C1C;
+  --color-info: #0284C7;
+  --color-info-tint: #F0F9FF;
 
-  /* Neutral — Paper & Ink */
-  --color-bg: #F5F1E6;           /* ورق الفاتورة */
-  --color-surface: #FFFFFF;      /* بطاقات، تذاكر، لوحات */
-  --color-text: #17140F;         /* الحبر */
-  --color-text-secondary: #7A7568; /* رمادي دافئ */
-  --color-text-muted: #A8A294;
-  --color-border: #E2DBC8;       /* حدود دافئة */
+  /* Typography — Cairo ONLY (no secondary faces, no display face) */
+  --font-sans: var(--font-cairo), "Cairo", ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-cairo), "Cairo", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-cairo), "Cairo", ui-monospace, monospace;
 
-  /* KDS (always dark — يتحول للفاتح مع إعادة تصميم المطبخ) */
-  --color-kds-bg: #0B0E14;
-  --color-kds-surface: #161B26;
-  --color-kds-border: #232838;
-
-  /* Typography — Scan Grid trio */
-  --font-sans: var(--font-plex-arabic), "IBM Plex Sans Arabic", ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-el-messiri), "El Messiri", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
-
-  /* Radius — sharp reserved for scan/order elements, rounded for generic */
-  --radius-sm: 4px;
+  /* Radius — small by intent; full-round reads "consumer" */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 10px;
-  --radius-xl: 14px;
+  --radius-xl: 12px;
+  --radius-full: 999px;
 
-  /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(23, 20, 15, 0.04);
-  --shadow-md: 0 1px 3px rgba(23, 20, 15, 0.06), 0 1px 2px rgba(23, 20, 15, 0.04);
-  --shadow-lg: 0 4px 12px rgba(23, 20, 15, 0.08);
-  --shadow-xl: 0 8px 24px rgba(23, 20, 15, 0.12);
-  --shadow-card-hover: 0 4px 16px rgba(23, 20, 15, 0.10);
-  --shadow-btn-primary: 0 4px 14px rgba(201, 122, 15, 0.25);
-}
-
-/*
-  Dark mode via class strategy.
-  Toggle with: document.documentElement.classList.toggle('dark')
-  Warm night variant of the Scan Grid palette (paper → deep ink).
-*/
-.dark {
-  --color-primary: #E39A2D;
-  --color-primary-hover: #F0B153;
-  --color-primary-tint: #2D2608;
-
-  --color-success: #4DB6A5;
-  --color-success-tint: #0B2B26;
-  --color-warn: #D97A60;
-  --color-warn-tint: #3A1D14;
-  --color-danger: #E0856E;
-  --color-danger-hover: #D97A60;
-  --color-danger-tint: rgba(181, 72, 52, 0.15);
-
-  --color-accent: #E39A2D;
-  --color-accent-hover: #F0B153;
-  --color-accent-tint: #2D2608;
-
-  --color-bg: #14110C;
-  --color-surface: #262119;
-  --color-text: #F0EAD8;
-  --color-text-secondary: #A8A294;
-  --color-text-muted: #6E685C;
-  --color-border: #2E2A20;
-
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.5);
-  --shadow-xl: 0 8px 32px rgba(0, 0, 0, 0.6);
-  --shadow-card-hover: 0 4px 20px rgba(0, 0, 0, 0.5);
-  --shadow-btn-primary: 0 4px 14px rgba(227, 154, 45, 0.3);
+  /* Shadow — border-first; shadow only for layering (dropdown/modal/popover) */
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 6px rgba(15, 23, 42, 0.05), 0 2px 4px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 10px 15px rgba(15, 23, 42, 0.06), 0 4px 6px rgba(15, 23, 42, 0.04);
+  --shadow-focus: 0 0 0 3px rgba(79, 70, 229, 0.15);
 }
 
 /* ==========================================================================
-   Scan Grid identity components
-   The QR finder pattern is the signature: sharp corner brackets, mono
-   order badges, dot grid. Used sparingly — only around order/scan elements.
-   ========================================================================== */
-
-/* QR finder corner brackets (زوايا الالتقاط) — sharp, 2px, saffron.
-   Apply to a positioned element; two opposing corners (RTL-aware). */
-.scan-corners {
-  position: relative;
-}
-.scan-corners::before,
-.scan-corners::after {
-  content: "";
-  position: absolute;
-  width: 12px;
-  height: 12px;
-  pointer-events: none;
-  border-color: var(--scan-accent, var(--color-accent));
-}
-.scan-corners::before {
-  top: -1px;
-  inset-inline-start: -1px;
-  border-top: 2px solid;
-  border-inline-start: 2px solid;
-}
-.scan-corners::after {
-  bottom: -1px;
-  inset-inline-end: -1px;
-  border-bottom: 2px solid;
-  border-inline-end: 2px solid;
-}
-
-/* Order number badge — square with finder corners, mono (receipt feel) */
-.order-badge {
-  font-family: var(--font-mono);
-  direction: ltr;
-  display: inline-block;
-  font-weight: 700;
-  font-size: 0.9375rem;
-  line-height: 1;
-  border: 1.5px solid var(--badge-accent, var(--color-accent));
-  color: var(--badge-accent, var(--color-accent));
-  padding: 0.3rem 0.55rem;
-  background: var(--color-surface);
-}
-
-/* Dot grid backdrop — ONLY for empty states & scan screens */
-.dotgrid {
-  background-image: radial-gradient(var(--color-text-muted) 1px, transparent 1px);
-  background-size: 14px 14px;
-  opacity: 0.15;
-}
-
-/* ==========================================================================
-   Base — wrapped in @layer base so Tailwind utilities can override these
-   (unlayered CSS beats ALL layers in Tailwind v4 and killed margin
-   utilities like mx-auto / mt-* / mb-* on h1/p — e.g. the landing page
-   title was never centered)
+   Base — in @layer base so Tailwind utilities can override (unlayered CSS
+   beats ALL layers in Tailwind v4 and killed margin utilities like mx-auto)
    ========================================================================== */
 @layer base {
   * { box-sizing: border-box; }
@@ -223,26 +94,23 @@
   body {
     margin: 0;
     font-family: var(--font-sans);
-    font-size: 0.9375rem;
-    line-height: 1.6;
+    font-size: 0.875rem;      /* 14px — enterprise density */
+    line-height: 1.5;         /* 20px */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     font-variant-numeric: tabular-nums;
     background: var(--color-bg);
     color: var(--color-text);
-    transition: background 0.3s ease, color 0.3s ease;
   }
 
-  /* Typography */
+  /* Typography — Cairo only; -0.01em on display-size headings (spec §2.1) */
   h1, h2, h3, h4, h5, h6 {
     margin: 0;
     font-weight: 700;
-    letter-spacing: 0;
-    /* El Messiri — display face for headings/brand only (Scan Grid identity) */
     font-family: var(--font-display);
   }
-  h1 { font-size: 1.5rem; }
-  h2 { font-size: 1.25rem; }
+  h1 { font-size: 1.5rem; letter-spacing: -0.01em; }
+  h2 { font-size: 1.25rem; letter-spacing: -0.01em; }
   h3 { font-size: 1.0625rem; }
   h4 { font-size: 0.9375rem; }
   p { margin: 0; }
@@ -250,149 +118,147 @@
 }
 
 /* ==========================================================================
-   Buttons
+   Buttons — 4 styles × 3 sizes (spec §6.1)
+   sm 32px / md 36px / lg 44px. Radius: sm for sm/md, md for lg.
    ========================================================================== */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 0.375rem;
-  border-radius: var(--radius-lg); font-weight: 600; font-size: 0.8125rem;
-  padding: 0.5625rem 1rem; border: 1px solid transparent; cursor: pointer;
-  min-height: 2.75rem; white-space: nowrap;
-  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease,
-              box-shadow 0.18s ease, transform 0.12s ease;
+  border-radius: var(--radius-sm); font-weight: 600; font-size: 0.875rem;
+  height: 36px; padding: 0 1rem; border: 1px solid transparent; cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.1s linear, border-color 0.1s linear, color 0.1s linear;
 }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn:active:not(:disabled) { transform: scale(0.97); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .btn-primary {
   background: var(--color-primary); color: #fff;
 }
 .btn-primary:hover:not(:disabled) {
   background: var(--color-primary-hover);
-  box-shadow: var(--shadow-btn-primary);
-  transform: translateY(-1px);
+}
+.btn-primary:active:not(:disabled) {
+  background: var(--color-primary-active);
 }
 
 .btn-secondary {
   background: var(--color-surface); color: var(--color-text);
-  border-color: var(--color-border);
+  border-color: var(--color-border-strong);
 }
 .btn-secondary:hover:not(:disabled) {
-  background: var(--color-bg); border-color: var(--color-text-muted);
+  background: var(--color-surface-sunken);
 }
 
 .btn-ghost {
   background: transparent; color: var(--color-text-secondary);
 }
 .btn-ghost:hover:not(:disabled) {
-  background: var(--color-bg); color: var(--color-text);
+  background: var(--color-surface-sunken); color: var(--color-text);
 }
 
-.btn-danger { background: var(--color-danger); color: #fff; }
-.btn-danger:hover:not(:disabled) { background: var(--color-danger-hover); }
+.btn-danger {
+  background: var(--color-danger-tint); color: var(--color-danger);
+  border-color: rgba(220, 38, 38, 0.25);
+}
+.btn-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-danger-tint) 85%, var(--color-danger));
+}
 
-.btn-accent { background: var(--color-accent); color: #1C1A17; }
-.btn-accent:hover:not(:disabled) { background: var(--color-accent-hover); }
-
-.btn-sm { padding: 0.375rem 0.75rem; font-size: 0.75rem; }
-.btn-lg { padding: 0.75rem 1.25rem; font-size: 0.9375rem; }
+.btn-sm { height: 32px; padding: 0 0.75rem; font-size: 0.8125rem; }
+.btn-lg { height: 44px; padding: 0 1.25rem; font-size: 0.9375rem; border-radius: var(--radius-md); }
 .btn-block { width: 100%; }
 
+/* Touch targets — mobile bump keeps ≥44px even for sm (AGENTS.md) */
+@media (max-width: 639px) {
+  .btn, .btn-sm, [class*="btn-sm"] { min-height: 44px; }
+}
+
 /* ==========================================================================
-   Form controls
+   Form controls (spec §6.2) — height 36px, radius-sm, focus = primary + ring
    ========================================================================== */
 .input, .select, .textarea {
   width: 100%;
+  height: 36px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);
   font: inherit; font-size: 0.875rem;
-  padding: 0.625rem 0.75rem;
+  padding: 0 0.75rem;
   outline: none;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  transition: border-color 0.1s linear, box-shadow 0.1s linear;
 }
 .input:focus, .select:focus, .textarea:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent);
+  box-shadow: var(--shadow-focus);
 }
-.select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23475569%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpolyline points=%276 9 12 15 18 9%27%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: start 0.75rem center; padding-inline-start: 2rem; }
-.dark .select { background-image: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%239CA3AF%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpolyline points=%276 9 12 15 18 9%27%3E%3C/polyline%3E%3C/svg%3E"); }
-.textarea { min-height: 80px; resize: vertical; }
+.select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23475569%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpolyline points=%276 9 12 15 18 9%27%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: start 0.75rem center; padding-inline-start: 2rem;
+}
+.textarea { min-height: 80px; height: auto; resize: vertical; padding-block: 0.625rem; }
 
 .label {
-  display: block; font-size: 0.8125rem; font-weight: 700;
-  color: var(--color-text); margin-bottom: 0.375rem;
+  display: block; font-size: 0.8125rem; font-weight: 500;
+  color: var(--color-text-secondary); margin-bottom: 0.375rem;
 }
 .field { margin-bottom: 1rem; }
 .hint { font-size: 0.75rem; color: var(--color-text-muted); margin-top: 0.25rem; }
 .error-text { font-size: 0.75rem; color: var(--color-danger); margin-top: 0.25rem; }
 .input-error { border-color: var(--color-danger) !important; }
-.input-error:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger) 20%, transparent) !important; }
+.input-error:focus { box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15) !important; }
 
 /* ==========================================================================
-   Cards
+   Cards (spec §6.4) — border-first, NO default shadow; shadow only when
+   the card is clickable/draggable
    ========================================================================== */
 .card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-sm);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  border-radius: var(--radius-lg);
+  transition: border-color 0.15s ease;
 }
-.card:hover {
-  border-color: color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
-  box-shadow: var(--shadow-card-hover);
-}
-.card-body { padding: 1.25rem; }
+.card:hover { border-color: var(--color-border-strong); }
+.card-body { padding: 1.5rem; }
 .card-header {
-  padding: 1rem 1.25rem;
+  padding: 1rem 1.5rem;
   border-bottom: 1px solid var(--color-border);
   display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
 }
 
-/* Dashboard stat cards */
+/* Dashboard stat cards — border-first, no decorative blob */
 .stat-card {
-  position: relative; overflow: hidden;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-lg);
   padding: 1.25rem;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  transition: border-color 0.15s ease;
 }
-.stat-card:hover {
-  border-color: color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
-  box-shadow: var(--shadow-card-hover);
-  transform: translateY(-2px);
-}
-.stat-card::after {
-  content: ""; position: absolute; inset-inline-end: -1.5rem; bottom: -2rem;
-  width: 5rem; height: 5rem; border-radius: 999px;
-  background: var(--color-primary-tint); opacity: 0.6;
-}
+.stat-card:hover { border-color: var(--color-border-strong); }
 
 /* ==========================================================================
-   Badge
+   Badges / order status (spec §6.3) — pill 20-24px, tint bg + colored text
+   pending→warn, preparing→info, ready→success, delivered→muted, cancelled→danger
    ========================================================================== */
 .badge {
-  display: inline-flex; align-items: center;
-  border-radius: 999px; padding: 0.125rem 0.5rem;
-  font-size: 0.75rem; font-weight: 700; line-height: 1.4;
+  display: inline-flex; align-items: center; gap: 0.25rem;
+  height: 22px; padding: 0 0.5rem;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem; font-weight: 600; line-height: 1;
+  white-space: nowrap;
 }
 .badge-pending { background: var(--color-warn-tint); color: var(--color-warn); }
-.badge-preparing { background: var(--color-primary-tint); color: var(--color-primary); }
+.badge-preparing { background: var(--color-info-tint); color: var(--color-info); }
 .badge-ready { background: var(--color-success-tint); color: var(--color-success); }
-.badge-delivered { background: #F1F5F9; color: var(--color-text-secondary); }
+.badge-delivered { background: var(--color-surface-sunken); color: var(--color-text-muted); }
 .badge-cancelled { background: var(--color-danger-tint); color: var(--color-danger); }
 
 /* ==========================================================================
-   Section title
+   Section title — tracking instead of uppercase (Arabic-safe, spec §6.6)
    ========================================================================== */
 .section-title {
-  font-size: 0.75rem; font-weight: 700;
-  text-transform: uppercase; color: var(--color-text-secondary); margin-bottom: 0.75rem;
-}
-:lang(en) .section-title {
-  letter-spacing: 0.06em;
+  font-size: 0.75rem; font-weight: 600;
+  letter-spacing: 0.03em; color: var(--color-text-secondary); margin-bottom: 0.75rem;
 }
 
 /* ==========================================================================
@@ -428,38 +294,14 @@
   background: var(--color-surface);
   transition: border-color 0.15s;
 }
-.checklist-item:hover { border-color: color-mix(in srgb, var(--color-primary) 20%, transparent); }
+.checklist-item:hover { border-color: var(--color-primary-tint-strong); }
 .checklist-item.done { opacity: 0.7; }
 .check-dot {
-  width: 1.25rem; height: 1.25rem; border-radius: 999px;
+  width: 1.25rem; height: 1.25rem; border-radius: var(--radius-full);
   border: 2px solid var(--color-border);
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
 .check-dot.done { background: var(--color-success); border-color: var(--color-success); color: #fff; }
-
-/* ==========================================================================
-   KDS (always dark)
-   ========================================================================== */
-.kds-root {
-  min-height: 100dvh;
-  background: var(--color-kds-bg);
-  color: #F8FAFC;
-}
-.kds-card {
-  background: var(--color-kds-surface);
-  border: 1px solid var(--color-kds-border);
-  border-radius: var(--radius-xl);
-  transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
-}
-.kds-card:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-}
-.kds-card.pending { border-color: #F59E0B; }
-.kds-card.preparing { border-color: #E39A2D; }
-.kds-card.ready { border-color: #34D399; }
-.kds-card.kds-overdue { border-color: #EF4444; box-shadow: 0 0 0 1px #EF4444; background: rgba(239, 68, 68, 0.08); }
-.kds-card.kds-taking-long { border-color: #F59E0B; background: rgba(245, 158, 11, 0.06); }
 
 /* ==========================================================================
    Scrollbar
@@ -472,29 +314,24 @@
 ::-webkit-scrollbar-thumb:hover { background: var(--color-text-secondary); }
 
 /* ==========================================================================
-   Focus ring — in @layer base so focus-visible:outline-none utilities win
+   Focus ring — shadow-focus instead of outline (spec §8)
    ========================================================================== */
 @layer base {
   *:focus-visible {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 2px;
+    outline: none;
+    box-shadow: var(--shadow-focus);
     border-radius: 4px;
   }
 }
 
-/* Touch targets */
-.btn, button, a, input, select, textarea, label {
-  &:where(.btn-sm, [class*="btn-sm"]) { min-height: 44px; }
-}
-
 /* ==========================================================================
-   Animations
+   Animations — ease-out / linear only, no bounce/spring (spec §5)
    ========================================================================== */
 @keyframes slide-up {
   from { transform: translateY(100%); opacity: 0; }
   to   { transform: translateY(0);    opacity: 1; }
 }
-.animate-slide-up { animation: slide-up 0.3s ease-out; }
+.animate-slide-up { animation: slide-up 0.24s ease-out; }
 
 @keyframes scale-flash {
   0%   { transform: scale(1); }
@@ -579,12 +416,12 @@
   .page-header { margin-bottom: 1.15rem; }
   .card-body { padding: 1rem; }
   .card-header { padding: 0.875rem 1rem; }
-  .section-title { letter-spacing: 0.035em; }
+  .section-title { letter-spacing: 0.02em; }
   .btn-lg { min-height: 3rem; padding-inline: 1rem; }
 }
 
 /* ==========================================================================
-   Dashboard table styles
+   Dashboard table styles (spec §6.6) — 44px rows, sunken header, row-only borders
    ========================================================================== */
 .data-table {
   width: 100%;
@@ -593,18 +430,20 @@
 }
 .data-table th {
   text-align: start;
-  font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: 0.75rem; font-weight: 600; letter-spacing: 0.03em;
   padding: 0.75rem 1rem;
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
+  background: var(--color-surface-sunken);
   border-bottom: 1px solid var(--color-border);
 }
 .data-table td {
   padding: 0.75rem 1rem;
+  height: 44px;
   border-bottom: 1px solid var(--color-border);
   vertical-align: middle;
 }
 .data-table tr:last-child td { border-bottom: none; }
+.data-table tbody tr:hover { background: var(--color-surface-sunken); }
 
 /* ==========================================================================
    Dashboard layout utilities
@@ -620,25 +459,14 @@
    Missing classes (restored from previous design)
    ========================================================================== */
 .dashboard-card:hover {
-  border-color: color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
-  box-shadow: var(--shadow-card-hover);
+  border-color: var(--color-border-strong);
 }
 .dashboard-stat {
-  position: relative; overflow: hidden;
-}
-.dashboard-stat::after {
-  content: "";
-  position: absolute;
-  inset-inline-end: -1.5rem;
-  bottom: -2rem;
-  width: 5rem;
-  height: 5rem;
-  border-radius: 999px;
-  background: var(--color-primary-tint);
-  opacity: 0.6;
+  position: relative;
+  overflow: hidden;
 }
 .checklist-item-pulse:hover {
-  border-color: color-mix(in srgb, var(--color-primary) 20%, transparent);
+  border-color: var(--color-primary-tint-strong);
   box-shadow: 0 0 0 2px var(--color-primary-tint);
   transition: all 0.15s;
 }

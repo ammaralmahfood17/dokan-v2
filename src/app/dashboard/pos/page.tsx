@@ -34,38 +34,38 @@ function PosLoader() {
       </div>
       <div className="md:grid md:grid-cols-[minmax(0,1fr)_380px] md:items-start md:gap-4">
         <div className="min-w-0">
-          <div className="mb-3 flex gap-1 rounded-[8px] bg-[var(--pos-bg)] p-1">
+          <div className="mb-3 flex gap-1 rounded-[8px] bg-[var(--color-surface-sunken)] p-1">
             {[0, 1, 2].map((i) => (
-              <div key={i} className="h-11 flex-1 rounded-[6px] bg-[var(--pos-surface)]" />
+              <div key={i} className="h-11 flex-1 rounded-[6px] bg-[var(--color-surface)]" />
             ))}
           </div>
           <div className="mb-3 flex gap-2">
-            <div className="h-11 flex-1 rounded-[8px] border border-[var(--pos-border)] bg-[var(--pos-surface)]" />
-            <div className="h-11 flex-1 rounded-[8px] border border-[var(--pos-border)] bg-[var(--pos-surface)]" />
+            <div className="h-11 flex-1 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)]" />
+            <div className="h-11 flex-1 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)]" />
           </div>
           <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3">
             {Array.from({ length: 8 }).map((_, i) => (
               <div
                 key={i}
-                className="overflow-hidden rounded-[8px] border border-[var(--pos-border)] bg-[var(--pos-surface)]"
+                className="overflow-hidden rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)]"
               >
-                <div className="aspect-[4/3] w-full animate-pulse bg-[var(--pos-bg)]" />
+                <div className="aspect-[4/3] w-full animate-pulse bg-[var(--color-surface-sunken)]" />
                 <div className="space-y-2 p-2.5">
-                  <div className="h-3 w-3/4 animate-pulse rounded bg-[var(--pos-border)]" />
-                  <div className="h-4 w-1/2 animate-pulse rounded bg-[var(--pos-border)]" />
+                  <div className="h-3 w-3/4 animate-pulse rounded bg-[var(--color-border)]" />
+                  <div className="h-4 w-1/2 animate-pulse rounded bg-[var(--color-border)]" />
                 </div>
               </div>
             ))}
           </div>
         </div>
         <aside className="hidden md:block">
-          <div className="h-[calc(100dvh-57px)] rounded-[10px] border border-[var(--pos-border)] bg-[var(--pos-surface)] p-4 lg:h-dvh">
-            <div className="h-6 w-20 animate-pulse rounded bg-[var(--pos-border)]" />
+          <div className="h-[calc(100dvh-57px)] rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 lg:h-dvh">
+            <div className="h-6 w-20 animate-pulse rounded bg-[var(--color-border)]" />
             <div className="mt-6 space-y-4">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="space-y-2">
-                  <div className="h-11 w-full animate-pulse rounded-[8px] bg-[var(--pos-bg)]" />
-                  <div className="h-3 w-2/3 animate-pulse rounded bg-[var(--pos-border)]" />
+                  <div className="h-11 w-full animate-pulse rounded-[8px] bg-[var(--color-surface-sunken)]" />
+                  <div className="h-3 w-2/3 animate-pulse rounded bg-[var(--color-border)]" />
                 </div>
               ))}
             </div>

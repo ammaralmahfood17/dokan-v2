@@ -28,10 +28,10 @@ export function CartLineItem({
         <img
           src={thumbnail}
           alt=""
-          className="mt-0.5 h-11 w-11 shrink-0 rounded-[8px] border border-[var(--pos-border)] bg-[var(--pos-bg)] object-cover"
+          className="mt-0.5 h-11 w-11 shrink-0 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface-sunken)] object-cover"
         />
       ) : (
-        <span className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-[8px] bg-[var(--pos-bg)] text-[var(--pos-text-subdued)]">
+        <span className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-[8px] bg-[var(--color-surface-sunken)] text-[var(--color-text-secondary)]">
           🍽️
         </span>
       )}
@@ -39,32 +39,32 @@ export function CartLineItem({
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-[var(--pos-text-primary)]">
+            <p className="truncate text-sm font-semibold text-[var(--color-text)]">
               {line.productName}
             </p>
             {line.addonLabels.length > 0 && (
-              <p className="mt-0.5 truncate text-xs text-[var(--pos-text-subdued)]">
+              <p className="mt-0.5 truncate text-xs text-[var(--color-text-secondary)]">
                 {line.addonLabels.join(' · ')}
               </p>
             )}
           </div>
-          <p className="shrink-0 text-sm font-semibold tabular-nums text-[var(--pos-text-primary)]">
+          <p className="shrink-0 text-sm font-semibold tabular-nums text-[var(--color-text)]">
             {formatMoney(line.unitPrice * line.quantity, currency)}
           </p>
         </div>
 
         <div className="mt-2 flex items-center justify-between gap-2">
-          <div className="flex items-center rounded-[8px] border border-[var(--pos-border)]">
+          <div className="flex items-center rounded-[8px] border border-[var(--color-border)]">
             <button
               type="button"
               onClick={onDecrement}
               aria-label={`تقليل كمية ${line.productName}`}
-              className="flex h-11 w-10 items-center justify-center rounded-s-[8px] text-[var(--pos-text-subdued)] transition-colors hover:text-[var(--pos-text-primary)] active:bg-[var(--pos-bg)]"
+              className="flex h-11 w-10 items-center justify-center rounded-s-[8px] text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text)] active:bg-[var(--color-surface-sunken)]"
             >
               <Minus className="h-4 w-4" />
             </button>
             <span
-              className="w-9 text-center text-sm font-bold tabular-nums text-[var(--pos-text-primary)]"
+              className="w-9 text-center text-sm font-bold tabular-nums text-[var(--color-text)]"
               aria-live="polite"
             >
               {line.quantity}
@@ -73,7 +73,7 @@ export function CartLineItem({
               type="button"
               onClick={onIncrement}
               aria-label={`زيادة كمية ${line.productName}`}
-              className="flex h-11 w-10 items-center justify-center rounded-e-[8px] text-[var(--pos-text-subdued)] transition-colors hover:text-[var(--pos-text-primary)] active:bg-[var(--pos-bg)]"
+              className="flex h-11 w-10 items-center justify-center rounded-e-[8px] text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text)] active:bg-[var(--color-surface-sunken)]"
             >
               <Plus className="h-4 w-4" />
             </button>
@@ -82,7 +82,7 @@ export function CartLineItem({
             type="button"
             onClick={onRemove}
             aria-label={`حذف ${line.productName} من السلة`}
-            className="flex h-11 w-11 items-center justify-center rounded-[8px] text-[var(--pos-text-subdued)] transition-colors hover:bg-[var(--pos-critical-tint)] hover:text-[var(--pos-red)]"
+            className="flex h-11 w-11 items-center justify-center rounded-[8px] text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-danger-tint)] hover:text-[var(--color-danger)]"
           >
             <Trash2 className="h-4 w-4" />
           </button>
