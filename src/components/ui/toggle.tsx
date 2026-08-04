@@ -36,9 +36,10 @@ export function Toggle({
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(
-        // p-2/-m-2: visual track stays 28×52 but the touch/click target grows
-        // to ≥44px (AGENTS.md non-negotiable).
-        'relative inline-flex h-[28px] w-[52px] shrink-0 items-center rounded-full border-2 border-transparent p-2 -m-2 transition-colors duration-200',
+        // Visual track stays 28×52; :before with -inset-2 expands the actual
+        // touch/click target to 44×68 (margin does NOT extend the hit area).
+        'relative inline-flex h-[28px] w-[52px] shrink-0 items-center rounded-full border-2 border-transparent transition-colors duration-200',
+        'before:absolute before:-inset-2 before:content-[""]',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface)]',
         'motion-reduce:transition-none',
         checked ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-border)]',
@@ -47,7 +48,7 @@ export function Toggle({
     >
       <span
         className={cn(
-          'pointer-events-none inline-block h-[24px] w-[24px] rounded-full bg-white shadow-sm transition-transform duration-200',
+          'pointer-events-none relative inline-block h-[24px] w-[24px] rounded-full bg-white shadow-sm transition-transform duration-200',
           'motion-reduce:transition-none',
           checked && 'translate-x-[24px] rtl:-translate-x-[24px]'
         )}

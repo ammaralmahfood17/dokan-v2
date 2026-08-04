@@ -2,7 +2,7 @@
 
 import { FormEvent, useMemo, useRef, useState, useCallback } from 'react';
 import Image from 'next/image';
-import { Plus, Pencil, Trash2, X, ImageIcon, Copy, Check, Search } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, ImageIcon, Check, Search } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { formatMoney, money, currencyDecimals } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -594,77 +594,6 @@ export function ProductsClient({
     );
   }
 
-  // ----- Duplicate product (name + "(نسخة)", copies addons & image) -----
-  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
-
-  async function duplicateProduct(p: ProductWithAddons) {
-    if (duplicatingId) return;
-    setDuplicatingId(p.id);
-    try {
-      const supabase = createClient();
-      const nextSortOrder = products.length ? Math.max(...products.map((p) => p.sort_order ?? 0)) + 1 : 0;
-      const insertPayload: Database['public']['Tables']['products']['Insert'] = {
-        project_id: projectId,
-        name: `${p.name} (نسخة)`,
-        name_en: p.name_en ? `${p.name_en} (copy)` : null,
-        description: p.description,
-        price: p.price,
-        category_id: p.category_id,
-        is_available: p.is_available,
-        image_url: p.image_url,
-        sort_order: nextSortOrder,
-      };
-      const { data, error } = await supabase
-        .from('products')
-        .insert(insertPayload)
-        .select('*')
-        .single();
-      if (error || !data) {
-        toast.error('فشل نسخ المنتج');
-        return;
-      }
-      // Verify the copy belongs to this project before copying addons
-      const { data: owned } = await supabase
-        .from('products')
-        .select('id')
-        .eq('id', data.id)
-        .eq('project_id', projectId)
-        .maybeSingle();
-      if (!owned) {
-        toast.error('فشل نسخ المنتج');
-        return;
-      }
-      if (p.product_addons?.length) {
-        const { error: addonErr } = await supabase.from('product_addons').insert(
-          p.product_addons.map((a) => ({
-            product_id: data.id,
-            name: a.name,
-            price: a.price,
-            is_available: a.is_available,
-          }))
-        );
-        if (addonErr) {
-          toast.error('نُسخ المنتج لكن فشلت الإضافات');
-        }
-      }
-      const { data: withAddons } = await supabase
-        .from('products')
-        .select('*, product_addons(*)')
-        .eq('id', data.id)
-        .single();
-      setProducts((prev) => [
-        ...prev,
-        (withAddons ?? { ...data, product_addons: [] }) as ProductWithAddons,
-      ]);
-      toast.success('تم نسخ المنتج');
-    } catch {
-      toast.error('فشل نسخ المنتج');
-    } finally {
-      setDuplicatingId(null);
-    }
-  }
-
-  // ----- Bulk selection (select mode → toggle availability / delete) -----
   const [bulkMode, setBulkMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
@@ -1401,7 +1330,6 @@ export function ProductsClient({
                   <Button
                     type="button"
                     variant="danger"
-                    disabled={duplicatingId === editing.id}
                     onClick={() => {
                       setShowProductForm(false);
                       setConfirmDelete(editing);
@@ -1409,24 +1337,6 @@ export function ProductsClient({
                   >
                     <Trash2 className="h-4 w-4" />
                     حذف
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={duplicatingId === editing.id}
-                    onClick={() => {
-                      duplicateProduct(editing);
-                      setShowProductForm(false);
-                    }}
-                  >
-                    {duplicatingId === editing.id ? (
-                      '…'
-                    ) : (
-                      <>
-                        <Copy className="h-4 w-4" />
-                        نسخ
-                      </>
-                    )}
                   </Button>
                 </>
               )}
