@@ -190,10 +190,11 @@ test('Phase C: impersonation — start, banner, audit, end (session restored)', 
   // 1. Super admin starts impersonation via the API (same path the button uses).
   const adminCookies = await getAuthCookies(adminEmail, TEST_PASSWORD);
   await context.addCookies(adminCookies);
+  const cookieHeader = adminCookies.map((c) => `${c.name}=${c.value}`).join('; ');
 
   const res = await fetch(`https://dokanstore.xyz/api/super-admin/impersonate`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', Cookie: cookieHeader },
     body: JSON.stringify({ targetUserId: normalUserId, projectId: testProjectId }),
   });
   const data = await res.json();
