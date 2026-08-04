@@ -48,8 +48,13 @@ export async function updateSession(request: NextRequest) {
 
   const isProtected =
     path.startsWith('/dashboard') ||
-    path.startsWith('/onboarding') ||
-    path.startsWith('/update-password');
+    path.startsWith('/onboarding');
+  // NOTE: /update-password is deliberately NOT in isProtected. The recovery
+  // flow lands there with the session in the URL FRAGMENT (#access_token=),
+  // which only the browser client can parse AFTER the HTML loads. If the
+  // middleware bounced guests to /login first, the fragment would be lost
+  // and password recovery would break. The page itself guards (no session →
+  // redirect /login).
 
   // Guest on protected route → login
   if (!user && isProtected) {
