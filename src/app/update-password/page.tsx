@@ -17,9 +17,16 @@ export default function UpdatePasswordPage() {
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    // Verify user has a valid session (redirected from password reset callback)
+    // Verify user has a valid session (redirected from password reset callback).
+    // The recovery flow lands here with the session in the URL FRAGMENT
+    // (#access_token=...). createBrowserClient parses the fragment inside
+    // initialize(), which is ASYNC — so we must await it BEFORE getSession(),
+    // otherwise getSession races ahead and finds nothing → bounce to /login
+    // with the token lost.
     const supabase = createClient();
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.initialize().then(() => {
+      return supabase.auth.getSession();
+    }).then(({ data: { session } }) => {
       if (!session) {
         router.replace('/login');
         return;
