@@ -168,8 +168,8 @@ test('Phase B: analytics page renders for super-admin, rejected for non-admin', 
   await expect(page.getByText('مشاريع نشطة').first()).toBeVisible();
   await expect(page.getByText(/إيرادات اليوم/).first()).toBeVisible();
 
-  // Sortable table headers present.
-  await expect(page.getByText('الإيرادات', { exact: true }).first()).toBeVisible();
+  // Sortable table headers present (arrow suffix when sorted).
+  await expect(page.getByText(/الإيرادات/).first()).toBeVisible();
 
   // Non-admin never lands on the page.
   const normalCookies = await getAuthCookies(normalEmail, TEST_PASSWORD);
