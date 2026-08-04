@@ -28,7 +28,7 @@ export function StatusChip({
   className?: string;
 }) {
   const base =
-    'inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold whitespace-nowrap';
+    'inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap';
 
   const tones: Record<string, string> = {
     pending: 'bg-[var(--color-warn-tint)] text-[var(--color-warn)]',

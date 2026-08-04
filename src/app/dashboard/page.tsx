@@ -376,7 +376,7 @@ export default async function DashboardPage() {
       ) : (
         <section className="mb-8 card card-body text-center">
           <div className="flex flex-col items-center gap-2 py-2">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-600">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-success-tint)] text-[var(--color-success)]">
               <Check className="h-6 w-6" />
             </div>
             <h2 className="text-base font-bold">متجرك جاهز لإستقبال الطلبات</h2>
@@ -392,7 +392,7 @@ export default async function DashboardPage() {
 
       {/* Grid 2 — hourly sales + latest orders table (mockup layout) */}
       <section className="mb-8 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-        <div className="border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-[0_1px_3px_rgba(23,20,15,0.05)]">
+        <div className="border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm">
           <h2 className="mb-3.5 flex items-center justify-between font-display text-[14.5px] font-bold">
             المبيعات بالساعة
             <span className="text-[11px] font-normal text-[var(--color-text-secondary)]">
@@ -419,7 +419,7 @@ export default async function DashboardPage() {
                     className="w-full transition-all group-hover:opacity-80"
                     style={{
                       height: `${Math.max((b.revenue / maxHourRevenue) * 100, b.revenue > 0 ? 8 : 2)}%`,
-                      background: 'linear-gradient(to top, var(--color-primary), #C7D2FE)',
+                      background: 'linear-gradient(to top, var(--color-primary), var(--color-primary-tint-strong))',
                     }}
                   />
                   <span className="absolute -bottom-5 text-[10px] text-[var(--color-text-secondary)]">
@@ -431,7 +431,7 @@ export default async function DashboardPage() {
           )}
         </div>
 
-        <div className="border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-[0_1px_3px_rgba(23,20,15,0.05)]">
+        <div className="border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm">
           <h2 className="mb-3.5 flex items-center justify-between font-display text-[14.5px] font-bold">
             آخر الطلبات
             <Link
@@ -456,15 +456,15 @@ export default async function DashboardPage() {
             <table className="w-full border-collapse text-[13px]">
               <thead>
                 <tr>
-                  <th className="border-b border-[var(--color-border)] p-1.5 text-start text-[11.5px] font-medium text-[var(--color-text-secondary)]">#</th>
-                  <th className="border-b border-[var(--color-border)] p-1.5 text-start text-[11.5px] font-medium text-[var(--color-text-secondary)]">الطاولة</th>
-                  <th className="border-b border-[var(--color-border)] p-1.5 text-start text-[11.5px] font-medium text-[var(--color-text-secondary)]">المبلغ</th>
-                  <th className="border-b border-[var(--color-border)] p-1.5 text-start text-[11.5px] font-medium text-[var(--color-text-secondary)]">الحالة</th>
+                  <th className="border-b border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-1.5 text-start text-[11.5px] font-medium text-[var(--color-text-secondary)]">#</th>
+                  <th className="border-b border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-1.5 text-start text-[11.5px] font-medium text-[var(--color-text-secondary)]">الطاولة</th>
+                  <th className="border-b border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-1.5 text-start text-[11.5px] font-medium text-[var(--color-text-secondary)]">المبلغ</th>
+                  <th className="border-b border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-1.5 text-start text-[11.5px] font-medium text-[var(--color-text-secondary)]">الحالة</th>
                 </tr>
               </thead>
               <tbody>
                 {recentOrders.map((o) => (
-                  <tr key={o.id}>
+                  <tr key={o.id} className="h-11">
                     <td className="border-b border-[var(--color-border)] p-2 font-mono text-[12px] tabular-nums" dir="ltr">
                       #{String(o.order_number).padStart(3, '0')}
                     </td>

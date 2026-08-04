@@ -139,9 +139,9 @@ export function PushNotificationManager({
         <div
           className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] ${
             isActive
-              ? 'bg-green-100 text-green-600'
+              ? 'bg-[var(--color-success-tint)] text-[var(--color-success)]'
               : state === 'denied'
-                ? 'bg-red-100 text-red-500'
+                ? 'bg-[var(--color-danger-tint)] text-[var(--color-danger)]'
                 : 'bg-[var(--color-primary-tint)] text-[var(--color-primary)]'
           }`}
         >

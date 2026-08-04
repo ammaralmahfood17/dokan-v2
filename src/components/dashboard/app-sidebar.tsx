@@ -97,7 +97,7 @@ export function AppSidebar({
             ? 'bg-[var(--color-primary-tint-strong)] text-[var(--color-primary)]'
             : 'bg-transparent text-[var(--color-text-muted)] group-hover:text-[var(--color-text)]'
         )}>
-          <Icon className={cn('h-[15px] w-[15px]', active ? 'text-[var(--color-primary)]' : '')} />
+          <Icon className={cn('h-4 w-4', active ? 'text-[var(--color-primary)]' : '')} />
         </div>
         <span>{item.label}</span>
         {active && (
@@ -184,7 +184,7 @@ export function AppSidebar({
             className="flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-[13px] font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-danger-tint)] hover:text-[var(--color-danger)] transition-all duration-200"
           >
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px]">
-              <LogOut className="h-[15px] w-[15px]" />
+              <LogOut className="h-4 w-4" />
             </div>
             <span>تسجيل الخروج</span>
           </button>

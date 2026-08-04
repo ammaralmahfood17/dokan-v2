@@ -381,7 +381,7 @@ export function MenuClient({
         <div className="mx-auto flex max-w-[480px] items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2.5">
             <div
-              className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full bg-[var(--color-text)] font-display text-[18px] font-bold text-[var(--color-primary)]"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-text)] font-display text-[18px] font-bold text-[var(--color-primary)]"
             >
               {project.name.slice(0, 1)}
             </div>
@@ -516,7 +516,7 @@ export function MenuClient({
             >
 
               <span className="flex items-center gap-2.5">
-                <span className="flex h-[26px] w-[26px] items-center justify-center bg-[var(--color-primary)] font-mono text-[13px] font-bold tabular-nums text-[var(--color-text)]">
+                <span className="flex h-7 w-7 items-center justify-center bg-[var(--color-primary)] font-mono text-[13px] font-bold tabular-nums text-[var(--color-text)]">
                   {itemCount}
                 </span>
                 <span className="text-start">

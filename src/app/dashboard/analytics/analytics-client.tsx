@@ -233,7 +233,7 @@ export function AnalyticsClient({
             <section className="card card-body">
               <h2 className="mb-4 text-sm font-bold">ذروة الساعات</h2>
               <div
-                className="flex h-28 items-end gap-[3px]"
+                className="flex h-28 items-end gap-1"
                 dir="ltr"
                 role="img"
                 aria-label={`ذروة الساعات — ${byHour.map((h, i) => (h.count > 0 ? `ساعة ${i} عدد ${h.count}` : '')).filter(Boolean).join('، ') || 'لا توجد طلبات'}`}
@@ -241,7 +241,7 @@ export function AnalyticsClient({
                 {byHour.map((h) => (
                   <div key={h.label} className="group relative flex flex-1 flex-col justify-end">
                     <div
-                      className={`w-full rounded-t-[3px] transition-all ${
+                      className={`w-full rounded-t-[4px] transition-all ${
                         h.count === maxHourCount
                           ? 'bg-[var(--color-primary)]'
                           : 'bg-[var(--color-primary-tint)] group-hover:bg-[var(--color-primary)]'

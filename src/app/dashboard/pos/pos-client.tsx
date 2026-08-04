@@ -411,7 +411,7 @@ export function PosClient({
         >
           <div
             ref={pickerRef}
-            className="w-full max-w-md max-h-[85dvh] overflow-y-auto rounded-t-2xl bg-[var(--color-surface)] p-4 pb-safe-bottom sm:max-h-[85vh] sm:rounded-[10px] animate-slide-up"
+            className="w-full max-w-md max-h-[85dvh] overflow-y-auto rounded-t-[12px] bg-[var(--color-surface)] p-4 pb-safe-bottom sm:max-h-[85vh] sm:rounded-[10px] animate-slide-up"
           >
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-bold">{picker.name}</h3>

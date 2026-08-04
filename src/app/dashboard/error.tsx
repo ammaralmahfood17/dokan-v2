@@ -17,10 +17,10 @@ import { categorizeError, persistErrorLog, type ErrorDetails } from '@/lib/error
 
 function ErrorIcon({ details }: { details: ErrorDetails }) {
   switch (details.icon) {
-    case 'database': return <Database className="h-5 w-5 text-rose-600" />;
-    case 'network': return <WifiOff className="h-5 w-5 text-rose-600" />;
-    case 'auth': return <ShieldAlert className="h-5 w-5 text-rose-600" />;
-    default: return <AlertTriangle className="h-5 w-5 text-rose-600" />;
+    case 'database': return <Database className="h-5 w-5 text-[var(--color-danger)]" />;
+    case 'network': return <WifiOff className="h-5 w-5 text-[var(--color-danger)]" />;
+    case 'auth': return <ShieldAlert className="h-5 w-5 text-[var(--color-danger)]" />;
+    default: return <AlertTriangle className="h-5 w-5 text-[var(--color-danger)]" />;
   }
 }
 
@@ -55,14 +55,14 @@ export default function DashboardError({
 
   return (
     <div className="flex min-h-dvh items-center justify-center bg-[var(--color-bg)] p-4 font-sans" dir="rtl">
-      <div className="w-full max-w-lg rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-sm sm:p-8">
+      <div className="w-full max-w-lg rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-sm sm:p-8">
         {/* Header Badge & Title */}
         <div className="mb-4 flex items-start gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--color-danger-tint)] text-[var(--color-danger)]">
             <ErrorIcon details={details} />
           </div>
           <div className="min-w-0">
-            <span className="mb-1 inline-block rounded-full border border-rose-100 bg-rose-50 px-2.5 py-0.5 text-[11px] font-bold text-rose-700">
+            <span className="mb-1 inline-block rounded-full border border-[var(--color-danger)]/20 bg-[var(--color-danger-tint)] px-2.5 py-0.5 text-xs font-bold text-[var(--color-danger)]">
               {details.badgeText}
             </span>
             <h2 className="text-base font-bold leading-snug text-[var(--color-text)]">
@@ -88,7 +88,7 @@ export default function DashboardError({
             onClick={() => setShowDetails((s) => !s)}
             aria-expanded={showDetails}
             aria-controls="error-details"
-            className="flex w-full items-center justify-between rounded-lg bg-slate-100/70 px-3 py-2 text-xs font-semibold text-[var(--color-text-secondary)] transition-colors hover:bg-slate-100 hover:text-[var(--color-text)]"
+            className="flex w-full items-center justify-between rounded-lg bg-[var(--color-surface-sunken)] px-3 py-2 text-xs font-semibold text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-border)]/60 hover:text-[var(--color-text)]"
           >
             <span className="flex items-center gap-1.5">
               <Bug className="h-3.5 w-3.5" />
@@ -104,9 +104,9 @@ export default function DashboardError({
           {showDetails && (
             <div
               id="error-details"
-              className="mt-2 space-y-2 overflow-x-auto rounded-xl bg-slate-900 p-3 text-[11px] font-mono text-slate-200"
+              className="mt-2 space-y-2 overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-3 text-[11px] font-mono text-[var(--color-text-secondary)]"
             >
-              <div className="flex items-center justify-between border-b border-slate-800 pb-1.5 text-[10px] text-slate-400">
+              <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-1.5 text-[10px] text-[var(--color-text-muted)]">
                 <span>الوقت: {new Date().toISOString()}</span>
                 <button
                   type="button"
@@ -114,18 +114,18 @@ export default function DashboardError({
                   className="flex items-center gap-1 font-sans text-[var(--color-primary)] hover:text-[var(--color-primary-hover)]"
                 >
                   {copied ? (
-                    <Check className="h-3 w-3 text-emerald-400" />
+                    <Check className="h-3 w-3 text-[var(--color-success)]" />
                   ) : (
                     <Copy className="h-3 w-3" />
                   )}
                   <span>{copied ? 'تم النسخ' : 'نسخ السجل'}</span>
                 </button>
               </div>
-              <p className="break-all font-semibold text-rose-400">
+              <p className="break-all font-semibold text-[var(--color-danger)]">
                 {error.message || 'لا توجد رسالة نصية للخطأ'}
               </p>
               {error.stack && (
-                <p className="max-h-36 overflow-y-auto whitespace-pre-wrap text-[10px] leading-tight text-slate-400">
+                <p className="max-h-36 overflow-y-auto whitespace-pre-wrap text-[10px] leading-tight text-[var(--color-text-muted)]">
                   {error.stack}
                 </p>
               )}

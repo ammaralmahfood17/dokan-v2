@@ -20,7 +20,7 @@ export function POSBadge({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-[20px] px-2 py-0.5 text-xs font-semibold leading-5',
+        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold leading-5',
         variant === 'success' &&
           'bg-[var(--color-success-tint)] text-[var(--color-success)]',
         variant === 'critical' &&
