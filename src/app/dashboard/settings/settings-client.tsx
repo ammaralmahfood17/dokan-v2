@@ -57,22 +57,27 @@ export function SettingsClient({
 
     setLoading(true);
     const supabase = createClient();
-    const { error } = await supabase
-      .from('projects')
-      .update({
-        name: name.trim(),
-        currency,
-        primary_color: primaryColor,
-        is_active: isActive,
-      })
-      .eq('id', project.id);
-    setLoading(false);
-    if (error) {
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .update({
+          name: name.trim(),
+          currency,
+          primary_color: primaryColor,
+          is_active: isActive,
+        })
+        .eq('id', project.id);
+      if (error) {
+        toast.error('ما قدرت نحفظ الإعدادات — حاول مرة ثانية');
+        return;
+      }
+      toast.success('تم الحفظ');
+      router.refresh();
+    } catch {
       toast.error('ما قدرت نحفظ الإعدادات — حاول مرة ثانية');
-      return;
+    } finally {
+      setLoading(false);
     }
-    toast.success('تم الحفظ');
-    router.refresh();
   }
 
   return (

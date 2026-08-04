@@ -54,15 +54,23 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: 'بيانات ناقصة' }, { status: 400 });
   }
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from('staff_members')
     .update({ notify_push: body.notifyPush, notify_telegram: body.notifyTelegram })
     .eq('user_id', auth.user.id)
-    .eq('project_id', body.projectId);
+    .eq('project_id', body.projectId)
+    .select('id')
+    .maybeSingle();
 
   if (error) {
     console.error('[NotificationPrefs]', error);
     return NextResponse.json({ error: 'فشل الحفظ' }, { status: 500 });
+  }
+
+  // 0 rows matched → the caller isn't a member of this project (or it doesn't
+  // exist). Don't return a false "تم الحفظ".
+  if (!updated) {
+    return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
   }
   return NextResponse.json({ success: true });
 }

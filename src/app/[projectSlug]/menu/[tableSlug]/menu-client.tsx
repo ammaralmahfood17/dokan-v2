@@ -225,6 +225,8 @@ export function MenuClient({
       });
       setCart([]);
       setCartOpen(false);
+      setOrderNotes('');
+      setItemNotes('');
     } catch {
       toast.error('تعذّر الاتصال');
     } finally {

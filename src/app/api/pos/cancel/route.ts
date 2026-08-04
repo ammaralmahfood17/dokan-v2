@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate: can only cancel pending or preparing orders
+    // Validate: can only cancel orders not yet delivered/cancelled
     if (order.status === 'delivered' || order.status === 'cancelled') {
       return NextResponse.json(
         { error: 'لا يمكن إلغاء طلب تم تسليمه أو إلغاؤه مسبقاً' },
@@ -68,17 +68,29 @@ export async function POST(request: NextRequest) {
     // Perform the cancellation using admin client — re-scope by project_id
     // (defense in depth) and re-check the status INSIDE the UPDATE so a
     // concurrent deliver/cancel between the read above and this write cannot
-    // cancel an already-delivered order (TOCTOU).
-    const { error: updateErr } = await supabase
+    // cancel an already-delivered order (TOCTOU). `ready` is cancellable too
+    // (kitchen printed it but it hasn't been picked up yet).
+    const { data: updated, error: updateErr } = await supabase
       .from('orders')
       .update({ status: 'cancelled' })
       .eq('id', orderId)
       .eq('project_id', membership.project_id)
-      .in('status', ['pending', 'preparing']);
+      .in('status', ['pending', 'preparing', 'ready'])
+      .select('id')
+      .maybeSingle();
 
     if (updateErr) {
       console.error('[Cancel] DB update error:', updateErr);
       return NextResponse.json({ error: 'فشل إلغاء الطلب' }, { status: 500 });
+    }
+
+    // 0 rows matched → the order changed status between our read and the
+    // update (concurrent deliver/cancel). Don't claim success.
+    if (!updated) {
+      return NextResponse.json(
+        { error: 'تعذر الإلغاء — تغيرت حالة الطلب، حدّث الصفحة وحاول مجدداً' },
+        { status: 409 }
+      );
     }
 
     // Audit log (best-effort)

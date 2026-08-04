@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { rateLimit, createRateLimitResponse } from '@/lib/rate-limit';
+import { getClientIp } from '@/lib/ip';
 
 /**
  * POST /api/public/bill
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
 
     // Strict rate limit for bill requests — first IP only; a comma-list
     // header would otherwise make the key vary per proxy hop.
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || 'unknown';
+    const ip = getClientIp(request);
     const rateKey = `${projectSlug}:${tableSlug}:${ip}`;
     const limitResult = await rateLimit(rateKey, { limit: 8, windowMs: 60 * 1000, keyPrefix: 'public-bill' });
 

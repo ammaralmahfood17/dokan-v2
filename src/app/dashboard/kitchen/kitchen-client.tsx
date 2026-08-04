@@ -14,6 +14,7 @@ type OrderRow = Order & {
   tables?: { number: number } | null;
   order_items?: OrderItem[];
   service_type?: string | null;
+  updated_at?: string;
 };
 
 /** Kitchen ticket = ONE full order (not a single item). */
@@ -268,6 +269,9 @@ export function KitchenClient({
   // Ids added via realtime INSERT — fullRefresh must preserve them even if a
   // poll snapshot was taken before their commit (see fullRefresh merge).
   const realtimeAddedRef = useRef<Set<string>>(new Set());
+  // Ids touched by a realtime UPDATE since the last poll — fullRefresh must
+  // keep the fresher local row instead of letting an older snapshot win.
+  const realtimeTouchedRef = useRef<Set<string>>(new Set());
   const [soundOn, setSoundOn] = useState(true);
   const [newOrderCount, setNewOrderCount] = useState(0);
   const [time, setTime] = useState(() =>
@@ -324,43 +328,60 @@ export function KitchenClient({
 
   // Full refresh fallback
   const fullRefresh = useCallback(async () => {
-    const supabase = createClient();
-    const { data } = await supabase
-      .from('orders')
-      .select('*, tables(number), order_items(*)')
-      .eq('project_id', projectId)
-      .in('status', ['pending', 'preparing', 'ready'])
-      .is('service_type', null)
-      .order('created_at', { ascending: true })
-      .limit(50);
+    try {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('orders')
+        .select('*, tables(number), order_items(*)')
+        .eq('project_id', projectId)
+        .in('status', ['pending', 'preparing', 'ready'])
+        .is('service_type', null)
+        .order('created_at', { ascending: false })
+        .limit(50);
 
-    if (!data) return;
-    const rows = data as unknown as OrderRow[];
+      if (!data) return;
+      // Newest 50 first, then flip so the board renders oldest-first.
+      const rows = (data as unknown as OrderRow[]).reverse();
 
-    for (const o of rows) {
-      if (!knownIds.current.has(o.id) && o.status === 'pending') {
-        notifyNewOrder(o.order_number);
-      }
-      knownIds.current.add(o.id);
-    }
-    // Bound the dedupe set — drop ids of delivered/cancelled/old orders once
-    // it grows too large (realtime ids are re-added on INSERT).
-    if (knownIds.current.size > 300) {
-      knownIds.current = new Set(rows.map((o) => o.id));
-    }
-    // Merge instead of wholesale replace: a ticket inserted via realtime
-    // between this snapshot and its commit must not vanish from the board
-    // just because the poll response arrived without it.
-    setOrders((prev) => {
-      const byId = new Map(rows.map((o) => [o.id, o]));
-      for (const o of prev) {
-        if (realtimeAddedRef.current.has(o.id) && !byId.has(o.id)) {
-          byId.set(o.id, o);
+      for (const o of rows) {
+        if (!knownIds.current.has(o.id) && o.status === 'pending') {
+          notifyNewOrder(o.order_number);
         }
+        knownIds.current.add(o.id);
       }
-      return [...byId.values()];
-    });
-    realtimeAddedRef.current.clear();
+      // Bound the dedupe set — drop ids of delivered/cancelled/old orders once
+      // it grows too large (realtime ids are re-added on INSERT).
+      if (knownIds.current.size > 300) {
+        knownIds.current = new Set(rows.map((o) => o.id));
+      }
+      // Merge instead of wholesale replace: a ticket inserted via realtime
+      // between this snapshot and its commit must not vanish from the board
+      // just because the poll response arrived without it.
+      setOrders((prev) => {
+        const byId = new Map(rows.map((o) => [o.id, o]));
+        for (const o of prev) {
+          if (realtimeAddedRef.current.has(o.id) && !byId.has(o.id)) {
+            byId.set(o.id, o);
+          }
+          // A realtime UPDATE may have landed after this snapshot was taken —
+          // prefer the local row so the poll can't overwrite fresher state.
+          const snap = byId.get(o.id);
+          if (
+            snap &&
+            realtimeTouchedRef.current.has(o.id) &&
+            (o.updated_at ?? '') >= (snap.updated_at ?? '')
+          ) {
+            byId.set(o.id, o);
+          }
+        }
+        return [...byId.values()];
+      });
+      realtimeAddedRef.current.clear();
+      realtimeTouchedRef.current.clear();
+    } catch (err) {
+      // Silently fail the refresh — keep the previous board state.
+      console.error('fullRefresh failed', err);
+    }
   }, [projectId, notifyNewOrder]);
 
   // Fetch single order
@@ -408,13 +429,18 @@ export function KitchenClient({
           if (!newId || knownIds.current.has(newId)) return;
           if (newOrder.service_type) return;
 
-          const fullOrder = await fetchSingleOrder(newId);
-          if (!fullOrder) return;
+          try {
+            const fullOrder = await fetchSingleOrder(newId);
+            if (!fullOrder) return;
 
-          knownIds.current.add(newId);
-          realtimeAddedRef.current.add(newId);
-          notifyNewOrder(fullOrder.order_number);
-          setOrders((prev) => [fullOrder, ...prev]);
+            knownIds.current.add(newId);
+            realtimeAddedRef.current.add(newId);
+            notifyNewOrder(fullOrder.order_number);
+            setOrders((prev) => [fullOrder, ...prev]);
+          } catch (err) {
+            // Keep the board as-is; the next poll will pick the order up.
+            console.error('fetchSingleOrder failed', err);
+          }
         }
       )
       .on(
@@ -422,6 +448,7 @@ export function KitchenClient({
         { event: 'UPDATE', schema: 'public', table: 'orders', filter: `project_id=eq.${projectId}` },
         (payload) => {
           const updated = payload.new as Partial<OrderRow>;
+          if (updated.id) realtimeTouchedRef.current.add(updated.id);
           setOrders((prev) => {
             if (updated.status === 'delivered' || updated.status === 'cancelled') {
               return prev.filter((o) => o.id !== updated.id);
@@ -472,14 +499,7 @@ export function KitchenClient({
   const advanceOrder = useCallback(
     async (orderId: string, toItem: OrderItemStatus, toOrder: OrderStatus) => {
       const supabase = createClient();
-      const { error: itemErr } = await supabase
-        .from('order_items')
-        .update({ status: toItem })
-        .eq('order_id', orderId);
-      if (itemErr) {
-        toast.error('فشل التحديث');
-        return;
-      }
+      // Order first, then items — if the order update fails, no item is touched.
       const { error: orderErr } = await supabase
         .from('orders')
         .update({ status: toOrder })
@@ -487,6 +507,25 @@ export function KitchenClient({
         .eq('project_id', projectId);
       if (orderErr) {
         toast.error('فشل تحديث حالة الطلب');
+        return;
+      }
+      // order_items has no project_id — resolve the scoped order ids first so
+      // the item update can never leak across projects.
+      const { data: scopedOrders } = await supabase
+        .from('orders')
+        .select('id')
+        .eq('project_id', projectId)
+        .in('id', [orderId]);
+      if (!scopedOrders?.length) {
+        toast.error('فشل تحديث الطلب');
+        return;
+      }
+      const { error: itemErr } = await supabase
+        .from('order_items')
+        .update({ status: toItem })
+        .in('order_id', scopedOrders.map((o) => o.id));
+      if (itemErr) {
+        toast.error('فشل التحديث');
         return;
       }
       setOrders((prev) =>
@@ -554,14 +593,7 @@ export function KitchenClient({
     if (!pendingOrders.length) return;
     const orderIds = pendingOrders.map((o) => o.id);
     const supabase = createClient();
-    const { error: itemErr } = await supabase
-      .from('order_items')
-      .update({ status: 'preparing' })
-      .in('order_id', orderIds);
-    if (itemErr) {
-      toast.error('فشل التحديث');
-      return;
-    }
+    // Order statuses first, then items — if the order update fails, no item is touched.
     const { error: orderErr } = await supabase
       .from('orders')
       .update({ status: 'preparing' })
@@ -569,6 +601,25 @@ export function KitchenClient({
       .eq('project_id', projectId);
     if (orderErr) {
       toast.error('فشل تحديث الحالات');
+      return;
+    }
+    // order_items has no project_id — resolve the scoped order ids first so
+    // the item update can never leak across projects.
+    const { data: scopedOrders } = await supabase
+      .from('orders')
+      .select('id')
+      .eq('project_id', projectId)
+      .in('id', orderIds);
+    if (!scopedOrders?.length) {
+      toast.error('فشل تحديث الحالات');
+      return;
+    }
+    const { error: itemErr } = await supabase
+      .from('order_items')
+      .update({ status: 'preparing' })
+      .in('order_id', scopedOrders.map((o) => o.id));
+    if (itemErr) {
+      toast.error('فشل التحديث');
       return;
     }
     await fullRefresh();

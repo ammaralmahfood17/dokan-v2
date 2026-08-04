@@ -325,6 +325,7 @@ export type Database = {
       projects: {
         Row: {
           created_at: string
+          created_by: string | null
           currency: string
           id: string
           is_active: boolean
@@ -335,6 +336,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           currency?: string
           id?: string
           is_active?: boolean
@@ -345,6 +347,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           currency?: string
           id?: string
           is_active?: boolean
@@ -353,7 +356,15 @@ export type Database = {
           primary_color?: string
           slug?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "projects_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       push_subscriptions: {
         Row: {

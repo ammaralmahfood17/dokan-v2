@@ -3,6 +3,7 @@ import * as Sentry from '@sentry/nextjs';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createSecureOrder } from '@/lib/order-pricing';
 import { rateLimit, createRateLimitResponse } from '@/lib/rate-limit';
+import { getClientIp } from '@/lib/ip';
 import { sendPushToProject } from '@/lib/push';
 import { sendTelegramAlert } from '@/lib/telegram';
 import { formatMoney } from '@/lib/utils';
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
 
     // Rate limit per project + per IP (keyPrefix is applied by rateLimit, so
     // no duplicate 'public-order:' prefix in the key itself)
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const ip = getClientIp(request);
     const rateKey = projectSlug;
     const limitResult = await rateLimit(rateKey, { limit: 20, windowMs: 60 * 1000, keyPrefix: 'public-order' });
     const ipLimitResult = await rateLimit(`ip:${ip}`, { limit: 10, windowMs: 60 * 1000, keyPrefix: 'public-order-ip' });

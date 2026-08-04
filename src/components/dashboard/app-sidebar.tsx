@@ -20,6 +20,7 @@ import {
   Sun,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 type NavItem = {
   href: string;
@@ -73,7 +74,11 @@ export function AppSidebar({
     const next = !isDark;
     setIsDark(next);
     document.documentElement.classList.toggle('dark', next);
-    localStorage.setItem('dokan-theme', next ? 'dark' : 'light');
+    try {
+      localStorage.setItem('dokan-theme', next ? 'dark' : 'light');
+    } catch {
+      // ignore — the theme still applies for this session
+    }
   }
 
   useEffect(() => {
@@ -83,11 +88,15 @@ export function AppSidebar({
   }, [router]);
 
   async function logout() {
-    const { createClient } = await import('@/lib/supabase/client');
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push('/login');
-    router.refresh();
+    try {
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      router.push('/login');
+      router.refresh();
+    } catch {
+      toast.error('تعذّر تسجيل الخروج — حاول مرة أخرى');
+    }
   }
 
   function isActive(href: string) {
@@ -123,7 +132,7 @@ export function AppSidebar({
         </div>
         <span>{item.label}</span>
         {active && (
-          <div className="mr-auto h-1.5 w-1.5 rounded-full bg-[var(--color-primary)]" />
+          <div className="ms-auto h-1.5 w-1.5 rounded-full bg-[var(--color-primary)]" />
         )}
       </Link>
     );

@@ -115,6 +115,7 @@ export async function POST(request: NextRequest) {
         currency,
         primary_color: primaryColor,
         is_active: true,
+        created_by: user.id,
       })
       .select('id, name, slug')
       .single();

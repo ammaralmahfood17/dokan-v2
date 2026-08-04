@@ -52,6 +52,8 @@ export async function sendTelegramAlert(
 
   // Per-staff telegram pref: user-linked chats respect notify_telegram.
   // Group chats and legacy links (user_id NULL) are project-level — always on.
+  // Ex-staff (no staff_members row) default to FALSE so removed members stop
+  // receiving order numbers + amounts.
   const { data: staffPrefs } = await admin
     .from('staff_members')
     .select('user_id, notify_telegram')
@@ -60,7 +62,7 @@ export async function sendTelegramAlert(
     (staffPrefs ?? []).map((s: any) => [s.user_id, s.notify_telegram !== false])
   );
   const recipients = links.filter(
-    (link: any) => !link.user_id || telegramPref.get(link.user_id) !== false
+    (link: any) => !link.user_id || telegramPref.get(link.user_id) === true
   );
 
   if (!recipients.length) return { sent: 0, failed: 0 };

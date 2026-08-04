@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import * as Sentry from '@sentry/nextjs';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { rateLimit, createRateLimitResponse } from '@/lib/rate-limit';
+import { getClientIp } from '@/lib/ip';
 
 /**
  * Server-side signup endpoint.
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
 
     // IP cap too — mass account creation across many emails from one IP
     // (spam / email bombing) bypasses the per-email limit entirely.
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const ip = getClientIp(request);
     const ipLimit = await rateLimit(`signup-ip:${ip}`, {
       limit: 10,
       windowMs: 60 * 60 * 1000,

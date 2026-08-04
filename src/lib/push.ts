@@ -38,18 +38,22 @@ export async function sendPushToProject(
   const admin = createAdminClient() as any;
 
   // Only staff who opted in for push (notify_push) receive order alerts.
+  // Fetch opted-in staff ids FIRST, then filter subscriptions — passing a
+  // query builder into .in() throws "object is not iterable" (TypeError).
+  const { data: optedInStaff } = await admin
+    .from('staff_members')
+    .select('user_id')
+    .eq('project_id', projectId)
+    .eq('notify_push', true);
+
+  const optedInIds = (optedInStaff ?? []).map((s: any) => s.user_id);
+  if (!optedInIds.length) return { sent: 0, failed: 0, cleaned: 0 };
+
   const { data: subs } = await admin
     .from('push_subscriptions')
     .select('endpoint, p256dh, auth')
     .eq('project_id', projectId)
-    .in(
-      'user_id',
-      admin
-        .from('staff_members')
-        .select('user_id')
-        .eq('project_id', projectId)
-        .eq('notify_push', true)
-    );
+    .in('user_id', optedInIds);
 
   if (!subs?.length) return { sent: 0, failed: 0, cleaned: 0 };
 

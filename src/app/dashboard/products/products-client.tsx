@@ -42,6 +42,22 @@ function validateProduct(name: string, price: string): FieldErrors {
   return errors;
 }
 
+/** Best-effort: delete the storage object behind a product image URL (ignore failures) */
+async function removeProductImage(url: string | null | undefined) {
+  if (!url) return;
+  const marker = '/product-images/';
+  const idx = url.indexOf(marker);
+  if (idx === -1) return;
+  const path = url.slice(idx + marker.length).split('?')[0];
+  if (!path) return;
+  try {
+    const supabase = createClient();
+    await supabase.storage.from('product-images').remove([path]);
+  } catch {
+    // best-effort — an orphaned object is preferable to failing the UI action
+  }
+}
+
 export function ProductsClient({
   projectId,
   currency,
@@ -303,6 +319,7 @@ export function ProductsClient({
   }
 
   function removeImage() {
+    removeProductImage(imageUrl);
     setImageUrl('');
     setPreviewUrl(null); // Fix 6
   }
@@ -388,6 +405,18 @@ export function ProductsClient({
         return;
       }
 
+      // Verify the product still belongs to this project before touching addons
+      const { data: owned } = await supabase
+        .from('products')
+        .select('id')
+        .eq('id', editing.id)
+        .eq('project_id', projectId)
+        .maybeSingle();
+      if (!owned) {
+        toast.error('لا يمكن تعديل هذا المنتج');
+        return;
+      }
+
       // Upsert addons: update in place (keeps id + is_available), insert new, delete removed
       const currentAddons = editing.product_addons || [];
       const keptIds = new Set(
@@ -449,7 +478,9 @@ export function ProductsClient({
         );
       }
       toast.success('تم تحديث المنتج');
+      setShowProductForm(false);
     } else {
+      const nextSortOrder = products.length ? Math.max(...products.map((p) => p.sort_order ?? 0)) + 1 : 0;
       const insertPayload: Database['public']['Tables']['products']['Insert'] = {
         project_id: projectId,
         name: name.trim(),
@@ -459,7 +490,7 @@ export function ProductsClient({
         category_id: categoryId || null,
         is_available: isAvailable,
         image_url: imageUrl.trim() || null,
-        sort_order: products.length,
+        sort_order: nextSortOrder,
       };
       const { data, error } = await supabase
         .from('products')
@@ -468,6 +499,18 @@ export function ProductsClient({
         .single();
 
       if (error || !data) {
+        toast.error('فشل الإضافة');
+        return;
+      }
+
+      // Verify the new product belongs to this project before adding addons
+      const { data: owned } = await supabase
+        .from('products')
+        .select('id')
+        .eq('id', data.id)
+        .eq('project_id', projectId)
+        .maybeSingle();
+      if (!owned) {
         toast.error('فشل الإضافة');
         return;
       }
@@ -498,13 +541,13 @@ export function ProductsClient({
         (withAddons ?? { ...data, product_addons: [] }) as ProductWithAddons,
       ]);
       toast.success('تمت إضافة المنتج');
+      setShowProductForm(false);
     }
     } catch {
       console.error('[Products] saveProduct unexpected error');
       toast.error('خطأ غير متوقع — حاول مجددًا');
     } finally {
       setLoading(false);
-      setShowProductForm(false);
     }
   }
 
@@ -513,6 +556,7 @@ export function ProductsClient({
 
   async function deleteProduct(id: string) {
     const supabase = createClient();
+    const product = products.find((p) => p.id === id);
     const { error } = await supabase.from('products').delete().eq('id', id).eq('project_id', projectId);
     if (error) {
       toast.error('فشل الحذف');
@@ -520,10 +564,22 @@ export function ProductsClient({
     }
     setProducts((prev) => prev.filter((p) => p.id !== id));
     toast.success('تم حذف المنتج');
+    removeProductImage(product?.image_url);
   }
 
   async function deleteAddon(productId: string, addonId: string) {
     const supabase = createClient();
+    // Verify the product belongs to this project before touching its addons
+    const { data: owned } = await supabase
+      .from('products')
+      .select('id')
+      .eq('id', productId)
+      .eq('project_id', projectId)
+      .maybeSingle();
+    if (!owned) {
+      toast.error('لا يمكن حذف هذه الإضافة');
+      return;
+    }
     const { error } = await supabase.from('product_addons').delete().eq('product_id', productId).eq('id', addonId);
     if (error) {
       toast.error('فشل الحذف');
@@ -546,6 +602,7 @@ export function ProductsClient({
     setDuplicatingId(p.id);
     try {
       const supabase = createClient();
+      const nextSortOrder = products.length ? Math.max(...products.map((p) => p.sort_order ?? 0)) + 1 : 0;
       const insertPayload: Database['public']['Tables']['products']['Insert'] = {
         project_id: projectId,
         name: `${p.name} (نسخة)`,
@@ -555,7 +612,7 @@ export function ProductsClient({
         category_id: p.category_id,
         is_available: p.is_available,
         image_url: p.image_url,
-        sort_order: products.length,
+        sort_order: nextSortOrder,
       };
       const { data, error } = await supabase
         .from('products')
@@ -563,6 +620,17 @@ export function ProductsClient({
         .select('*')
         .single();
       if (error || !data) {
+        toast.error('فشل نسخ المنتج');
+        return;
+      }
+      // Verify the copy belongs to this project before copying addons
+      const { data: owned } = await supabase
+        .from('products')
+        .select('id')
+        .eq('id', data.id)
+        .eq('project_id', projectId)
+        .maybeSingle();
+      if (!owned) {
         toast.error('فشل نسخ المنتج');
         return;
       }
@@ -792,6 +860,7 @@ export function ProductsClient({
         <input
           className="input ps-10"
           placeholder="ابحث عن منتج…"
+          maxLength={100}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
