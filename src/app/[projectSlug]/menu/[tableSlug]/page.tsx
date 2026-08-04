@@ -4,10 +4,11 @@ import { createAnonClient } from '@/lib/supabase/anon';
 import { MenuClient } from './menu-client';
 import type { Category, Product, ProductAddon, Project, Table } from '@/lib/types';
 
-// ISR: menu data changes rarely (owner edits), while this page serves the
-// public QR traffic. Rebuild once a minute and serve from CDN in between —
-// kills the per-visit 4× Supabase round-trips + serverless cold start.
-export const revalidate = 60;
+// The page itself is DYNAMIC (no `export const revalidate`): the subscription
+// cutoff flips projects.is_active=false and that must cut the public menu
+// IMMEDIATELY, not up to 60s later (a cached page would keep serving a
+// deactivated store). Performance is preserved by unstable_cache on the menu
+// queries below (60s, project-tagged, purged on edit via /api/revalidate-menu).
 export const dynamicParams = true;
 
 // M5: on-demand invalidation. Product/category edits call

@@ -19,6 +19,17 @@ function envVar(name: string): string {
 const url = envVar('NEXT_PUBLIC_SUPABASE_URL');
 const serviceRole = envVar('SUPABASE_SERVICE_ROLE_KEY');
 
+/** Public Supabase URL (for direct REST/RPC calls from tests). */
+export { url };
+
+/** Service-role admin client (setup + direct assertions). */
+export { admin };
+
+/** Anon key (for authenticating a real user session in tests). */
+export function anonKey(): string {
+  return envVar('NEXT_PUBLIC_SUPABASE_ANON_KEY');
+}
+
 const admin: SupabaseClient = createClient(url, serviceRole, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
