@@ -17,6 +17,20 @@ import { toast } from 'sonner';
 
 type ProductWithAddons = Product & { product_addons: ProductAddon[] };
 
+/**
+ * M5: after any product/category mutation, purge the public menu cache for
+ * this project so the live QR menu reflects the change immediately instead of
+ * after the 60s ISR window. Fire-and-forget — cache purge must never block or
+ * fail the user's action. The endpoint re-checks membership server-side.
+ */
+function revalidateMenuCache(projectId: string) {
+  void fetch('/api/revalidate-menu', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projectId }),
+  }).catch(() => {});
+}
+
 /** Temporary addon line in the product form — id is set for existing (persisted) addons */
 type FormAddon = { key: string; id?: string; name: string; price: string };
 
@@ -479,6 +493,7 @@ export function ProductsClient({
       }
       toast.success('تم تحديث المنتج');
       setShowProductForm(false);
+      revalidateMenuCache(projectId);
     } else {
       const nextSortOrder = products.length ? Math.max(...products.map((p) => p.sort_order ?? 0)) + 1 : 0;
       const insertPayload: Database['public']['Tables']['products']['Insert'] = {
@@ -542,6 +557,7 @@ export function ProductsClient({
       ]);
       toast.success('تمت إضافة المنتج');
       setShowProductForm(false);
+      revalidateMenuCache(projectId);
     }
     } catch {
       console.error('[Products] saveProduct unexpected error');
@@ -565,6 +581,7 @@ export function ProductsClient({
     setProducts((prev) => prev.filter((p) => p.id !== id));
     toast.success('تم حذف المنتج');
     removeProductImage(product?.image_url);
+    revalidateMenuCache(projectId);
   }
 
   async function deleteAddon(productId: string, addonId: string) {
@@ -650,6 +667,7 @@ export function ProductsClient({
       );
       toast.success(available ? 'تم تفعيل المنتجات' : 'تم إيقاف المنتجات');
       exitBulk();
+      revalidateMenuCache(projectId);
     } finally {
       setBulkBusy(false);
     }
@@ -673,6 +691,7 @@ export function ProductsClient({
       setProducts((prev) => prev.filter((p) => !selectedIds.has(p.id)));
       toast.success('تم حذف المنتجات');
       exitBulk();
+      revalidateMenuCache(projectId);
     } finally {
       setBulkBusy(false);
     }
@@ -705,6 +724,7 @@ export function ProductsClient({
     setCatName('');
     setShowCategoryForm(false);
     toast.success('تم إنشاء التصنيف');
+    revalidateMenuCache(projectId);
     } finally {
       setLoading(false);
     }
@@ -725,6 +745,7 @@ export function ProductsClient({
       setCategories((prev) => prev.map((c) => c.id === editingCat.id ? { ...c, name } : c));
       setEditingCat(null);
       toast.success('تم تحديث التصنيف');
+      revalidateMenuCache(projectId);
     } finally {
       setLoading(false);
     }
@@ -739,6 +760,7 @@ export function ProductsClient({
       if (error) { toast.error('فشل الحذف — تأكد من عدم وجود منتجات مرتبطة'); return; }
       setCategories((prev) => prev.filter((c) => c.id !== confirmDeleteCat.id));
       toast.success('تم حذف التصنيف');
+      revalidateMenuCache(projectId);
     } finally {
       setLoading(false);
     }

@@ -3,6 +3,11 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { rateLimit, createRateLimitResponse } from '@/lib/rate-limit';
 import { getClientIp } from '@/lib/ip';
 
+// NOTE: This route is currently UNUSED by the frontend (no "request bill"
+// button exists in the menu UI). It's documented in README as a planned
+// feature; kept intentionally — product-scope decision pending (build the
+// menu frontend for it, or remove it). Do not flag as accidental dead code.
+
 /**
  * POST /api/public/bill
  * Customer requests the bill — logged as a staff-visible order note.

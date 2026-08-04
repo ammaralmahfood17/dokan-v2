@@ -273,6 +273,11 @@ export function KitchenClient({
   // Ids touched by a realtime UPDATE since the last poll — fullRefresh must
   // keep the fresher local row instead of letting an older snapshot win.
   const realtimeTouchedRef = useRef<Set<string>>(new Set());
+  // M3: ids currently on our board. order_items has no project_id column and
+  // Supabase realtime can't filter by a joined orders.project_id, so we
+  // filter incoming order_items events client-side against this set — other
+  // tenants' item changes are dropped without a fetch.
+  const knownOrderIdsRef = useRef<Set<string>>(new Set());
   const [soundOn, setSoundOn] = useState(true);
   const [newOrderCount, setNewOrderCount] = useState(0);
   const [time, setTime] = useState(() =>
@@ -415,6 +420,11 @@ export function KitchenClient({
     [fetchSingleOrder]
   );
 
+  // M3: keep the known-id set in sync with the board.
+  useEffect(() => {
+    knownOrderIdsRef.current = new Set(orders.map((o) => o.id));
+  }, [orders]);
+
   // Realtime
   useEffect(() => {
     const supabase = createClient();
@@ -471,10 +481,11 @@ export function KitchenClient({
         { event: 'UPDATE', schema: 'public', table: 'order_items' },
         (payload) => {
           // Item moved by another screen — refetch that order to keep the
-          // board correct. fetchSingleOrder guards project_id, and
-          // refetchOrder ignores orders not on our board, so updates from
-          // other projects are a cheap no-op.
+          // board correct. M3: order_items has no project_id and realtime
+          // can't join-filter, so drop events for orders not on our board
+          // before fetching — other tenants' updates are pure noise.
           const itemOrderId = (payload.new as { order_id: string }).order_id;
+          if (!knownOrderIdsRef.current.has(itemOrderId)) return;
           void refetchOrder(itemOrderId);
         }
       )

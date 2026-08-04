@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { unstable_cache } from 'next/cache';
 import { createAnonClient } from '@/lib/supabase/anon';
 import { MenuClient } from './menu-client';
 import type { Category, Product, ProductAddon, Project, Table } from '@/lib/types';
@@ -8,6 +9,40 @@ import type { Category, Product, ProductAddon, Project, Table } from '@/lib/type
 // kills the per-visit 4× Supabase round-trips + serverless cold start.
 export const revalidate = 60;
 export const dynamicParams = true;
+
+// M5: on-demand invalidation. Product/category edits call
+// /api/revalidate-menu, which revalidateTag()s `menu-${projectId}`. The menu
+// queries below are cached under that project-scoped tag, so an edit shows on
+// the live QR menu immediately instead of waiting up to 60s (or longer with
+// SWR). Wrapped in a function so the tag can be project-scoped (unstable_cache
+// options are evaluated per call).
+async function getMenuData(projectId: string, tableId: string) {
+  return unstable_cache(
+    async () => {
+      const supabase = createAnonClient();
+      const [{ data: categories }, { data: products }] = await Promise.all([
+        supabase
+          .from('categories')
+          .select('id, name, sort_order, is_active')
+          .eq('project_id', projectId)
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true }),
+        supabase
+          .from('products')
+          .select('*, product_addons(*)')
+          .eq('project_id', projectId)
+          .eq('is_available', true)
+          .order('sort_order'),
+      ]);
+      return {
+        categories: (categories ?? []) as Category[],
+        products: (products ?? []) as (Product & { product_addons: ProductAddon[] })[],
+      };
+    },
+    ['menu-data', projectId, tableId],
+    { revalidate: 60, tags: [`menu-${projectId}`] }
+  )();
+}
 
 // Enable ISR for any slug combination: without generateStaticParams, async
 // `params` force dynamic rendering (cache-control: no-store) regardless of
@@ -48,29 +83,15 @@ export default async function PublicMenuPage({
 
   if (!table) notFound();
 
-  const [{ data: categories }, { data: products }] = await Promise.all([
-    supabase
-      .from('categories')
-      .select('id, name, sort_order, is_active')
-      .eq('project_id', project.id)
-      .eq('is_active', true)
-      .order('sort_order', { ascending: true }),
-    supabase
-      .from('products')
-      .select('*, product_addons(*)')
-      .eq('project_id', project.id)
-      .eq('is_available', true)
-      .order('sort_order'),
-  ]);
+  // M5: cached + project-tagged — see getMenuData above.
+  const { categories, products } = await getMenuData(project.id, table.id);
 
   return (
     <MenuClient
       project={project as Project}
       table={table as Table}
-      categories={(categories ?? []) as Category[]}
-      products={
-        (products ?? []) as (Product & { product_addons: ProductAddon[] })[]
-      }
+      categories={categories}
+      products={products}
     />
   );
 }

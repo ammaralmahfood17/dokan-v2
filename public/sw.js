@@ -1,8 +1,15 @@
-// Dokan Service Worker v6 — Precache build assets + RSC caching + Push + Offline-first
-const CACHE_SHELL = 'dokan-shell-v2';
-const CACHE_IMAGES = 'dokan-images-v2';
-const CACHE_STATIC = 'dokan-static-v2';
-const CACHE_PAGES = 'dokan-pages-v2';
+// Dokan Service Worker — Precache build assets + RSC caching + Push + Offline-first
+// M6: single source of truth for cache versioning — bump CACHE_VERSION on every
+// SW change so old caches are evicted by activate() (matched by prefix).
+const CACHE_VERSION = 'v7';
+const CACHE_SHELL = `dokan-shell-${CACHE_VERSION}`;
+const CACHE_IMAGES = `dokan-images-${CACHE_VERSION}`;
+const CACHE_STATIC = `dokan-static-${CACHE_VERSION}`;
+const CACHE_PAGES = `dokan-pages-${CACHE_VERSION}`;
+
+// M6: cap on the runtime caches (images/pages grow unbounded on iOS's stricter
+// storage quota). LRU-ish: evict oldest entries past the cap.
+const MAX_CACHE_ENTRIES = 120;
 
 const SHELL_ASSETS = [
   '/',
@@ -15,6 +22,10 @@ const SHELL_ASSETS = [
 
 /* ========== INSTALL ========== */
 self.addEventListener('install', (event) => {
+  // M6: take over as soon as the new SW is installed instead of waiting for
+  // all tabs to close. The app-side (service-worker-register.tsx) prompts the
+  // user to reload — we never reload pages ourselves.
+  self.skipWaiting();
   event.waitUntil(
     (async () => {
       // 1. Cache the static shell
@@ -45,7 +56,6 @@ self.addEventListener('install', (event) => {
       } catch (e) {}
     })()
   );
-  // No skipWaiting — user controls the update via SKIP_WAITING message
 });
 
 /* ========== ACTIVATE ========== */
@@ -54,7 +64,13 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) =>
       Promise.all(
         keys.map((k) => {
-          if (k === CACHE_SHELL || k === CACHE_IMAGES || k === CACHE_STATIC || k === CACHE_PAGES) return;
+          // M6: evict anything not under the current versioned prefixes.
+          if (
+            k === CACHE_SHELL ||
+            k === CACHE_IMAGES ||
+            k === CACHE_STATIC ||
+            k === CACHE_PAGES
+          ) return;
           return caches.delete(k);
         })
       )
@@ -158,7 +174,10 @@ self.addEventListener('fetch', (event) => {
       const fetchPromise = fetch(event.request).then((response) => {
         if (response.ok && response.type === 'basic') {
           const clone = response.clone();
-          caches.open(CACHE_SHELL).then((cache) => cache.put(event.request, clone));
+          caches.open(CACHE_SHELL).then((cache) => {
+            cache.put(event.request, clone);
+            trimCache(cache, MAX_CACHE_ENTRIES);
+          });
         }
         return response;
       }).catch(() => cached);
@@ -167,6 +186,19 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
+/** M6: LRU-ish trim — keep the most recent MAX_CACHE_ENTRIES in a cache. */
+async function trimCache(cache, maxEntries) {
+  try {
+    const keys = await cache.keys();
+    if (keys.length <= maxEntries) return;
+    // keys() returns insertion order; delete the oldest first.
+    const excess = keys.length - maxEntries;
+    await Promise.all(
+      keys.slice(0, excess).map((k) => cache.delete(k))
+    );
+  } catch (e) {}
+}
+
 /** Cache-first: serve from cache, fall back to network, store response */
 function cacheFirst(request, cacheName) {
   return caches.match(request).then((cached) => {
@@ -174,7 +206,10 @@ function cacheFirst(request, cacheName) {
     return fetch(request).then((response) => {
       if (response.ok && response.type === 'basic') {
         const clone = response.clone();
-        caches.open(cacheName).then((cache) => cache.put(request, clone));
+        caches.open(cacheName).then((cache) => {
+          cache.put(request, clone);
+          trimCache(cache, MAX_CACHE_ENTRIES);
+        });
       }
       return response;
     }).catch(() => {
@@ -191,7 +226,10 @@ function networkFirst(request, cacheName) {
   return fetch(request).then((response) => {
     if (response.ok && response.type === 'basic') {
       const clone = response.clone();
-      caches.open(cacheName).then((cache) => cache.put(request, clone));
+      caches.open(cacheName).then((cache) => {
+        cache.put(request, clone);
+        trimCache(cache, MAX_CACHE_ENTRIES);
+      });
     }
     return response;
   }).catch(() => {

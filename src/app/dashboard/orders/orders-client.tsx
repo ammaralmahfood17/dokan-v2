@@ -117,9 +117,22 @@ export function OrdersClient({
 
   // Realtime — تحديث تلقائي لطلبات اليوم فقط (الأيام السابقة ثابتة:
   // ما يجي أحد يغيّر طلبات أمس أثناء عرضها)
+  // M1: status callback + 30s poll fallback (same interval as KDS) so a
+  // dropped realtime connection never leaves the page silently stale.
+  const [realtimeOffline, setRealtimeOffline] = useState(false);
+
   useEffect(() => {
     const supabase = createClient();
     let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
+    let channelActive = true;
+
+    const stopPoll = () => {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+      }
+    };
 
     const channel = supabase
       .channel(`orders-${projectId}`)
@@ -137,10 +150,25 @@ export function OrdersClient({
           refreshTimer = setTimeout(() => void refresh(), 500);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (!channelActive) return;
+        if (status === 'SUBSCRIBED') {
+          // Reconnected — clear the banner and stop the fallback poll.
+          setRealtimeOffline(false);
+          stopPoll();
+        } else if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
+          setRealtimeOffline(true);
+          // Poll fallback: only while realtime is down (no double-fetching).
+          if (!pollInterval) {
+            pollInterval = setInterval(() => void refresh(), 30000);
+          }
+        }
+      });
 
     return () => {
+      channelActive = false;
       if (refreshTimer) clearTimeout(refreshTimer);
+      stopPoll();
       void supabase.removeChannel(channel);
     };
   }, [projectId, refresh, isToday]);
@@ -173,6 +201,16 @@ export function OrdersClient({
           <p>متابعة فقط · الحالة تتحدث من شاشة المطبخ</p>
         </div>
       </div>
+
+      {realtimeOffline && (
+        <div
+          role="status"
+          className="mb-4 flex items-center gap-2 rounded-[8px] border border-[var(--color-danger)]/20 bg-[var(--color-danger-tint)] px-3 py-2 text-xs font-medium text-[var(--color-danger)]"
+        >
+          <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-[var(--color-danger)]" />
+          انقطع الاتصال المباشر — يُحدَّث تلقائيًا كل 30 ثانية
+        </div>
+      )}
 
       {/* Date picker — اليوم/أمس + تقويم (لا مستقبل) */}
       <div className="mb-4 flex flex-wrap items-center gap-1.5">
