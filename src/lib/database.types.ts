@@ -78,6 +78,42 @@ export type Database = {
           },
         ]
       }
+      impersonation_sessions: {
+        Row: {
+          created_at: string
+          ended_at: string | null
+          expires_at: string
+          id: string
+          super_admin_session: Json
+          super_admin_user_id: string
+          target_project_id: string | null
+          target_session: Json
+          target_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          ended_at?: string | null
+          expires_at: string
+          id?: string
+          super_admin_session: Json
+          super_admin_user_id: string
+          target_project_id?: string | null
+          target_session: Json
+          target_user_id: string
+        }
+        Update: {
+          created_at?: string
+          ended_at?: string | null
+          expires_at?: string
+          id?: string
+          super_admin_session?: Json
+          super_admin_user_id?: string
+          target_project_id?: string | null
+          target_session?: Json
+          target_user_id?: string
+        }
+        Relationships: []
+      }
       order_audit_logs: {
         Row: {
           actor_user_id: string | null

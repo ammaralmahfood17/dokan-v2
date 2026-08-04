@@ -1,6 +1,9 @@
 import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { getCurrentProject } from '@/lib/project';
 import { AppSidebar } from '@/components/dashboard/app-sidebar';
+import { ImpersonationBanner } from '@/components/impersonation-banner';
+import { getImpersonationById } from '@/lib/super-admin';
 
 export default async function DashboardLayout({
   children,
@@ -11,6 +14,22 @@ export default async function DashboardLayout({
 
   if (!ctx) {
     redirect('/onboarding');
+  }
+
+  // Phase C: impersonation banner — marker cookie set by the super-admin
+  // "login as" flow. If the marker exists but the session is expired/deleted,
+  // still show the banner in "expired" state so the admin can restore their
+  // own session (never silently stuck impersonated).
+  const cookieStore = await cookies();
+  const impSessionId = cookieStore.get('dokan-impersonation')?.value ?? '';
+  let impersonation: { targetEmail: string; expiresAt: string; expired: boolean } | null = null;
+  if (impSessionId) {
+    const active = await getImpersonationById(impSessionId);
+    if (active) {
+      impersonation = { targetEmail: active.targetEmail, expiresAt: active.expiresAt, expired: false };
+    } else {
+      impersonation = { targetEmail: '', expiresAt: '', expired: true };
+    }
   }
 
   // Subscription warning banner (7-day grace). Runs server-side so it shows
@@ -26,6 +45,16 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex min-h-dvh bg-[var(--color-bg)]">
+      {/* Phase C: persistent support-mode banner (top of every dashboard page) */}
+      {impersonation && (
+        <ImpersonationBanner
+          sessionId={impSessionId}
+          targetEmail={impersonation.targetEmail}
+          expiresAt={impersonation.expiresAt}
+          expired={impersonation.expired}
+        />
+      )}
+
       {/* Sidebar */}
       <AppSidebar
         projectName={ctx.project.name}

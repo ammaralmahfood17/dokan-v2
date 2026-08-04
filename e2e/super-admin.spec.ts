@@ -56,8 +56,12 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  // Clean audit rows referencing the test project, then users/project.
+  // Clean audit rows referencing the test project, impersonation rows,
+  // then users/project.
   await admin.from('super_admin_audit_log').delete().eq('target_project_id', testProjectId);
+  await admin.from('super_admin_audit_log').delete().eq('target_user_id', normalUserId);
+  await admin.from('impersonation_sessions').delete().eq('super_admin_user_id', adminUserId);
+  await admin.from('impersonation_sessions').delete().eq('target_user_id', normalUserId);
   await admin.from('super_admins').delete().eq('user_id', adminUserId);
   await cleanupTestUser(normalEmail);
   await cleanupTestUser(adminEmail);
@@ -180,4 +184,67 @@ test('Phase B: analytics page renders for super-admin, rejected for non-admin', 
   await page2.waitForTimeout(2500);
   expect(page2.url()).not.toContain('/super-admin/analytics');
   await ctx2.close();
+});
+
+test('Phase C: impersonation — start, banner, audit, end (session restored)', async ({ page, context }) => {
+  // 1. Super admin starts impersonation via the API (same path the button uses).
+  const adminCookies = await getAuthCookies(adminEmail, TEST_PASSWORD);
+  await context.addCookies(adminCookies);
+
+  const res = await fetch(`https://dokanstore.xyz/api/super-admin/impersonate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ targetUserId: normalUserId, projectId: testProjectId }),
+  });
+  const data = await res.json();
+  expect(res.status, JSON.stringify(data)).toBe(200);
+  expect(data.sessionId).toBeTruthy();
+  expect(data.targetSession?.access_token).toBeTruthy();
+
+  // 2. Swap cookie to the target session + set marker (mirrors ImpersonateButton).
+  await context.clearCookies();
+  await context.addCookies([
+    {
+      name: `sb-${new URL(url).hostname.split('.')[0]}-auth-token`,
+      value: JSON.stringify(data.targetSession),
+      domain: 'dokanstore.xyz',
+      path: '/',
+    },
+    { name: 'dokan-impersonation', value: data.sessionId, domain: 'dokanstore.xyz', path: '/' },
+  ]);
+
+  // 3. Dashboard shows the persistent banner with the target's identity.
+  await page.goto('/dashboard');
+  await expect(page.getByText(/وضع الدعم الفني/).first()).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText(normalEmail, { exact: false }).first()).toBeVisible();
+
+  // 4. Audit start row exists.
+  const { data: startLogs } = await admin
+    .from('super_admin_audit_log')
+    .select('action, actor_user_id, target_user_id')
+    .eq('action', 'impersonation.start')
+    .eq('target_user_id', normalUserId);
+  expect((startLogs ?? []).length).toBeGreaterThan(0);
+
+  // 5. End impersonation via the API → returns the admin's stored session.
+  const endRes = await fetch(`https://dokanstore.xyz/api/super-admin/impersonate/end`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId: data.sessionId }),
+  });
+  const endData = await endRes.json();
+  expect(endRes.status, JSON.stringify(endData)).toBe(200);
+  expect(endData.superAdminSession?.access_token).toBeTruthy();
+
+  // 6. Audit end row exists.
+  const { data: endLogs } = await admin
+    .from('super_admin_audit_log')
+    .select('action')
+    .eq('action', 'impersonation.end')
+    .eq('target_user_id', normalUserId);
+  expect((endLogs ?? []).length).toBeGreaterThan(0);
+
+  // 7. Row marked ended → banner no longer shows as active.
+  const { data: row } = await admin.from('impersonation_sessions').select('ended_at').eq('id', data.sessionId).single();
+  expect(row?.ended_at).toBeTruthy();
 });

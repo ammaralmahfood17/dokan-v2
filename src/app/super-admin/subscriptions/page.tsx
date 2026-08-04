@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireSuperAdmin } from '@/lib/super-admin';
+import { ImpersonateButton } from '@/components/impersonate-button';
 import type { Json } from '@/lib/database.types';
 
 /**
@@ -62,10 +63,10 @@ export default async function SuperAdminSubscriptionsPage({
   }
 
   const { data: projects } = await queryBuilder;
+  const rows = (projects ?? []) as unknown as ProjectRow[];
 
   // Owner lookup: first 'owner' staff member per project (emails via auth admin).
-  const rows = (projects ?? []) as unknown as ProjectRow[];
-  const ownerByProject = new Map<string, string>();
+  const ownerByProject = new Map<string, { email: string; userId: string }>();
   if (rows.length) {
     const { data: owners } = await admin
       .from('staff_members')
@@ -80,7 +81,10 @@ export default async function SuperAdminSubscriptionsPage({
     const emailById = new Map(users.users.map((u) => [u.id, u.email ?? '']));
     for (const o of owners ?? []) {
       if (!ownerByProject.has(o.project_id as string)) {
-        ownerByProject.set(o.project_id as string, emailById.get(o.user_id as string) ?? '');
+        ownerByProject.set(o.project_id as string, {
+          email: emailById.get(o.user_id as string) ?? '',
+          userId: o.user_id as string,
+        });
       }
     }
   }
@@ -133,7 +137,7 @@ export default async function SuperAdminSubscriptionsPage({
                     </div>
                   </td>
                   <td className="px-3 py-2.5 text-[var(--color-text-secondary)]">
-                    {ownerByProject.get(p.id) || '—'}
+                    {ownerByProject.get(p.id)?.email ?? '—'}
                   </td>
                   <td className="px-3 py-2.5">
                     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold ${badge.cls}`}>
@@ -150,6 +154,14 @@ export default async function SuperAdminSubscriptionsPage({
                   </td>
                   <td className="px-3 py-2.5">
                     <div className="flex gap-1.5">
+                      {ownerByProject.get(p.id) && (
+                        <ImpersonateButton
+                          ownerUserId={ownerByProject.get(p.id)!.userId}
+                          ownerEmail={ownerByProject.get(p.id)!.email}
+                          projectId={p.id}
+                          projectName={p.name}
+                        />
+                      )}
                       <form
                         method="post"
                         action={`/api/super-admin/renew?projectId=${p.id}`}
