@@ -101,11 +101,15 @@ test('expired subscription: dashboard blocked, public ordering blocked', async (
       items: [{ productId: productId, quantity: 1, notes: '' }],
     }),
   });
+  console.log('DEBUG order status after flip:', orderRes.status);
   expect(orderRes.status, 'public order must be blocked after expiry flip').toBe(404);
 
-  // Public menu page: 404 too (project not active).
+  // Public menu page: must NOT render the store's products. (Vercel serves
+  // on-demand-static not-found with status 200 + not-found markup, so assert
+  // on content: the product name must be absent.)
   const menuRes = await page.request.get(`/${slug}/menu/table-1`);
-  expect(menuRes.status()).toBe(404);
+  const menuHtml = await menuRes.text();
+  expect(menuHtml.includes('قهوة اشتراك'), 'deactivated store menu must not render its products').toBe(false);
 });
 
 test('owner renewal restores dashboard + public ordering', async ({ page, context }) => {
@@ -127,7 +131,7 @@ test('owner renewal restores dashboard + public ordering', async ({ page, contex
   await context.addCookies(authCookies);
   await page.goto('/dashboard');
   await page.waitForURL('**/dashboard', { timeout: 25_000 });
-  await expect(page.getByRole('heading', { name: 'نظرة عامة' })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole('heading', { name: /مرحبًا، Sub Test/ }).first()).toBeVisible({ timeout: 20_000 });
 
   // Public ordering works again.
   const orderRes = await fetch(`https://dokanstore.xyz/api/public/order`, {

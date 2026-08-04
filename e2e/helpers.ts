@@ -34,9 +34,12 @@ const admin: SupabaseClient = createClient(url, serviceRole, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
-/** Unique email per run: e2e-<timestamp>@dokan.test */
+/** Unique email per run: e2e-<timestamp>-<counter>@dokan.test (counter
+ *  guarantees uniqueness even for two calls in the same millisecond). */
+let emailCounter = 0;
 export function makeEmail(): string {
-  return `e2e-${Date.now()}@dokan.test`;
+  emailCounter += 1;
+  return `e2e-${Date.now()}-${emailCounter}@dokan.test`;
 }
 
 export async function createTestUser(email: string): Promise<{ id: string }> {

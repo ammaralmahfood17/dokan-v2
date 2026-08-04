@@ -36,7 +36,7 @@ test('money path: signup → store → product → table → order → kitchen',
   await page.getByRole('button', { name: 'التالي', exact: true }).click();
   await page.getByRole('button', { name: 'أنشئ متجرك الآن', exact: true }).click();
   await page.waitForURL('**/dashboard', { timeout: 25_000 });
-  await expect(page.getByRole('heading', { name: 'نظرة عامة' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /مرحبًا، مقهى التجربة/ }).first()).toBeVisible();
 
   // ---------- 3) PRODUCTS: create one product ----------
   await page.goto('/dashboard/products');
@@ -78,18 +78,18 @@ test('money path: signup → store → product → table → order → kitchen',
 
   // ---------- 7) KITCHEN: start item → done → order ready ----------
   await page.goto('/dashboard/kitchen');
-  await expect(page.getByRole('button', { name: 'بدء', exact: true }).first()).toBeVisible({ timeout: 20_000 });
-  await page.getByRole('button', { name: 'بدء', exact: true }).first().click();
-  await expect(page.getByRole('button', { name: 'تم', exact: true }).first()).toBeVisible({ timeout: 15_000 });
-  await page.getByRole('button', { name: 'تم', exact: true }).first().click();
+  await expect(page.getByRole('button', { name: 'بدء التحضير', exact: true }).first()).toBeVisible({ timeout: 20_000 });
+  await page.getByRole('button', { name: 'بدء التحضير', exact: true }).first().click();
+  await expect(page.getByRole('button', { name: 'جاهز للتسليم', exact: true }).first()).toBeVisible({ timeout: 15_000 });
+  await page.getByRole('button', { name: 'جاهز للتسليم', exact: true }).first().click();
   // Item lands in ready column (deliver button appears)
-  await expect(page.getByRole('button', { name: 'تسليم', exact: true }).first()).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('button', { name: 'تم التسليم', exact: true }).first()).toBeVisible({ timeout: 15_000 });
 
   // ---------- 8) ORDERS BOARD: order auto-advanced to ready ----------
   await page.goto('/dashboard/orders');
   const readyCard = page.locator('article').filter({ hasText: 'قهوة عربية' }).first();
   await expect(readyCard).toBeVisible({ timeout: 20_000 });
-  await expect(readyCard.getByText('جاهز', { exact: true })).toBeVisible({ timeout: 20_000 });
+  await expect(readyCard.getByText('جاهز', { exact: true }).first()).toBeVisible({ timeout: 20_000 });
 
   console.log(`✅ MONEY PATH OK — order #${orderNumber} created, cooked, ready`);
 });

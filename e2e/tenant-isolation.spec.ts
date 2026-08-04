@@ -33,6 +33,10 @@ let orderBId: string;
 let authedA: SupabaseClient;
 
 test.beforeAll(async () => {
+  // Idempotent: clear any leftovers from a previously interrupted run.
+  await cleanupTestUser(emailA);
+  await cleanupTestUser(emailB);
+
   const userA = await createTestUser(emailA);
   userAId = userA.id;
   const userB = await createTestUser(emailB);
