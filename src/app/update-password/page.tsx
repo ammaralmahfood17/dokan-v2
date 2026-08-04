@@ -17,16 +17,35 @@ export default function UpdatePasswordPage() {
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    // Verify user has a valid session (redirected from password reset callback).
-    // The recovery flow lands here with the session in the URL FRAGMENT
-    // (#access_token=...). createBrowserClient parses the fragment inside
-    // initialize(), which is ASYNC — so we must await it BEFORE getSession(),
-    // otherwise getSession races ahead and finds nothing → bounce to /login
-    // with the token lost.
+    // Recovery flow lands here with the session in the URL FRAGMENT
+    // (#access_token=...). createBrowserClient (PKCE/cookie storage) does
+    // NOT auto-parse that fragment for recovery links, so parse it manually:
+    // setSession writes the cookies via the ssr client, then proceed.
     const supabase = createClient();
-    supabase.auth.initialize().then(() => {
-      return supabase.auth.getSession();
-    }).then(({ data: { session } }) => {
+    const hash = window.location.hash.substring(1);
+    const params = new URLSearchParams(hash);
+    const accessToken = params.get('access_token');
+
+    if (accessToken) {
+      supabase.auth
+        .setSession({
+          access_token: accessToken,
+          refresh_token: params.get('refresh_token') ?? '',
+        })
+        .then(({ data, error }) => {
+          if (error || !data.session) {
+            router.replace('/login');
+            return;
+          }
+          // Clear the fragment so the tokens don't linger in the address bar.
+          window.history.replaceState(null, '', '/update-password');
+          setChecking(false);
+        });
+      return;
+    }
+
+    // Normal path: user already has a session cookie (e.g. direct visit).
+    supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
         router.replace('/login');
         return;
