@@ -84,10 +84,15 @@ supabase/migrations/0001_dokan_schema.sql
 | Border | `#E2E8F0` |
 | Radius | 8–10px |
 | Font | Cairo |
-## Production Status (Phase 4 Complete)
+## Production Status
 
-- All major phases done (security, UX, backend hardening)
-- Legacy cleanup migration ready (0037)
-- Audit logs + indexes active
-- Build and TypeScript verified clean
-- See DEPLOYMENT.md for final rollout
+- Live at https://www.dokanstore.xyz (Vercel auto-deploy from `master`)
+- All phases done: security hardening, tenant isolation, atomic order RPCs,
+  subscription enforcement (manual cash), super-admin dashboard (audit log,
+  analytics, impersonation, project create/archive/delete)
+- Migrations applied via `npx supabase db push` (project:
+  `smhleaeujwfebefjuwoe`) — latest is 0017; NOT squashed yet
+- E2E: Playwright against production — `npx playwright test` (7 specs,
+  incl. money path, POS, tenant isolation, subscription, super-admin)
+- Deployment: `git push origin master` → GitHub → Vercel. No manual steps.
+
