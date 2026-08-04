@@ -77,7 +77,7 @@ supabase/migrations/0001_dokan_schema.sql
 
 | Token | Value |
 |-------|-------|
-| Primary | `#4338CA` |
+| Primary | `#4F46E5` |
 | Background | `#F8FAFC` |
 | Surface | `#FFFFFF` |
 | Text | `#0F172A` / `#475569` |
