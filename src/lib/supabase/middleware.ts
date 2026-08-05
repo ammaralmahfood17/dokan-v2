@@ -64,13 +64,13 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Authenticated on auth pages → dashboard
-  // NOTE: We skip the staff_members query here. If the user has no project,
-  // getCurrentProject() in dashboard/layout.tsx will redirect to /onboarding.
-  // This saves one DB call per navigation.
+  // Authenticated on auth pages → their home (super admin → super-admin,
+  // store owner → dashboard; dashboard/layout redirects no-store users to
+  // onboarding, saving a DB call here).
   if (user && isAuthPage) {
+    const { data: isSuperAdmin } = await supabase.rpc('is_super_admin');
     const url = request.nextUrl.clone();
-    url.pathname = '/dashboard';
+    url.pathname = isSuperAdmin ? '/super-admin/subscriptions' : '/dashboard';
     return NextResponse.redirect(url);
   }
 

@@ -47,8 +47,17 @@ function LoginForm() {
       return;
     }
 
-    let dest = nextParam || '/dashboard';
-    if (!nextParam) {
+    // Route by account type:
+    //   super admin → /super-admin/subscriptions
+    //   store owner/staff → /dashboard
+    //   no store yet → /onboarding
+    // Super admin takes priority over nextParam (a logged-in super admin
+    // never needs the guest redirect chain).
+    const { data: isSuperAdmin } = await supabase.rpc('is_super_admin');
+    let dest = isSuperAdmin
+      ? '/super-admin/subscriptions'
+      : nextParam || '/dashboard';
+    if (!isSuperAdmin && !nextParam) {
       const { data: membership } = await supabase
         .from('staff_members')
         .select('id')
