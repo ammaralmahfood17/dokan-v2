@@ -13,11 +13,12 @@ import { createAdminClient } from '@/lib/supabase/admin';
 export async function POST(request: NextRequest) {
   try {
     const userClient = await createClient();
-    // NOTE: keep getUser() — the proxy matcher does NOT cover /api/*, so no
-    // middleware JWT verification here. getUser() is the only signature check.
+    // PERF: getSession() local read (~1ms) — proxy covers /api/pos/*; the
+    // membership guard below (staff_members query) is the real authz check.
     const {
-      data: { user },
-    } = await userClient.auth.getUser();
+      data: { session },
+    } = await userClient.auth.getSession();
+    const user = session?.user ?? null;
 
     if (!user) {
       return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });

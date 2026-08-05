@@ -18,13 +18,15 @@ import type { OrderType, PublicOrderItemInput } from '@/lib/types';
 export async function POST(request: NextRequest) {
   try {
     const userClient = await createClient();
-    // NOTE: keep getUser() here — the proxy matcher does NOT cover /api/*
-    // routes, so there is no middleware JWT verification on this endpoint.
-    // getUser() (Auth API) is the only signature check; getSession() would
-    // trust an unverified cookie. Correctness over a few hundred ms.
+    // PERF: getSession() reads the JWT locally (~1ms) — the proxy matcher
+    // now covers /api/pos/* and already ran getSession() on this request.
+    // getUser() (Auth API, 200-800ms) is no longer needed for the identity
+    // read; the real membership guard is requireMembership below (queries
+    // staff_members), so a fired/revoked staff member is still blocked.
     const {
-      data: { user },
-    } = await userClient.auth.getUser();
+      data: { session },
+    } = await userClient.auth.getSession();
+    const user = session?.user ?? null;
 
     if (!user) {
       return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
