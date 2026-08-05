@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { ShoppingBag, Trash2 } from 'lucide-react';
+import { RotateCcw, ShoppingBag, Trash2 } from 'lucide-react';
 import { cn, formatMoney } from '@/lib/utils';
 import type { Product, OrderType } from '@/lib/types';
 import { CartLineItem } from './cart-line-item';
@@ -25,6 +25,8 @@ export function CartPanel({
   notes,
   onNotesChange,
   onClear,
+  onRepeat,
+  repeatLoading,
   onIncrement,
   onDecrement,
   onRemove,
@@ -40,6 +42,8 @@ export function CartPanel({
   notes: string;
   onNotesChange: (v: string) => void;
   onClear: () => void;
+  onRepeat: () => void;
+  repeatLoading: boolean;
   onIncrement: (key: string) => void;
   onDecrement: (key: string) => void;
   onRemove: (key: string) => void;
@@ -74,16 +78,29 @@ export function CartPanel({
               {itemCount} قطعة
             </POSBadge>
           </div>
-          <button
-            type="button"
-            onClick={onClear}
-            disabled={!lines.length}
-            aria-label="تفريغ السلة"
-            className="flex h-11 items-center gap-1.5 rounded-[8px] px-2.5 text-sm font-semibold text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-danger-tint)] hover:text-[var(--color-danger)] disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <Trash2 className="h-4 w-4" />
-            <span className="hidden sm:inline">تفريغ</span>
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={onRepeat}
+              disabled={repeatLoading}
+              aria-label="إعادة آخر طلب"
+              title="إعادة آخر طلب"
+              className="flex h-11 items-center gap-1.5 rounded-[8px] px-2.5 text-sm font-semibold text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-primary-tint)] hover:text-[var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <RotateCcw className={`h-4 w-4 ${repeatLoading ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">{repeatLoading ? 'جاري…' : 'آخر طلب'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={onClear}
+              disabled={!lines.length}
+              aria-label="تفريغ السلة"
+              className="flex h-11 items-center gap-1.5 rounded-[8px] px-2.5 text-sm font-semibold text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-danger-tint)] hover:text-[var(--color-danger)] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Trash2 className="h-4 w-4" />
+              <span className="hidden sm:inline">تفريغ</span>
+            </button>
+          </div>
         </div>
 
         {/* Order type — Polaris segmented control (desktop column only;

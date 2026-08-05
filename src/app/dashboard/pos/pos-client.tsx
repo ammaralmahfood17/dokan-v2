@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Search, ShoppingBag, X } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 import { formatMoney, money, currencyDecimals } from '@/lib/utils';
 import type { OrderType, Product, ProductAddon } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -181,7 +182,57 @@ export function PosClient({
     addLine(picker, selectedAddons, labels);
   }
 
-  // ---------- Quick actions: removed (top sellers + repeat last order) ----------
+  // ---------- Quick action: repeat last order ----------
+  // One tap restores the previous (non-cancelled) order's lines into the
+  // cart. No modal, no top-sellers query — the cashier's highest-frequency
+  // action is re-ordering the same drinks, and this keeps it to a single
+  // DB read + fills the cart.
+  const [repeatLoading, setRepeatLoading] = useState(false);
+
+  const repeatLastOrder = useCallback(async () => {
+    if (repeatLoading) return;
+    setRepeatLoading(true);
+    try {
+      const supabase = createClient();
+      const { data: last } = await supabase
+        .from('orders')
+        .select('order_number, order_items(product_id, quantity, addons)')
+        .eq('project_id', projectId)
+        .is('service_type', null)
+        .not('status', 'eq', 'cancelled')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const items = (last?.order_items ?? []) as {
+        product_id: string | null;
+        quantity: number;
+        addons: { id: string; name: string }[] | null;
+      }[];
+      if (!items.length) {
+        toast.error('ما فيه طلب سابق قابل للتكرار');
+        return;
+      }
+      let added = 0;
+      for (const it of items) {
+        const p = products.find((x) => x.id === it.product_id);
+        if (!p || !p.is_available) continue;
+        const addonIds = (it.addons ?? []).map((a) => a.id);
+        const labels = (it.addons ?? []).map((a) => a.name);
+        addLine(p, addonIds, labels, it.quantity, true);
+        added += 1;
+      }
+      toast.success(
+        added > 0
+          ? `تمت إعادة الطلب — ${added} صنف`
+          : 'المنتجات غير متاحة حالياً'
+      );
+    } catch {
+      toast.error('تعذّر جلب آخر طلب');
+    } finally {
+      setRepeatLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [repeatLoading, projectId, products]);
 
   function updateQty(key: string, delta: number) {
     setLines((prev) =>
@@ -328,6 +379,8 @@ export function PosClient({
               notes={notes}
               onNotesChange={setNotes}
               onClear={() => setLines([])}
+              onRepeat={repeatLastOrder}
+              repeatLoading={repeatLoading}
               onIncrement={(key) => updateQty(key, 1)}
               onDecrement={(key) => updateQty(key, -1)}
               onRemove={(key) => setLines((prev) => prev.filter((x) => x.key !== key))}
@@ -389,6 +442,8 @@ export function PosClient({
               notes={notes}
               onNotesChange={setNotes}
               onClear={() => setLines([])}
+              onRepeat={repeatLastOrder}
+              repeatLoading={repeatLoading}
               onIncrement={(key) => updateQty(key, 1)}
               onDecrement={(key) => updateQty(key, -1)}
               onRemove={(key) => setLines((prev) => prev.filter((x) => x.key !== key))}
