@@ -201,28 +201,37 @@ export default async function DashboardPage() {
   const { weekAgo, byDay7 } = buildWeekBuckets(dayFmt);
   const { data: weekOrders } = await supabase
     .from('orders')
-    .select('id, status, total_amount, created_at, order_items(product_name, quantity)')
+    .select('id, status, total_amount, created_at, order_items(product_name, quantity, unit_price)')
     .eq('project_id', ctx.project.id)
     .is('service_type', null)
     .gte('created_at', weekAgo.toISOString());
 
-  const weekTop = new Map<string, number>();
+  const weekTop = new Map<string, { qty: number; revenue: number }>();
   for (const o of (weekOrders ?? []) as {
     status: string;
     total_amount: number;
     created_at: string;
-    order_items?: { product_name: string; quantity: number }[] | null;
+    order_items?: { product_name: string; quantity: number; unit_price: number }[] | null;
   }[]) {
     if (o.status === 'cancelled') continue;
     const k = dayFmt.format(new Date(o.created_at));
     const day = byDay7.find((d) => d.key === k);
     if (day) day.revenue += Number(o.total_amount);
     for (const it of o.order_items ?? []) {
-      weekTop.set(it.product_name, (weekTop.get(it.product_name) ?? 0) + Number(it.quantity));
+      const cur = weekTop.get(it.product_name) ?? { qty: 0, revenue: 0 };
+      cur.qty += Number(it.quantity);
+      cur.revenue += Number(it.quantity) * Number(it.unit_price ?? 0);
+      weekTop.set(it.product_name, cur);
     }
   }
-  const top3 = [...weekTop.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
+  // Top 3 by REVENUE (the owner cares about money, not just units), with
+  // the quantity shown as a secondary stat.
+  const top3 = [...weekTop.entries()]
+    .sort((a, b) => b[1].revenue - a[1].revenue)
+    .slice(0, 3);
   const maxDayRevenue = Math.max(...byDay7.map((d) => d.revenue), 0.001);
+  // Peak hour — the hour with the highest revenue today (drives staffing).
+  const peakHour = [...hourBuckets].sort((a, b) => b.revenue - a.revenue)[0];
 
   // Vercel runs UTC — without an explicit timeZone the TODAY chip would show
   // UTC and the date would flip a day between 00:00–03:00 Bahrain time.
@@ -274,7 +283,10 @@ export default async function DashboardPage() {
 
       {/* KPIs — Enterprise stat cards (border-first, no corners) */}
       <div className="mb-7 grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+        <Link
+          href="/dashboard/analytics"
+          className="block border border-[var(--color-border)] bg-[var(--color-surface)] p-4 transition-colors hover:border-[var(--color-primary)]"
+        >
           <p className="mb-2 text-[12px] text-[var(--color-text-secondary)]">إجمالي مبيعات اليوم</p>
           <p className="font-mono text-[26px] font-bold tabular-nums leading-none" dir="ltr">
             {formatMoney(todaySales, ctx.project.currency)}
@@ -286,9 +298,17 @@ export default async function DashboardPage() {
           ) : (
             <p className="mt-1.5 text-[11.5px] text-[var(--color-text-muted)]">— لا مبيعات أمس</p>
           )}
-        </div>
+          {peakHour && peakHour.revenue > 0 && (
+            <p className="mt-1.5 text-[11px] text-[var(--color-text-secondary)]">
+              ⏰ وقت الذروة: {peakHour.label} — {formatMoney(peakHour.revenue, ctx.project.currency)}
+            </p>
+          )}
+        </Link>
 
-        <div className="border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+        <Link
+          href="/dashboard/orders"
+          className="block border border-[var(--color-border)] bg-[var(--color-surface)] p-4 transition-colors hover:border-[var(--color-primary)]"
+        >
           <p className="mb-2 text-[12px] text-[var(--color-text-secondary)]">عدد الطلبات</p>
           <p className="font-mono text-[26px] font-bold tabular-nums leading-none" dir="ltr">
             {todayOrders ?? 0}
@@ -300,23 +320,29 @@ export default async function DashboardPage() {
           ) : (
             <p className="mt-1.5 text-[11.5px] text-[var(--color-text-muted)]">— مثل أمس</p>
           )}
-        </div>
+        </Link>
 
-        <div className="border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+        <Link
+          href="/dashboard/kitchen"
+          className="block border border-[var(--color-border)] bg-[var(--color-surface)] p-4 transition-colors hover:border-[var(--color-primary)]"
+        >
           <p className="mb-2 text-[12px] text-[var(--color-text-secondary)]">قيد التنفيذ</p>
           <p className="font-mono text-[26px] font-bold tabular-nums leading-none" dir="ltr">
             {pendingCount ?? 0}
           </p>
           {(pendingCount ?? 0) > 0 ? (
-            <Link href="/dashboard/kitchen" className="mt-1.5 inline-block text-[11.5px] font-semibold text-[var(--color-primary)]">
+            <span className="mt-1.5 inline-block text-[11.5px] font-semibold text-[var(--color-primary)]">
               شاشة المطبخ ←
-            </Link>
+            </span>
           ) : (
             <p className="mt-1.5 text-[11.5px] text-[var(--color-text-muted)]">— كل شيء جاهز</p>
           )}
-        </div>
+        </Link>
 
-        <div className="border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+        <Link
+          href="/dashboard/tables"
+          className="block border border-[var(--color-border)] bg-[var(--color-surface)] p-4 transition-colors hover:border-[var(--color-primary)]"
+        >
           <p className="mb-2 text-[12px] text-[var(--color-text-secondary)]">الطاولات النشطة</p>
           <p className="font-mono text-[26px] font-bold tabular-nums leading-none" dir="ltr">
             {occupiedCount}
@@ -325,7 +351,7 @@ export default async function DashboardPage() {
           <p className="mt-1.5 text-[11.5px] text-[var(--color-text-muted)]">
             {occupiedCount > 0 ? `${occupiedCount} مشغولة الآن` : '— كلها متاحة'}
           </p>
-        </div>
+        </Link>
       </div>
 
       {!allDone ? (
@@ -540,14 +566,17 @@ export default async function DashboardPage() {
             </p>
           ) : (
             <ul className="space-y-2.5">
-              {top3.map(([name, qty], idx) => (
+              {top3.map(([name, stat], idx) => (
                 <li key={name} className="flex items-center gap-3 text-xs">
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary-tint)] font-bold text-[var(--color-primary)]">
                     {idx + 1}
                   </span>
                   <span className="min-w-0 flex-1 truncate font-semibold">{name}</span>
-                  <span className="shrink-0 font-bold text-[var(--color-text-secondary)]">
-                    {qty}
+                  <span className="shrink-0 text-[var(--color-text-secondary)]">
+                    {stat.qty} قطعة
+                  </span>
+                  <span className="w-16 shrink-0 text-end font-bold tabular-nums text-[var(--color-text)]" dir="ltr">
+                    {formatMoney(stat.revenue, ctx.project.currency)}
                   </span>
                 </li>
               ))}
