@@ -18,7 +18,12 @@ import { toast } from 'sonner';
 // src/components/menu/ (menu-client stays the orchestrator).
 import { Sheet } from '@/components/menu/sheet';
 // FIX-C-003: الأسطح المستخرجة — cart + success state
-import { CartSheet } from '@/components/menu/cart-sheet';
+// FIX-P-001: تحميل كسول للـ CartSheet (خارج الـ bundle الرئيسي — menu-client
+// يبقى خفيفًا للعميل على اتصال ضعيف)
+import dynamic from 'next/dynamic';
+const CartSheet = dynamic(() => import('@/components/menu/cart-sheet').then((m) => m.CartSheet), {
+  ssr: false,
+});
 import { OrderSuccessState } from '@/components/menu/order-success-state';
 import { MenuProductRow } from '@/components/menu/product-card';
 // D7: offline indicator on the customer-facing menu (banner, not blocker).

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useId, useRef, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 
 interface ModalProps {
@@ -18,12 +18,28 @@ interface ModalProps {
 export function Modal({ title, children, onClose }: ModalProps) {
   const trapRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
+  // FIX-O-002: exit animation — closing state + timeout ثم onClose
+  const [closing, setClosing] = useState(false);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const requestClose = useCallback(() => {
+    if (closing) return;
+    setClosing(true);
+    closeTimer.current = setTimeout(() => onClose(), 200);
+  }, [closing, onClose]);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (closeTimer.current) clearTimeout(closeTimer.current);
+    };
+  }, []);
 
   // Focus trap: keep Tab within modal
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose();
+        requestClose();
         return;
       }
       if (e.key !== 'Tab') return;
@@ -45,7 +61,8 @@ export function Modal({ title, children, onClose }: ModalProps) {
         first?.focus();
       }
     },
-    [onClose]
+    // FIX-O-002: requestClose مطلوب (ESC يستخدمه) — onClose غير مستخدم هنا
+    [requestClose]
   );
 
   // Auto-focus first text input only on initial mount
@@ -87,12 +104,12 @@ export function Modal({ title, children, onClose }: ModalProps) {
     <div
       className="fixed inset-0 z-[var(--z-modal)] flex items-start justify-center bg-black/40 sm:items-center sm:p-4"
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget) requestClose();
       }}
     >
       <div
         ref={trapRef}
-        className="max-h-dvh w-full max-w-md overflow-y-auto rounded-b-none bg-[var(--color-surface)] sm:max-h-[85vh] sm:rounded-[10px] animate-slide-up pb-safe-bottom"
+        className={`max-h-dvh w-full max-w-md overflow-y-auto rounded-b-none bg-[var(--color-surface)] sm:max-h-[85vh] sm:rounded-[10px] ${closing ? "modal-exit" : "modal-enter"} pb-safe-bottom`}
         style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}
         role="dialog"
         aria-modal="true"
@@ -102,7 +119,7 @@ export function Modal({ title, children, onClose }: ModalProps) {
           <h3 id={titleId} className="text-sm font-bold">{title}</h3>
           <button
             type="button"
-            onClick={onClose}
+            onClick={requestClose}
             className="btn btn-ghost btn-sm"
             aria-label="إغلاق"
           >
