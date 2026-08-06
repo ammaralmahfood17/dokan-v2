@@ -72,17 +72,22 @@ export function TelegramManager({ projectId }: { projectId: string }) {
   }
 
   async function removeLink(chatId: string) {
-    const res = await fetch('/api/telegram/link', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ projectId, chatId }),
-    });
-    if (!res.ok) {
-      toast.error('فشل الإزالة');
-      return;
+    // Fix: try/catch — فشل الشبكة كان يرمي unhandled rejection بلا رسالة
+    try {
+      const res = await fetch('/api/telegram/link', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId, chatId }),
+      });
+      if (!res.ok) {
+        toast.error('فشل الإزالة');
+        return;
+      }
+      toast.success('تم إلغاء الربط');
+      loadLinks();
+    } catch {
+      toast.error('تعذّر الاتصال');
     }
-    toast.success('تم إلغاء الربط');
-    loadLinks();
   }
 
   const isConfigured = links !== null;
