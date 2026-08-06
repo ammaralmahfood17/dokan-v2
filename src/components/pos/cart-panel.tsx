@@ -1,12 +1,13 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { RotateCcw, ShoppingBag, Trash2 } from 'lucide-react';
 import { cn, formatMoney } from '@/lib/utils';
 import type { Product, OrderType } from '@/lib/types';
 import { CartLineItem } from './cart-line-item';
 import { CheckoutButton } from './checkout-button';
 import { POSBadge } from './pos-badge';
+import { Modal } from '@/components/ui/modal';
 import type { PosLine } from './types';
 
 /**
@@ -30,6 +31,7 @@ export function CartPanel({
   onIncrement,
   onDecrement,
   onRemove,
+  onSetQuantity,
   onSubmit,
   submitting,
   className,
@@ -47,6 +49,7 @@ export function CartPanel({
   onIncrement: (key: string) => void;
   onDecrement: (key: string) => void;
   onRemove: (key: string) => void;
+  onSetQuantity: (key: string, qty: number) => void;
   onSubmit: () => void;
   submitting: boolean;
   className?: string;
@@ -58,6 +61,7 @@ export function CartPanel({
 
   const itemCount = lines.reduce((s, l) => s + l.quantity, 0);
   const subtotal = lines.reduce((s, l) => s + l.unitPrice * l.quantity, 0);
+  const [confirmClear, setConfirmClear] = useState(false);
 
   return (
     <section
@@ -92,7 +96,7 @@ export function CartPanel({
             </button>
             <button
               type="button"
-              onClick={onClear}
+              onClick={() => setConfirmClear(true)}
               disabled={!lines.length}
               aria-label="تفريغ السلة"
               className="flex h-11 items-center gap-1.5 rounded-[8px] px-2.5 text-sm font-semibold text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-danger-tint)] hover:text-[var(--color-danger)] disabled:cursor-not-allowed disabled:opacity-40"
@@ -159,6 +163,7 @@ export function CartPanel({
               onDecrement={() => onDecrement(line.key)}
               onIncrement={() => onIncrement(line.key)}
               onRemove={() => onRemove(line.key)}
+              onSetQuantity={(qty) => onSetQuantity(line.key, qty)}
             />
           ))}
         </ul>
@@ -207,6 +212,43 @@ export function CartPanel({
           {submitting ? 'جاري الإرسال…' : 'تأكيد الطلب'}
         </CheckoutButton>
       </footer>
+
+      {/* Clear-cart confirmation — a fat-finger on "تفريغ" would wipe a
+          whole order; require an explicit confirm (destructive action). */}
+      {confirmClear && (
+        <Modal title="تفريغ السلة" onClose={() => setConfirmClear(false)}>
+          <div className="text-center">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-danger-tint)]">
+              <Trash2 className="h-6 w-6 text-[var(--color-danger)]" />
+            </div>
+            <p className="mb-1 text-sm font-bold">
+              {itemCount} قطعة — {formatMoney(subtotal, currency)}
+            </p>
+            <p className="mb-5 text-xs text-[var(--color-text-secondary)]">
+              هل أنت متأكد؟ هذا يمسح كل الأصناف من السلة.
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  onClear();
+                  setConfirmClear(false);
+                }}
+                className="min-h-[44px] flex-1 rounded-[8px] bg-[var(--color-danger)] px-4 text-sm font-bold text-white transition-colors hover:opacity-90"
+              >
+                نعم، افرغ السلة
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmClear(false)}
+                className="min-h-[44px] flex-1 rounded-[8px] border border-[var(--color-border)] px-4 text-sm font-bold text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg)]"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </section>
   );
 }

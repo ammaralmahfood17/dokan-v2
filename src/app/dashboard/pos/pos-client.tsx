@@ -36,6 +36,11 @@ export function PosClient({
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [query, setQuery] = useState('');
+  // Last successful order — drives the "وصل المطبخ" confirmation banner.
+  const [lastConfirmed, setLastConfirmed] = useState<{
+    orderNumber: number;
+    totalAmount: number;
+  } | null>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -244,6 +249,12 @@ export function PosClient({
     );
   }
 
+  function setQty(key: string, qty: number) {
+    setLines((prev) =>
+      prev.map((l) => (l.key === key ? { ...l, quantity: qty } : l))
+    );
+  }
+
   async function submit() {
     if (!lines.length) {
       toast.error('السلة فارغة');
@@ -282,6 +293,9 @@ export function PosClient({
       setLines([]);
       setNotes('');
       setCartOpen(false);
+      // Confirmation state — shows "الطلب وصل المطبخ" banner + allows
+      // repeat-last-order to restore the exact same cart in one tap.
+      setLastConfirmed({ orderNumber: data.order?.orderNumber ?? 0, totalAmount: data.order?.totalAmount ?? 0 });
     } catch {
       toast.error('تعذّر الاتصال');
     } finally {
@@ -383,6 +397,7 @@ export function PosClient({
               repeatLoading={repeatLoading}
               onIncrement={(key) => updateQty(key, 1)}
               onDecrement={(key) => updateQty(key, -1)}
+              onSetQuantity={setQty}
               onRemove={(key) => setLines((prev) => prev.filter((x) => x.key !== key))}
               onSubmit={submit}
               submitting={submitting}
@@ -446,11 +461,39 @@ export function PosClient({
               repeatLoading={repeatLoading}
               onIncrement={(key) => updateQty(key, 1)}
               onDecrement={(key) => updateQty(key, -1)}
+              onSetQuantity={setQty}
               onRemove={(key) => setLines((prev) => prev.filter((x) => x.key !== key))}
               onSubmit={submit}
               submitting={submitting}
               className="min-h-0 flex-1"
             />
+          </div>
+        </div>
+      )}
+
+      {/* ── Order-confirmed banner: the order reached the kitchen ─────── */}
+      {lastConfirmed && (
+        <div className="fixed inset-x-0 top-3 z-50 flex justify-center px-4">
+          <div className="flex min-h-[52px] w-full max-w-md items-center justify-between gap-3 rounded-[10px] bg-[var(--color-success)] px-4 py-2.5 text-white shadow-lg">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/20 text-sm font-bold">
+                ✓
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-bold leading-tight">وصل الطلب للمطبخ</p>
+                <p className="truncate text-[11px] leading-tight opacity-90" dir="ltr">
+                  order-{lastConfirmed.orderNumber} · {formatMoney(lastConfirmed.totalAmount, currency)}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setLastConfirmed(null)}
+              aria-label="إغلاق"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-white/20"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
         </div>
       )}

@@ -5,6 +5,8 @@ import type { PosLine } from './types';
 /**
  * Polaris-style cart line: thumbnail, name (+ addons), qty stepper (+/-),
  * line total, remove. All interactive controls are ≥44px touch targets.
+ * The quantity is an editable number input (desktop) so a cashier can
+ * type "10" instead of tapping + ten times.
  */
 export function CartLineItem({
   line,
@@ -13,6 +15,7 @@ export function CartLineItem({
   onDecrement,
   onIncrement,
   onRemove,
+  onSetQuantity,
 }: {
   line: PosLine;
   currency: string;
@@ -20,6 +23,7 @@ export function CartLineItem({
   onDecrement: () => void;
   onIncrement: () => void;
   onRemove: () => void;
+  onSetQuantity?: (qty: number) => void;
 }) {
   return (
     <li data-pos-line className="flex items-start gap-3 py-3">
@@ -63,12 +67,28 @@ export function CartLineItem({
             >
               <Minus className="h-4 w-4" />
             </button>
-            <span
-              className="w-9 text-center text-sm font-bold tabular-nums text-[var(--color-text)]"
-              aria-live="polite"
-            >
-              {line.quantity}
-            </span>
+            {onSetQuantity ? (
+              <input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={999}
+                value={line.quantity}
+                onChange={(e) => {
+                  const n = Number(e.target.value);
+                  if (Number.isFinite(n) && n >= 1 && n <= 999) onSetQuantity(Math.floor(n));
+                }}
+                aria-label={`كمية ${line.productName}`}
+                className="w-12 border-0 bg-transparent text-center text-sm font-bold tabular-nums text-[var(--color-text)] outline-none"
+              />
+            ) : (
+              <span
+                className="w-9 text-center text-sm font-bold tabular-nums text-[var(--color-text)]"
+                aria-live="polite"
+              >
+                {line.quantity}
+              </span>
+            )}
             <button
               type="button"
               onClick={onIncrement}
