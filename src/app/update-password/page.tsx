@@ -4,13 +4,15 @@ import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Lock, CheckCircle2 } from 'lucide-react';
+import { Lock, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 
 export default function UpdatePasswordPage() {
   const router = useRouter();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  // FIX-S-007: إظهار/إخفاء كلمة المرور
+  const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -110,7 +112,7 @@ export default function UpdatePasswordPage() {
     <div className="flex min-h-dvh items-center justify-center bg-[var(--color-bg)] px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-[8px] bg-[var(--color-primary)] text-base font-bold text-white">
+          <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-primary)] text-base font-bold text-white">
             <Lock className="h-5 w-5" />
           </div>
           <h1 className="text-xl font-bold">تعيين كلمة مرور جديدة</h1>
@@ -121,24 +123,35 @@ export default function UpdatePasswordPage() {
 
         <form onSubmit={onSubmit} className="card card-body space-y-4">
           {error && (
-            <div className="rounded-[8px] border border-[var(--color-danger)]/20 bg-[var(--color-danger-tint)] px-3 py-2 text-xs text-[var(--color-danger)]">
+            <div className="rounded-[var(--radius-md)] border border-[var(--color-danger)]/20 bg-[var(--color-danger-tint)] px-3 py-2 text-xs text-[var(--color-danger)]">
               {error}
             </div>
           )}
 
           <div className="field">
             <label className="label" htmlFor="password">كلمة المرور الجديدة</label>
-            <input
-              id="password"
-              className="input"
-              type="password"
-              autoComplete="new-password"
-              required
-              minLength={6}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              dir="ltr"
-            />
+            <div className="relative">
+              <input
+                id="password"
+                className="input pe-10"
+                type={showPass ? 'text' : 'password'}
+                autoComplete="new-password"
+                required
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                dir="ltr"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPass((v) => !v)}
+                aria-label={showPass ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+                aria-pressed={showPass}
+                className="absolute end-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]"
+              >
+                {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
             <p className="hint">6 أحرف على الأقل</p>
           </div>
 
@@ -147,7 +160,7 @@ export default function UpdatePasswordPage() {
             <input
               id="confirm"
               className="input"
-              type="password"
+              type={showPass ? 'text' : 'password'}
               autoComplete="new-password"
               required
               minLength={6}

@@ -25,7 +25,7 @@ export function CheckoutButton({
       onClick={onClick}
       disabled={disabled || loading}
       className={cn(
-        'flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[8px] bg-[var(--color-primary)] px-4 text-base font-semibold text-white',
+        'flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-primary)] px-4 text-base font-semibold text-white',
         'transition-colors duration-150 hover:bg-[var(--color-primary-hover)] active:scale-[0.98]',
         'disabled:cursor-not-allowed disabled:opacity-50',
         className

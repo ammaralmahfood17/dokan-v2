@@ -322,6 +322,7 @@ export function TablesClient({
               <input
                 className="input"
                 type="number"
+                inputMode="numeric"
                 min={1}
                 max={999}
                 required
@@ -372,7 +373,7 @@ export function TablesClient({
             <img
               src={qrPreview.dataUrl}
               alt="QR Code"
-              className="mx-auto max-w-full rounded-[8px] border border-[var(--color-border)]"
+              className="mx-auto max-w-full rounded-[var(--radius-md)] border border-[var(--color-border)]"
             />
             <p className="mt-3 break-all text-xs text-[var(--color-text-secondary)]" dir="ltr">
               {qrPreview.url}

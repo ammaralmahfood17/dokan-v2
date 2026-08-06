@@ -69,7 +69,7 @@ export function ImpersonationBanner({
   }
 
   return (
-    <div className="sticky top-0 z-[60] w-full border-b border-[var(--color-danger)]/30 bg-[var(--color-danger)] px-4 py-2.5 text-white shadow-lg">
+    <div className="sticky top-0 z-[var(--z-toast)] w-full border-b border-[var(--color-danger)]/30 bg-[var(--color-danger)] px-4 py-2.5 text-white shadow-lg">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-bold">
           ⚠️ {expired ? (
@@ -90,7 +90,7 @@ export function ImpersonationBanner({
           type="button"
           onClick={end}
           disabled={ending}
-          className="rounded-[8px] bg-white px-3 py-1.5 text-xs font-bold text-[var(--color-danger)] transition-opacity hover:opacity-90 disabled:opacity-50"
+          className="rounded-[var(--radius-md)] bg-white px-3 py-1.5 text-xs font-bold text-[var(--color-danger)] transition-opacity hover:opacity-90 disabled:opacity-50"
         >
           {ending ? 'جاري الإنتهاء…' : 'إنهاء الجلسة'}
         </button>

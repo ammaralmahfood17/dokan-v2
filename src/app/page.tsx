@@ -44,10 +44,10 @@ const FEATURES = [
 export default function LandingPage() {
   return (
     <div className="landing-shell min-h-dvh">
-      <header className="landing-nav sticky top-0 z-20 border-b border-white/70">
+      <header className="landing-nav sticky top-0 z-[var(--z-sticky)] border-b border-white/70">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-[8px] bg-[var(--color-primary)] text-white text-sm font-bold">
+            <div className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-primary)] text-white text-sm font-bold">
               د
             </div>
             <span className="text-base font-bold">دكان</span>

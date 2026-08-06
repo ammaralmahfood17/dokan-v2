@@ -92,7 +92,7 @@ export function AppSidebar({
         )}
       >
         <div className={cn(
-          'flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] transition-all duration-200',
+          'flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-md)] transition-all duration-200',
           active
             ? 'bg-[var(--color-primary-tint-strong)] text-[var(--color-primary)]'
             : 'bg-transparent text-[var(--color-text-muted)] group-hover:text-[var(--color-text)]'
@@ -114,7 +114,7 @@ export function AppSidebar({
         type="button"
         onClick={() => setIsOpen(true)}
         className={cn(
-          'fixed end-3 top-3 z-40 flex h-9 w-9 items-center justify-center rounded-[10px] bg-[var(--color-surface)] shadow-md border border-[var(--color-border)] backdrop-blur-sm',
+          'fixed end-3 top-3 z-[var(--z-drawer)] flex h-9 w-9 items-center justify-center rounded-[10px] bg-[var(--color-surface)] shadow-md border border-[var(--color-border)] backdrop-blur-sm',
           'lg:hidden',
           isOpen && 'hidden'
         )}
@@ -126,16 +126,16 @@ export function AppSidebar({
       {/* Backdrop — mobile */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-[45] bg-black/50 backdrop-blur-sm lg:hidden animate-fade-in"
+          className="fixed inset-0 z-[var(--z-drawer)] bg-black/50 backdrop-blur-sm lg:hidden animate-fade-in"
           onClick={() => setIsOpen(false)}
         />
       )}
 
-      {/* Sidebar — z-[45] stays BELOW Modal/Sheet z-[50] so it never overlaps
+      {/* Sidebar — z-drawer stays BELOW Modal/Sheet z-modal (300 < 500) so it never overlaps
           a modal backdrop on mobile or intercepts its backdrop-click-to-close. */}
       <aside
         className={cn(
-          'fixed start-0 top-0 z-[45] flex h-dvh w-[270px] flex-col border-e border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl transition-transform duration-300',
+          'fixed start-0 top-0 z-[var(--z-drawer)] flex h-dvh w-[270px] flex-col border-e border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl transition-transform duration-300',
           isOpen ? 'translate-x-0' : 'translate-x-full',
           'lg:static lg:z-auto lg:h-auto lg:w-56 lg:translate-x-0 lg:shadow-none lg:border-e',
           'print:hidden'
@@ -161,7 +161,7 @@ export function AppSidebar({
           <button
             type="button"
             onClick={() => setIsOpen(false)}
-            className="flex h-11 w-11 items-center justify-center rounded-[8px] hover:bg-[var(--color-bg)] lg:hidden"
+            className="flex h-11 w-11 items-center justify-center rounded-[var(--radius-md)] hover:bg-[var(--color-bg)] lg:hidden"
             aria-label="إغلاق"
           >
             <X className="h-4 w-4 text-[var(--color-text-muted)]" />
@@ -183,7 +183,7 @@ export function AppSidebar({
             onClick={logout}
             className="flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-[13px] font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-danger-tint)] hover:text-[var(--color-danger)] transition-all duration-200"
           >
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px]">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-md)]">
               <LogOut className="h-4 w-4" />
             </div>
             <span>تسجيل الخروج</span>

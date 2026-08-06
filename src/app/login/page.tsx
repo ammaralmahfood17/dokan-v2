@@ -5,12 +5,13 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { FormEvent, Suspense, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
+import { Eye, EyeOff } from 'lucide-react';
 
 function RegisteredNotice() {
   const searchParams = useSearchParams();
   if (searchParams.get('registered') !== '1') return null;
   return (
-    <p className="mt-3 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-primary-tint)] px-3 py-2 text-center text-xs font-semibold text-[var(--color-primary)]">
+    <p className="mt-3 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-primary-tint)] px-3 py-2 text-center text-xs font-semibold text-[var(--color-primary)]">
       تم إنشاء الحساب. يمكنك تسجيل الدخول الآن.
     </p>
   );
@@ -21,6 +22,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const nextParam = searchParams.get('next');
 
+  const [showPass, setShowPass] = useState(false); // FIX-S-007
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -88,24 +90,47 @@ function LoginForm() {
           onChange={(e) => setEmail(e.target.value)}
           onBlur={blur('email')}
           dir="ltr"
+          aria-invalid={!!emailErr}
+          aria-describedby={emailErr ? 'email-error' : undefined}
         />
-        {emailErr && <p className="error-text">{emailErr}</p>}
+        {emailErr && (
+          <p id="email-error" className="error-text" role="alert">
+            {emailErr}
+          </p>
+        )}
       </div>
       <div className="field">
         <label className="label" htmlFor="password">كلمة المرور</label>
-        <input
-          id="password"
-          className={`input ${passErr ? 'input-error' : ''}`}
-          type="password"
-          autoComplete="current-password"
-          required
-          minLength={6}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          onBlur={blur('password')}
-          dir="ltr"
-        />
-        {passErr && <p className="error-text">{passErr}</p>}
+        <div className="relative">
+          <input
+            id="password"
+            className={`input pe-10 ${passErr ? 'input-error' : ''}`}
+            type={showPass ? 'text' : 'password'}
+            autoComplete="current-password"
+            required
+            minLength={6}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onBlur={blur('password')}
+            dir="ltr"
+            aria-invalid={!!passErr}
+            aria-describedby={passErr ? 'password-error' : undefined}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPass((v) => !v)}
+            aria-label={showPass ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+            aria-pressed={showPass}
+            className="absolute end-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]"
+          >
+            {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
+        {passErr && (
+          <p id="password-error" className="error-text" role="alert">
+            {passErr}
+          </p>
+        )}
       </div>
       {error && <p className="error-text mb-3">{error}</p>}
       <Button type="submit" block disabled={loading || !!emailErr || !!passErr}>
@@ -125,7 +150,7 @@ export default function LoginPage() {
     <div className="flex min-h-dvh items-center justify-center bg-[var(--color-bg)] px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-[8px] bg-[var(--color-primary)] text-white font-bold">د</div>
+          <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-primary)] text-white font-bold">د</div>
           <h1 className="text-xl font-bold">تسجيل الدخول</h1>
           <p className="mt-1 text-sm text-[var(--color-text-secondary)]">مرحباً بك في دكان</p>
         </div>

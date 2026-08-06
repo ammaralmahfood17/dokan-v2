@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useMemo, useRef, useState, useCallback } from 'react';
+import { FormEvent, useCallback, useDeferredValue, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import { Plus, Pencil, Trash2, X, ImageIcon, Check, Search } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
@@ -23,6 +23,11 @@ type ProductWithAddons = Product & { product_addons: ProductAddon[] };
  * after the 60s ISR window. Fire-and-forget — cache purge must never block or
  * fail the user's action. The endpoint re-checks membership server-side.
  */
+// FIX-C-001: helpers مستخرجة (validate/remove/compress)
+import { validateProduct, removeProductImage, compressImage, type FieldErrors } from '@/lib/products-utils';
+// FIX-C-001: مكوّن رفع الصور مستخرج
+import { ImageUploader } from '@/components/dashboard/products/image-uploader';
+
 function revalidateMenuCache(projectId: string) {
   void fetch('/api/revalidate-menu', {
     method: 'POST',
@@ -34,44 +39,7 @@ function revalidateMenuCache(projectId: string) {
 /** Temporary addon line in the product form — id is set for existing (persisted) addons */
 type FormAddon = { key: string; id?: string; name: string; price: string };
 
-/** Per-field validation errors */
-type FieldErrors = {
-  name?: string;
-  price?: string;
-};
-
-function validateProduct(name: string, price: string): FieldErrors {
-  const errors: FieldErrors = {};
-  if (!name.trim()) {
-    errors.name = 'الاسم مطلوب';
-  } else if (name.trim().length < 2) {
-    errors.name = 'الاسم يجب أن يكون حرفين على الأقل';
-  }
-  const parsedPrice = Number(price);
-  if (!price.trim()) {
-    errors.price = 'السعر مطلوب';
-  } else if (!Number.isFinite(parsedPrice) || parsedPrice < 0) {
-    errors.price = 'السعر غير صالح — أدخل رقماً صحيحاً';
-  }
-  return errors;
-}
-
 /** Best-effort: delete the storage object behind a product image URL (ignore failures) */
-async function removeProductImage(url: string | null | undefined) {
-  if (!url) return;
-  const marker = '/product-images/';
-  const idx = url.indexOf(marker);
-  if (idx === -1) return;
-  const path = url.slice(idx + marker.length).split('?')[0];
-  if (!path) return;
-  try {
-    const supabase = createClient();
-    await supabase.storage.from('product-images').remove([path]);
-  } catch {
-    // best-effort — an orphaned object is preferable to failing the UI action
-  }
-}
-
 export function ProductsClient({
   projectId,
   currency,
@@ -99,7 +67,6 @@ export function ProductsClient({
   const [categoryId, setCategoryId] = useState('');
   const [isAvailable, setIsAvailable] = useState(true);
   const [imageUrl, setImageUrl] = useState('');
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null); // Fix 6
   const [formAddons, setFormAddons] = useState<FormAddon[]>([]);
 
   // Validation errors
@@ -115,9 +82,6 @@ export function ProductsClient({
   const [confirmDeleteCat, setConfirmDeleteCat] = useState<Category | null>(null);
 
   // Image upload state
-  const [uploading, setUploading] = useState(false);
-  const [dragOver, setDragOver] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const addonKeyRef = useRef(0);
   const nextAddonKey = useCallback(() => {
     addonKeyRef.current += 1;
@@ -130,6 +94,8 @@ export function ProductsClient({
 
   // Search + category filter
   const [searchQuery, setSearchQuery] = useState('');
+  // FIX-P-002: تأجيل الفلترة — لا تحجب الـ main thread أثناء الكتابة
+  const deferredSearch = useDeferredValue(searchQuery);
   const [activeCat, setActiveCat] = useState<string | null>(null);
 
   const sortedProducts = useMemo(
@@ -142,8 +108,8 @@ export function ProductsClient({
     if (activeCat) {
       list = list.filter((p) => p.category_id === activeCat);
     }
-    if (searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase();
+    if (deferredSearch.trim()) {
+      const q = deferredSearch.trim().toLowerCase();
       list = list.filter(
         (p) =>
           p.name.toLowerCase().includes(q) ||
@@ -151,7 +117,7 @@ export function ProductsClient({
       );
     }
     return list;
-  }, [sortedProducts, activeCat, searchQuery]);
+  }, [sortedProducts, activeCat, deferredSearch]);
 
   // Live product counts per category (updates as products change).
   const categoryCounts = useMemo(() => {
@@ -172,7 +138,6 @@ export function ProductsClient({
     setCategoryId(categories[0]?.id ?? '');
     setIsAvailable(true);
     setImageUrl('');
-    setPreviewUrl(null); // Fix 6
     setFormAddons([]);
     setFieldErrors({});
     setShowQuickCat(false);
@@ -197,7 +162,6 @@ export function ProductsClient({
     setCategoryId(p.category_id ?? '');
     setIsAvailable(p.is_available);
     setImageUrl(p.image_url ?? '');
-    setPreviewUrl(null); // Fix 6
     setFormAddons(
       (p.product_addons || []).map((a) => ({
         key: nextAddonKey(),
@@ -256,86 +220,6 @@ export function ProductsClient({
     return new File([blob], file.name.replace(/\.[^.]+$/, '.webp'), {
       type: 'image/webp',
     });
-  }
-
-  async function handleFile(file: File) {
-    if (!file.type.startsWith('image/')) {
-      toast.error('الملف يجب أن يكون صورة');
-      return;
-    }
-    // Whitelist: JPG/PNG/WebP only (SVG can carry scripts in some contexts)
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      toast.error('الصيغة غير مدعومة — JPG أو PNG أو WebP فقط');
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('الحد الأقصى لحجم الصورة 5MB');
-      return;
-    }
-
-    setUploading(true);
-    const objectUrl = URL.createObjectURL(file); // Fix 6: instant preview from File object
-    setPreviewUrl(objectUrl);
-    try {
-      const supabase = createClient();
-      const uploadFile = await compressImage(file);
-      const extMap: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
-      const ext = extMap[uploadFile.type] || 'jpg';
-      const path = `${projectId}/products/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-
-      const { data, error } = await supabase.storage
-        .from('product-images')
-        .upload(path, uploadFile, { upsert: false, contentType: uploadFile.type });
-
-      if (error) {
-        console.error('[Image Upload]', error);
-        toast.error('فشل رفع الصورة');
-        return;
-      }
-
-      if (data) {
-        const { data: { publicUrl } } = supabase.storage
-          .from('product-images')
-          .getPublicUrl(data.path);
-        setImageUrl(publicUrl);
-        toast.success('تم رفع الصورة');
-      }
-    } catch {
-      toast.error('خطأ في رفع الصورة');
-    } finally {
-      URL.revokeObjectURL(objectUrl); // Fix 6: cleanup object URL
-      setPreviewUrl(null); // Fix 6
-      setUploading(false);
-    }
-  }
-
-  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (file) handleFile(file);
-    // Reset so same file can be re-selected
-    e.target.value = '';
-  }
-
-  function onDrop(e: React.DragEvent) {
-    e.preventDefault();
-    setDragOver(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) handleFile(file);
-  }
-
-  function onDragOver(e: React.DragEvent) {
-    e.preventDefault();
-    setDragOver(true);
-  }
-
-  function onDragLeave() {
-    setDragOver(false);
-  }
-
-  function removeImage() {
-    removeProductImage(imageUrl);
-    setImageUrl('');
-    setPreviewUrl(null); // Fix 6
   }
 
   // ----- Inline Quick Category -----
@@ -908,7 +792,8 @@ export function ProductsClient({
         />
       ) : (
         <>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3">
+          {/* FIX-P-003: containment لعزل الشبكة الثقيلة */}
+          <div className="product-grid grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3">
             {filteredProducts.map((p) => (
               <div
                 key={p.id}
@@ -1005,11 +890,11 @@ export function ProductsClient({
 
           {/* Bulk action bar */}
           {bulkMode && (
-            <div className="sticky bottom-3 z-30 mt-4 flex items-center justify-between gap-2 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] p-2 shadow-lg">
+            <div className="sticky bottom-3 z-[var(--z-sticky)] mt-4 flex items-center justify-between gap-2 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] p-2 shadow-lg">
               <button
                 type="button"
                 onClick={toggleSelectAllVisible}
-                className="flex min-h-[44px] items-center gap-2 rounded-[8px] px-3 text-sm font-semibold text-[var(--color-text-secondary)]"
+                className="flex min-h-[44px] items-center gap-2 rounded-[var(--radius-md)] px-3 text-sm font-semibold text-[var(--color-text-secondary)]"
               >
                 <span
                   className={`flex h-5 w-5 items-center justify-center rounded border-2 ${
@@ -1119,11 +1004,11 @@ export function ProductsClient({
                   <input
                     className={`input ${fieldErrors.price ? 'input-error' : ''}`}
                     type="number"
+                    inputMode="decimal"
                     step="0.001"
                     min="0"
                     required
                     dir="ltr"
-                    inputMode="decimal"
                     value={price}
                     onChange={(e) => {
                       setPrice(e.target.value);
@@ -1166,7 +1051,7 @@ export function ProductsClient({
                 </div>
                 {/* Inline quick-add category */}
                 {showQuickCat && (
-                  <div className="mt-2 flex items-center gap-2 rounded-[8px] border border-[var(--color-primary)] bg-[var(--color-primary-tint)] p-2">
+                  <div className="mt-2 flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-primary)] bg-[var(--color-primary-tint)] p-2">
                     <input
                       className="input flex-1 border-0 bg-white text-sm"
                       placeholder="اسم التصنيف الجديد"
@@ -1197,76 +1082,12 @@ export function ProductsClient({
               </div>
             </div>
 
-            {/* ======== IMAGE UPLOAD — Drag & Drop Zone ======== */}
-            <div className="field">
-              <label className="label">صورة المنتج</label>
-              {imageUrl ? (
-                <div className="relative inline-block">
-                  <Image
-                    src={imageUrl}
-                    alt=""
-                    width={112}
-                    height={112}
-                    className="h-28 w-28 rounded-[10px] border border-[var(--color-border)] object-cover shadow-sm"
-                  />
-                  <button
-                    type="button"
-                    onClick={removeImage}
-                    aria-label="إزالة الصورة"
-                    className="absolute -right-3 -top-3 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full"
-                  >
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--color-danger)] text-white shadow-sm transition-transform hover:scale-110">
-                      <X className="h-3.5 w-3.5" />
-                    </span>
-                  </button>
-                  <p className="mt-1.5 text-[11px] text-[var(--color-text-muted)]">JPG أو PNG أو WebP، حد 5MB</p>
-                </div>
-              ) : uploading && previewUrl ? (
-                // Fix 6: instant preview while uploading
-                <div className="relative inline-block">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={previewUrl}
-                    alt="معاينة الصورة"
-                    className="h-28 w-28 rounded-[10px] border border-[var(--color-border)] object-cover shadow-sm"
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center rounded-[10px] bg-black/40">
-                    <span className="h-6 w-6 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  </div>
-                  <p className="mt-1.5 text-[11px] text-[var(--color-text-muted)]">جاري رفع الصورة…</p>
-                </div>
-              ) : (
-                <div
-                  onDrop={onDrop}
-                  onDragOver={onDragOver}
-                  onDragLeave={onDragLeave}
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`flex cursor-pointer flex-col items-center justify-center rounded-[10px] border-2 border-dashed p-6 transition-colors ${
-                    dragOver
-                      ? 'border-[var(--color-primary)] bg-[var(--color-primary-tint)]'
-                      : 'border-[var(--color-border)] bg-[var(--color-bg)] hover:border-[var(--color-primary)]'
-                  }`}
-                >
-                  <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-surface)] shadow-sm">
-                    <ImageIcon className="h-6 w-6 text-[var(--color-text-secondary)]" />
-                  </div>
-                  <p className="text-sm font-semibold text-[var(--color-text-secondary)]">
-                    اسحب الصورة هنا أو اضغط للاختيار
-                  </p>
-                  <p className="mt-0.5 text-[11px] text-[var(--color-text-muted)]">
-                    JPG أو PNG أو WebP، حد أقصى 5MB
-                  </p>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={onFileChange}
-                    disabled={uploading}
-                    className="hidden"
-                  />
-                </div>
-              )}
-            </div>
+            {/* ======== IMAGE UPLOAD — FIX-C-001: extracted component ======== */}
+            <ImageUploader
+              projectId={projectId}
+              imageUrl={imageUrl}
+              onImageUrlChange={setImageUrl}
+            />
 
             {/* ======== ADDONS ======== */}
             <div className="rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg)] p-3">
@@ -1283,7 +1104,7 @@ export function ProductsClient({
               </div>
 
               {formAddons.length === 0 && (
-                <p className="rounded-[8px] bg-[var(--color-surface)] px-3 py-4 text-center text-xs text-[var(--color-text-muted)]">
+                <p className="rounded-[var(--radius-md)] bg-[var(--color-surface)] px-3 py-4 text-center text-xs text-[var(--color-text-muted)]">
                   ما فيه إضافات. أضف إضافات مثل {`{حليب، صوص، جبنة إضافية}`}
                 </p>
               )}
@@ -1291,7 +1112,7 @@ export function ProductsClient({
               {formAddons.map((addon, idx) => (
                 <div
                   key={addon.key}
-                  className="mb-2 flex items-center gap-2 rounded-[8px] bg-[var(--color-surface)] p-2"
+                  className="mb-2 flex items-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-surface)] p-2"
                 >
                   <input
                     className="input flex-1 text-sm"

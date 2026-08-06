@@ -25,6 +25,30 @@ export const metadata: Metadata = {
     template: '%s — دكان',
   },
   description: 'منصة سحابية لإدارة المطاعم والمقاهي في الخليج',
+  // FIX-M-004: Open Graph + Twitter — المشاركة على واتساب/تيليجرام تعرض
+  // عنوانًا وصورة بدل رابط أعمى.
+  openGraph: {
+    type: 'website',
+    locale: 'ar_BH',
+    url: 'https://www.dokanstore.xyz',
+    siteName: 'دكان',
+    title: 'دكان — منصة إدارة المطاعم',
+    description: 'منصة سحابية لإدارة المطاعم والمقاهي في الخليج',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1024,
+        height: 576,
+        alt: 'دكان — منصة إدارة المطاعم',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'دكان — منصة إدارة المطاعم',
+    description: 'منصة سحابية لإدارة المطاعم والمقاهي في الخليج',
+    images: ['/og-image.png'],
+  },
   icons: [
     { rel: 'icon', url: '/favicon.ico', sizes: '32x32' },
     { rel: 'icon', url: '/icon.svg', type: 'image/svg+xml' },
@@ -41,6 +65,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  // FIX-R-001: تفعيل safe areas على iPhone مع notch (env(safe-area-inset-*))
+  viewportFit: 'cover',
   themeColor: '#F8FAFC',
 };
 
@@ -78,7 +104,7 @@ export default function RootLayout({
             nav/chrome to the page content (visually hidden until focused). */}
         <a
           href="#main-content"
-          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:rounded-[8px] focus:bg-[var(--color-primary)] focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-white"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[var(--z-skip-link)] focus:rounded-[var(--radius-md)] focus:bg-[var(--color-primary)] focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-white"
         >
           تخطي إلى المحتوى
         </a>

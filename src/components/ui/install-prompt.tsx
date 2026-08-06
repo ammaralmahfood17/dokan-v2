@@ -32,7 +32,7 @@ export function InstallPrompt() {
     <div
       role="dialog"
       aria-label="تثبيت التطبيق"
-      className="fixed bottom-20 inset-x-0 z-40 mx-auto flex w-[calc(100%-2rem)] max-w-md items-center gap-3 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-xl"
+      className="fixed bottom-20 inset-x-0 z-[var(--z-drawer)] mx-auto flex w-[calc(100%-2rem)] max-w-md items-center gap-3 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-xl"
     >
       <div className="min-w-0 flex-1">
         <p className="text-[13px] font-bold">ثبّت تطبيق دكان</p>
@@ -46,7 +46,7 @@ export function InstallPrompt() {
           await deferred.prompt();
           setDeferred(null);
         }}
-        className="flex h-11 shrink-0 items-center gap-1.5 rounded-[8px] bg-[var(--color-primary)] px-3.5 text-[12.5px] font-bold text-white transition-colors hover:opacity-90"
+        className="flex h-11 shrink-0 items-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--color-primary)] px-3.5 text-[12.5px] font-bold text-white transition-colors hover:opacity-90"
       >
         <Download className="h-4 w-4" />
         تثبيت
@@ -55,7 +55,7 @@ export function InstallPrompt() {
         type="button"
         aria-label="إغلاق"
         onClick={() => setDismissed(true)}
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[8px] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-sunken)]"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-sunken)]"
       >
         <X className="h-4 w-4" />
       </button>

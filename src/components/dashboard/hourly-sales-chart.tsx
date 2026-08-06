@@ -14,7 +14,7 @@ export function HourlySalesChart({
   const maxHourRevenue = Math.max(...hourBuckets.map((b) => b.revenue), 0.001);
 
   return (
-    <div className="border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm">
+    <div className="chart-container border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm">
       <h2 className="mb-3.5 flex items-center justify-between font-display text-[14.5px] font-bold">
         المبيعات بالساعة
         <span className="text-[11px] font-normal text-[var(--color-text-secondary)]">

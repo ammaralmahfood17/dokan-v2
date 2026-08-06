@@ -13,7 +13,7 @@ export function WeeklySalesChart({
   const maxDayRevenue = Math.max(...byDay7.map((d) => d.revenue), 0.001);
 
   return (
-    <div className="card card-body">
+    <div className="chart-container card card-body">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="font-display text-[14.5px] font-bold">مبيعات آخر 7 أيام</h2>
         <TrendingUp className="h-4 w-4 text-[var(--color-text-muted)]" />

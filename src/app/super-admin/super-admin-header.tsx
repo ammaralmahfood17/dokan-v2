@@ -27,10 +27,10 @@ export function SuperAdminHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
+    <header className="sticky top-0 z-[var(--z-sticky)] border-b border-[var(--color-border)] bg-[var(--color-surface)]">
       <div className="flex items-center justify-between gap-2 px-4 py-3">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--color-danger)] text-xs font-bold text-white">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-danger)] text-xs font-bold text-white">
             <ShieldCheck className="h-4 w-4" />
           </span>
           <span className="truncate text-sm font-bold">لوحة التحكم الرئيسية</span>
@@ -40,19 +40,19 @@ export function SuperAdminHeader() {
         <nav className="flex min-w-0 flex-wrap items-center justify-end gap-1 text-xs font-semibold">
           <Link
             href="/super-admin/subscriptions"
-            className="rounded-[8px] px-2.5 py-2 text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-sunken)] hover:text-[var(--color-text)]"
+            className="rounded-[var(--radius-md)] px-2.5 py-2 text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-sunken)] hover:text-[var(--color-text)]"
           >
             الاشتراكات
           </Link>
           <Link
             href="/super-admin/analytics"
-            className="rounded-[8px] px-2.5 py-2 text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-sunken)] hover:text-[var(--color-text)]"
+            className="rounded-[var(--radius-md)] px-2.5 py-2 text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-sunken)] hover:text-[var(--color-text)]"
           >
             التحليلات
           </Link>
           <Link
             href="/super-admin/audit"
-            className="rounded-[8px] px-2.5 py-2 text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-sunken)] hover:text-[var(--color-text)]"
+            className="rounded-[var(--radius-md)] px-2.5 py-2 text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-sunken)] hover:text-[var(--color-text)]"
           >
             سجل العمليات
           </Link>
@@ -60,7 +60,7 @@ export function SuperAdminHeader() {
             type="button"
             onClick={handleLogout}
             disabled={loggingOut}
-            className="ms-1 flex min-h-[44px] items-center gap-1.5 rounded-[8px] px-3 py-2 text-[var(--color-danger)] transition-colors hover:bg-[var(--color-danger-tint)] disabled:opacity-50"
+            className="ms-1 flex min-h-[44px] items-center gap-1.5 rounded-[var(--radius-md)] px-3 py-2 text-[var(--color-danger)] transition-colors hover:bg-[var(--color-danger-tint)] disabled:opacity-50"
           >
             <LogOut className="h-3.5 w-3.5" />
             {loggingOut ? 'جاري…' : 'تسجيل الخروج'}

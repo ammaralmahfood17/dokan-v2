@@ -55,7 +55,12 @@ export default function DashboardError({
 
   return (
     <div className="flex min-h-dvh items-center justify-center bg-[var(--color-bg)] p-4 font-sans" dir="rtl">
-      <div className="w-full max-w-lg rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-sm sm:p-8">
+      {/* FIX-A-002: إعلان الخطأ لقارئ الشاشة فور ظهوره */}
+      <div
+        className="w-full max-w-lg rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-sm sm:p-8"
+        role="alert"
+        aria-live="assertive"
+      >
         {/* Header Badge & Title */}
         <div className="mb-4 flex items-start gap-3">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--color-danger-tint)] text-[var(--color-danger)]">

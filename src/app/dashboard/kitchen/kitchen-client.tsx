@@ -45,147 +45,10 @@ const TAB_LABELS: Record<string, string> = {
   walkin: 'كاونتر',
 };
 
-/* ========== Audio System Hook ========== */
-
-function useAudioSystem() {
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const chimeBufRef = useRef<AudioBuffer | null>(null);
-  const loadingChimeRef = useRef(false);
-  const chimeQueueRef = useRef<(() => void)[]>([]);
-  // Holds the latest playChime — lets the chime queue call it without the
-  // callback self-referencing its own const (TDZ lint).
-  const playChimeRef = useRef<() => void>(() => {});
-
-  const getAudioCtx = useCallback((): AudioContext | null => {
-    const Ctor = window.AudioContext || (window as any).webkitAudioContext;
-    if (!Ctor) return null;
-    if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
-      audioCtxRef.current = new Ctor();
-    }
-    return audioCtxRef.current;
-  }, []);
-
-  const ensureAudioReady = useCallback((): boolean => {
-    const ctx = getAudioCtx();
-    if (!ctx) return false;
-    if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {});
-      return false;
-    }
-    return ctx.state === 'running';
-  }, [getAudioCtx]);
-
-  const playFallbackChime = useCallback((ctx: AudioContext) => {
-    const master = ctx.createGain();
-    master.gain.value = 0.15;
-    master.connect(ctx.destination);
-
-    const notes = [660, 880, 1100];
-    const startTime = ctx.currentTime + 0.05;
-
-    notes.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const noteGain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      noteGain.gain.setValueAtTime(0, startTime + i * 0.12);
-      noteGain.gain.linearRampToValueAtTime(1, startTime + i * 0.12 + 0.02);
-      noteGain.gain.exponentialRampToValueAtTime(0.001, startTime + i * 0.12 + 0.15);
-      osc.connect(noteGain);
-      noteGain.connect(master);
-      osc.start(startTime + i * 0.12);
-      osc.stop(startTime + i * 0.12 + 0.15);
-    });
-  }, []);
-
-  const preloadChime = useCallback(() => {
-    if (chimeBufRef.current || loadingChimeRef.current) return;
-    loadingChimeRef.current = true;
-    const ctx = getAudioCtx();
-    if (!ctx) { loadingChimeRef.current = false; return; }
-
-    const xhr = new XMLHttpRequest();
-    xhr.open('GET', '/sounds/notification.wav', true);
-    xhr.responseType = 'arraybuffer';
-    xhr.onload = () => {
-      ctx.decodeAudioData(xhr.response)
-        .then((buf) => {
-          chimeBufRef.current = buf;
-          loadingChimeRef.current = false;
-          // Flush queue
-          const q = chimeQueueRef.current.slice();
-          chimeQueueRef.current = [];
-          q.forEach((fn) => fn());
-        })
-        .catch(() => { loadingChimeRef.current = false; chimeQueueRef.current = []; });
-    };
-    xhr.onerror = () => { loadingChimeRef.current = false; chimeQueueRef.current = []; };
-    xhr.send();
-  }, [getAudioCtx]);
-
-  const playChime = useCallback(() => {
-    try {
-      const ctx = getAudioCtx();
-      if (!ctx) return;
-
-      if (ctx.state === 'suspended') {
-        ctx.resume().catch(() => {});
-      }
-
-      // If we have the decoded buffer, play it
-      if (chimeBufRef.current) {
-        const source = ctx.createBufferSource();
-        source.buffer = chimeBufRef.current;
-        const gain = ctx.createGain();
-        gain.gain.value = 0.6;
-        source.connect(gain);
-        gain.connect(ctx.destination);
-        source.start();
-        return;
-      }
-
-      // If still loading, queue for retry — via playChimeRef to avoid
-      // self-referencing the const inside its own initializer (TDZ lint).
-      if (loadingChimeRef.current) {
-        chimeQueueRef.current.push(() => playChimeRef.current());
-        return;
-      }
-
-      // Start preloading for next time
-      preloadChime();
-
-      // Fallback: 3-tone restaurant chime
-      playFallbackChime(ctx);
-    } catch {
-      // ignore
-    }
-  }, [getAudioCtx, preloadChime, playFallbackChime]);
-
-  // Keep the ref pointing at the latest playChime so queued retries (pushed
-  // while the .wav was still loading) always invoke the current closure.
-  useEffect(() => {
-    playChimeRef.current = playChime;
-  });
-
-  const attachAudioResumeOnInteraction = useCallback(() => {
-    const handler = () => {
-      const ctx = getAudioCtx();
-      if (ctx?.state === 'suspended') {
-        ctx.resume().catch(() => {});
-      }
-    };
-    document.addEventListener('click', handler);
-    document.addEventListener('touchstart', handler);
-    document.addEventListener('keydown', handler);
-    return () => {
-      document.removeEventListener('click', handler);
-      document.removeEventListener('touchstart', handler);
-      document.removeEventListener('keydown', handler);
-    };
-  }, [getAudioCtx]);
-
-  return { playChime, ensureAudioReady, preloadChime, attachAudioResumeOnInteraction };
-}
+/* ========== Audio System (FIX-C-002: extracted hook) ========== */
+import { useKitchenAudio } from '@/components/dashboard/kitchen/use-kitchen-audio';
+// FIX-C-002: بطاقة الطلب مستخرجة
+import { KitchenTicket } from '@/components/dashboard/kitchen/kitchen-ticket';
 
 /* ========== Page title flashing (ref-based, tied to component) ========== */
 
@@ -286,7 +149,7 @@ export function KitchenClient({
   const [now, setNow] = useState(() => Date.now());
   const [tab, setTab] = useState<'all' | 'dinein' | 'drivethru' | 'walkin'>('all');
 
-  const { playChime, ensureAudioReady, preloadChime, attachAudioResumeOnInteraction } = useAudioSystem();
+  const { playChime, ensureAudioReady, preloadChime, attachAudioResumeOnInteraction } = useKitchenAudio();
   const { flashTitle, clearFlash, syncTitle, resetTitle } = useTitleFlash();
 
   // Clock + tick — كل دقيقة (60s) لأن العرض بالدقائق
@@ -719,6 +582,10 @@ export function KitchenClient({
         <h1 className="font-display text-xl font-bold text-[var(--color-primary)]">
           {projectName} — شاشة المطبخ
         </h1>
+        {/* FIX-A-006: إعلام قارئ الشاشة بوصول طلبات جديدة */}
+        <div aria-live="polite" aria-atomic="true" className="sr-only">
+          {pendingCount > 0 ? `وصل ${pendingCount} طلبات جديدة` : ''}
+        </div>
 
         <div className="flex items-center gap-2.5">
           {pendingCount > 0 && (
@@ -787,180 +654,5 @@ export function KitchenClient({
         ))}
       </main>
     </div>
-  );
-}
-
-/* ========== Ticket ========== */
-
-function KitchenTicket({
-  ticket,
-  now,
-  currency,
-  onStart,
-  onReady,
-  onDeliver,
-}: {
-  ticket: Ticket;
-  now: number;
-  currency: string;
-  onStart: () => void;
-  onReady: () => void;
-  onDeliver: () => void;
-}) {
-  const { order, lines, totalQty } = ticket;
-  const status = order.status as OrderStatus;
-  // Guard against a malformed/absent created_at — a NaN diff would silently
-  // read "قبل NaN دقيقة" and never flag overdue.
-  const createdMs = new Date(order.created_at).getTime();
-  const mins = Number.isFinite(createdMs)
-    ? Math.max(0, Math.floor((now - createdMs) / 60000))
-    : 0;
-
-  // Enterprise §6.8 — ticket border & status badge by order status.
-  // mockup: جديد→success · قيد التحضير→warning · متأخر→danger
-  const tone =
-    status === 'pending'
-      ? 'success'
-      : status === 'preparing'
-        ? 'warning'
-        : 'success';
-
-  let overdue = false;
-  if (status === 'pending' && mins >= OVERDUE_MIN_PENDING) overdue = true;
-  if (status === 'preparing' && mins >= OVERDUE_MIN_PREPARING) overdue = true;
-
-  const badgeTone = overdue ? 'danger' : tone;
-  const badgeLabel =
-    overdue ? 'متأخر'
-    : ORDER_STATUS_LABELS[status];
-
-  // Timer color gradient — success → warning → danger (5 / 12 / 20 min)
-  const timerTone =
-    mins < 5
-      ? 'var(--color-success)'
-      : mins < 12
-        ? 'var(--color-warn)'
-        : mins < 20
-          ? 'var(--color-warn-hover)'
-          : 'var(--color-danger)';
-
-  const toneBorder: Record<string, string> = {
-    success: 'border-[var(--color-success)]',
-    warning: 'border-[var(--color-warn)]',
-    danger: 'border-[var(--color-danger)]',
-  };
-  const toneBadge: Record<string, string> = {
-    success: 'bg-[var(--color-success-tint)] text-[var(--color-success)]',
-    warning: 'bg-[var(--color-warn-tint)] text-[var(--color-warn)]',
-    danger: 'bg-[var(--color-danger-tint)] text-[var(--color-danger)]',
-  };
-
-  const tableLabel = order.tables
-    ? `TABLE·${String(order.tables.number).padStart(2, '0')}`
-    : order.type === 'drivethru'
-      ? `DRIVE-${String(order.order_number).padStart(2, '0')}`
-      : `WALKIN·${String(order.order_number).padStart(2, '0')}`;
-
-  const timeLabel = mins < 1 ? 'الآن' : `قبل ${mins} دقيقة`;
-
-  return (
-    <article
-      className={`border-2 bg-[var(--color-surface)] p-4 ${toneBorder[badgeTone]}`}
-    >
-      {/* Head: order number + table/time */}
-      <div className="mb-2.5 flex items-start justify-between gap-2">
-        <span className="rounded-md border border-[var(--color-border-strong)] bg-[var(--color-surface-sunken)] px-2 py-0.5 font-mono text-[12px] font-bold tabular-nums text-[var(--color-text)]" dir="ltr">
-          #{String(order.order_number).padStart(3, '0')}
-        </span>
-        <div className="text-end">
-          <p className="font-mono text-[12px] font-semibold tabular-nums text-[var(--color-text-secondary)]" dir="ltr">
-            {tableLabel}
-          </p>
-          <p className="text-[11px]" style={{ color: timerTone }}>
-            {timeLabel}
-            {overdue && ' · متأخر!'}
-          </p>
-        </div>
-      </div>
-
-      {/* Status tag — pill (§6.3) */}
-      <span
-        className={`mb-2.5 inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold ${toneBadge[badgeTone]}`}
-      >
-        {badgeLabel}
-      </span>
-
-      {/* Items — one line per merged product */}
-      <ul className="mb-3 list-none p-0">
-        {lines.map((l) => (
-          <li
-            key={l.key}
-            className="flex items-start justify-between gap-2 border-b border-dashed border-[var(--color-border)] py-1.5 text-[14px] last:border-b-0"
-          >
-            <span>
-              {l.productName}
-              {l.addons.length > 0 && (
-                <span className="block text-[11.5px] text-[var(--color-text-muted)]">
-                  {l.addons.map((a) => a.name).join(' · ')}
-                </span>
-              )}
-              {l.notes && (
-                <span className="mt-0.5 block text-[11.5px] text-[var(--color-danger)]">
-                  {l.notes}
-                </span>
-              )}
-            </span>
-            <span className="shrink-0 font-mono text-[13px] font-bold tabular-nums text-[var(--color-primary)]" dir="ltr">
-              ×{l.quantity}
-            </span>
-          </li>
-        ))}
-        {order.notes && (
-          <li className="mt-1.5 border-0 bg-[var(--color-bg)] px-2 py-1.5 text-[11.5px] text-[var(--color-danger)]">
-            {order.notes}
-          </li>
-        )}
-      </ul>
-
-      {/* Actions — one primary per stage; ghost "تأخير" only while cooking */}
-      <div className="flex gap-2">
-        {status === 'pending' && (
-          <button
-            type="button"
-            onClick={onStart}
-            className="min-h-[44px] flex-1 rounded-[7px] bg-[var(--color-primary)] px-4 text-[13px] font-bold text-white transition-colors hover:bg-[var(--color-primary-hover)]"
-          >
-            بدء التحضير
-          </button>
-        )}
-        {status === 'preparing' && (
-          <>
-            <button
-              type="button"
-              onClick={onReady}
-              className="min-h-[44px] flex-1 rounded-[7px] bg-[var(--color-primary)] px-4 text-[13px] font-bold text-white transition-colors hover:bg-[var(--color-primary-hover)]"
-            >
-              جاهز للتسليم
-            </button>
-            <button
-              type="button"
-              onClick={() => toast.message('⏱ تأخير', { description: `#${order.order_number} — سنذكّرك لاحقًا` })}
-              className="min-h-[44px] min-w-[96px] rounded-[7px] border border-[var(--color-border)] bg-transparent px-4 text-[13px] font-bold text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-text-secondary)] hover:text-[var(--color-text)]"
-            >
-              تأخير
-            </button>
-          </>
-        )}
-        {status === 'ready' && (
-          <button
-            type="button"
-            onClick={onDeliver}
-            className="min-h-[44px] flex-1 rounded-[7px] bg-[var(--color-primary)] px-4 text-[13px] font-bold text-white transition-colors hover:bg-[var(--color-primary-hover)]"
-          >
-            تم التسليم
-          </button>
-        )}
-      </div>
-    </article>
   );
 }

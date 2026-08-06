@@ -14,7 +14,7 @@ export function RecentOrdersTable({
   currency: string;
 }) {
   return (
-    <div className="border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm">
+    <div className="chart-container border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm">
       <h2 className="mb-3.5 flex items-center justify-between font-display text-[14.5px] font-bold">
         آخر الطلبات
         <Link
@@ -37,7 +37,8 @@ export function RecentOrdersTable({
         />
       ) : (
         <table className="w-full border-collapse text-[13px]">
-          <thead>
+          {/* FIX-T-004: رأس ثابت عند التمرير في الجداول الطويلة */}
+          <thead className="sticky top-0 z-[var(--z-sticky)]">
             <tr>
               <th className="border-b border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-1.5 text-start text-[11.5px] font-medium text-[var(--color-text-secondary)]">#</th>
               <th className="border-b border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-1.5 text-start text-[11.5px] font-medium text-[var(--color-text-secondary)]">الطاولة</th>

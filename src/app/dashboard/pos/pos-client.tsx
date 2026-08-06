@@ -317,7 +317,7 @@ export function PosClient({
         {/* ── Left: product grid ─────────────────────────────────────── */}
         <div className="min-w-0">
           {/* Mobile order type — desktop keeps it in the cart header */}
-          <div className="mb-3 flex gap-1 rounded-[8px] bg-[var(--color-surface-sunken)] p-1 md:hidden" role="tablist" aria-label="نوع الطلب">
+          <div className="mb-3 flex gap-1 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] p-1 md:hidden" role="tablist" aria-label="نوع الطلب">
             {ORDER_TYPES.map(([value, label]) => (
               <button
                 key={value}
@@ -408,14 +408,14 @@ export function PosClient({
       </div>
 
       {/* ── Mobile: floating total bar ───────────────────────────────── */}
-      <div data-pos-floating-bar className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-border)] bg-[var(--color-surface)]/95 p-3 pb-safe-bottom backdrop-blur-md md:hidden">
+      <div data-pos-floating-bar className="fixed inset-x-0 bottom-0 z-[var(--z-drawer)] border-t border-[var(--color-border)] bg-[var(--color-surface)]/95 p-3 pb-safe-bottom backdrop-blur-md md:hidden">
         <button
           type="button"
           onClick={() => setCartOpen(true)}
           disabled={submitting}
           aria-haspopup="dialog"
           aria-label="عرض السلة"
-          className="flex min-h-[48px] w-full items-center justify-between gap-3 rounded-[8px] bg-[var(--color-primary)] px-4 text-white transition-colors active:scale-[0.98] hover:bg-[var(--color-primary-hover)]"
+          className="flex min-h-[48px] w-full items-center justify-between gap-3 rounded-[var(--radius-md)] bg-[var(--color-primary)] px-4 text-white transition-colors active:scale-[0.98] hover:bg-[var(--color-primary-hover)]"
         >
           <span className="flex items-center gap-2 text-sm font-semibold">
             <ShoppingBag className="h-4 w-4" />
@@ -430,7 +430,7 @@ export function PosClient({
       {/* ── Mobile: cart bottom sheet ────────────────────────────────── */}
       {cartOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 md:hidden"
+          className="fixed inset-0 z-[var(--z-modal)] flex items-end justify-center bg-black/40 md:hidden"
           role="dialog"
           aria-modal="true"
           aria-label="سلة الطلب"
@@ -473,7 +473,7 @@ export function PosClient({
 
       {/* ── Order-confirmed banner: the order reached the kitchen ─────── */}
       {lastConfirmed && (
-        <div className="fixed inset-x-0 top-3 z-50 flex justify-center px-4">
+        <div className="fixed inset-x-0 top-3 z-[var(--z-modal)] flex justify-center px-4">
           <div className="flex min-h-[52px] w-full max-w-md items-center justify-between gap-3 rounded-[10px] bg-[var(--color-success)] px-4 py-2.5 text-white shadow-lg">
             <div className="flex min-w-0 items-center gap-2.5">
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/20 text-sm font-bold">
@@ -501,7 +501,7 @@ export function PosClient({
       {/* ── Addon picker ─────────────────────────────────────────────── */}
       {picker && (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4"
+          className="fixed inset-0 z-[var(--z-modal)] flex items-end justify-center bg-black/40 sm:items-center sm:p-4"
           role="dialog"
           aria-modal="true"
           aria-label={`إضافات — ${picker.name}`}
@@ -531,7 +531,7 @@ export function PosClient({
                 .map((a) => (
                   <label
                     key={a.id}
-                    className="flex items-center justify-between gap-2 rounded-[8px] border border-[var(--color-border)] px-3 py-2 text-sm"
+                    className="flex items-center justify-between gap-2 rounded-[var(--radius-md)] border border-[var(--color-border)] px-3 py-2 text-sm"
                   >
                     <span className="flex items-center gap-2">
                       <input
