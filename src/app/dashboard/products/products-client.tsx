@@ -27,6 +27,10 @@ type ProductWithAddons = Product & { product_addons: ProductAddon[] };
 import { validateProduct, removeProductImage, compressImage, type FieldErrors } from '@/lib/products-utils';
 // FIX-C-001: مكوّن رفع الصور مستخرج
 import { ImageUploader } from '@/components/dashboard/products/image-uploader';
+// FIX-C-001: نموذج المنتج مستخرج
+import { ProductFormModal } from '@/components/dashboard/products/product-form-modal';
+// FIX-C-001: modals التصنيفات مستخرجة
+import { CategoryManager } from '@/components/dashboard/products/category-manager';
 
 function revalidateMenuCache(projectId: string) {
   void fetch('/api/revalidate-menu', {
@@ -59,18 +63,6 @@ export function ProductsClient({
   const [editing, setEditing] = useState<ProductWithAddons | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Product form state
-  const [name, setName] = useState('');
-  const [nameEn, setNameEn] = useState('');
-  const [description, setDescription] = useState('');
-  const [price, setPrice] = useState('');
-  const [categoryId, setCategoryId] = useState('');
-  const [isAvailable, setIsAvailable] = useState(true);
-  const [imageUrl, setImageUrl] = useState('');
-  const [formAddons, setFormAddons] = useState<FormAddon[]>([]);
-
-  // Validation errors
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   // Category form
   const [catName, setCatName] = useState('');
@@ -80,17 +72,6 @@ export function ProductsClient({
   const [editingCat, setEditingCat] = useState<Category | null>(null);
   const [editCatName, setEditCatName] = useState('');
   const [confirmDeleteCat, setConfirmDeleteCat] = useState<Category | null>(null);
-
-  // Image upload state
-  const addonKeyRef = useRef(0);
-  const nextAddonKey = useCallback(() => {
-    addonKeyRef.current += 1;
-    return `addon_${addonKeyRef.current}`;
-  }, []);
-
-  // Inline category quick-add
-  const [showQuickCat, setShowQuickCat] = useState(false);
-  const [quickCatName, setQuickCatName] = useState('');
 
   // Search + category filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -130,18 +111,8 @@ export function ProductsClient({
   }, [sortedProducts]);
 
   function openCreate() {
+    // FIX-C-001: النموذج يهيئ حالته من editing (null = جديد)
     setEditing(null);
-    setName('');
-    setNameEn('');
-    setDescription('');
-    setPrice('');
-    setCategoryId(categories[0]?.id ?? '');
-    setIsAvailable(true);
-    setImageUrl('');
-    setFormAddons([]);
-    setFieldErrors({});
-    setShowQuickCat(false);
-    setQuickCatName('');
     setShowProductForm(true);
   }
 
@@ -154,301 +125,9 @@ export function ProductsClient({
   }
 
   function openEdit(p: ProductWithAddons) {
+    // FIX-C-001: النموذج يهيئ حالته من editing
     setEditing(p);
-    setName(p.name);
-    setNameEn(p.name_en ?? '');
-    setDescription(p.description ?? '');
-    setPrice(String(p.price));
-    setCategoryId(p.category_id ?? '');
-    setIsAvailable(p.is_available);
-    setImageUrl(p.image_url ?? '');
-    setFormAddons(
-      (p.product_addons || []).map((a) => ({
-        key: nextAddonKey(),
-        id: a.id,
-        name: a.name,
-        price: String(a.price),
-      }))
-    );
-    setFieldErrors({});
-    setShowQuickCat(false);
-    setQuickCatName('');
     setShowProductForm(true);
-  }
-
-  function addFormAddon() {
-    setFormAddons((prev) => [
-      ...prev,
-      { key: nextAddonKey(), name: '', price: '0.500' },
-    ]);
-  }
-
-  function updateFormAddon(key: string, field: 'name' | 'price', value: string) {
-    setFormAddons((prev) =>
-      prev.map((a) => (a.key === key ? { ...a, [field]: value } : a))
-    );
-  }
-
-  function removeFormAddon(key: string) {
-    setFormAddons((prev) => prev.filter((a) => a.key !== key));
-  }
-
-  // ----- Image Upload (drag & drop + click) -----
-  /**
-   * Compress before upload: resize to ≤1024px longest side + re-encode WebP
-   * (alpha-preserving) when the source is heavy. Small files pass through
-   * untouched — no pointless re-encode.
-   */
-  async function compressImage(file: File): Promise<File> {
-    if (file.size <= 300 * 1024) return file;
-    const bitmap = await createImageBitmap(file);
-    const scale = Math.min(1, 1024 / Math.max(bitmap.width, bitmap.height));
-    if (scale === 1 && file.size <= 500 * 1024) return file;
-    const w = Math.max(1, Math.round(bitmap.width * scale));
-    const h = Math.max(1, Math.round(bitmap.height * scale));
-    const canvas = document.createElement('canvas');
-    canvas.width = w;
-    canvas.height = h;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return file;
-    ctx.drawImage(bitmap, 0, 0, w, h);
-    bitmap.close();
-    const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, 'image/webp', 0.85)
-    );
-    if (!blob) return file;
-    return new File([blob], file.name.replace(/\.[^.]+$/, '.webp'), {
-      type: 'image/webp',
-    });
-  }
-
-  // ----- Inline Quick Category -----
-  async function addQuickCategory() {
-    const name = quickCatName.trim();
-    if (!name) return;
-    setLoading(true);
-    try {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from('categories')
-        .insert({ project_id: projectId, name, sort_order: categories.length })
-        .select('*')
-        .single();
-      if (error || !data) {
-        toast.error('فشل إنشاء التصنيف');
-        return;
-      }
-      const cat = data as Category;
-      setCategories((prev) => [...prev, cat]);
-      setCategoryId(cat.id);
-      setQuickCatName('');
-      setShowQuickCat(false);
-      toast.success(`تم إنشاء «${cat.name}»`);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // ----- Save Product -----
-  async function saveProduct(e: FormEvent) {
-    e.preventDefault();
-    const errors = validateProduct(name, price);
-    setFieldErrors(errors);
-    if (Object.keys(errors).length > 0) return;
-
-    // Validate addon prices FIRST — abort on any invalid one (no silent drops)
-    for (const a of formAddons) {
-      if (!a.name.trim()) continue;
-      const addonPrice = Number(a.price);
-      if (!Number.isFinite(addonPrice) || addonPrice < 0) {
-        toast.error(`سعر الإضافة «${a.name.trim()}» غير صالح`);
-        return;
-      }
-    }
-
-    const parsedPrice = Number(price);
-    setLoading(true);
-    const supabase = createClient();
-    try {
-    const updatePayload: Database['public']['Tables']['products']['Update'] = {
-      name: name.trim(),
-      name_en: nameEn.trim() || null,
-      description: description.trim() || null,
-      price: money(parsedPrice, currencyDecimals(currency)),
-      category_id: categoryId || null,
-      is_available: isAvailable,
-      image_url: imageUrl.trim() || null,
-    };
-
-    const processedAddons: { id?: string; name: string; price: number }[] =
-      formAddons
-        .filter((a) => a.name.trim().length > 0)
-        .map((a) => ({
-          id: a.id,
-          name: a.name.trim(),
-          price: money(Number(a.price), currencyDecimals(currency)),
-        }));
-
-    if (editing) {
-      const { data, error } = await supabase
-        .from('products')
-        .update(updatePayload)
-        .eq('id', editing.id)
-        .eq('project_id', projectId)
-        .select('*, product_addons(*)')
-        .single();
-
-      if (error || !data) {
-        toast.error('فشل التحديث');
-        return;
-      }
-
-      // Verify the product still belongs to this project before touching addons
-      const { data: owned } = await supabase
-        .from('products')
-        .select('id')
-        .eq('id', editing.id)
-        .eq('project_id', projectId)
-        .maybeSingle();
-      if (!owned) {
-        toast.error('لا يمكن تعديل هذا المنتج');
-        return;
-      }
-
-      // Upsert addons: update in place (keeps id + is_available), insert new, delete removed
-      const currentAddons = editing.product_addons || [];
-      const keptIds = new Set(
-        processedAddons.filter((a): a is { id: string; name: string; price: number } => !!a.id).map((a) => a.id)
-      );
-      const removedAddons = currentAddons.filter((a) => !keptIds.has(a.id));
-
-      if (removedAddons.length > 0) {
-        const { error: deleteAddonErr } = await supabase
-          .from('product_addons')
-          .delete()
-          .eq('product_id', editing.id)
-          .in('id', removedAddons.map((a) => a.id));
-        if (deleteAddonErr) {
-          console.error('[Products] Failed to delete removed addons:', deleteAddonErr);
-          toast.error('فشل تحديث الإضافات');
-          return;
-        }
-      }
-
-      for (const a of processedAddons) {
-        if (a.id) {
-          const { error: updErr } = await supabase
-            .from('product_addons')
-            .update({ name: a.name, price: a.price })
-            .eq('product_id', editing.id)
-            .eq('id', a.id);
-          if (updErr) {
-            console.error('[Products] Failed to update addon:', updErr);
-            toast.error('فشل تحديث الإضافات');
-            return;
-          }
-        } else {
-          const { error: insErr } = await supabase.from('product_addons').insert({
-            product_id: editing.id,
-            name: a.name,
-            price: a.price,
-            is_available: true,
-          });
-          if (insErr) {
-            console.error('[Products] Failed to insert new addon:', insErr);
-            toast.error('فشل إضافة الإضافات');
-            return;
-          }
-        }
-      }
-
-      const { data: refreshed } = await supabase
-        .from('products')
-        .select('*, product_addons(*)')
-        .eq('id', editing.id)
-        .single();
-
-      if (refreshed) {
-        setProducts((prev) =>
-          prev.map((p) =>
-            p.id === editing.id ? (refreshed as ProductWithAddons) : p
-          )
-        );
-      }
-      toast.success('تم تحديث المنتج');
-      setShowProductForm(false);
-      revalidateMenuCache(projectId);
-    } else {
-      const nextSortOrder = products.length ? Math.max(...products.map((p) => p.sort_order ?? 0)) + 1 : 0;
-      const insertPayload: Database['public']['Tables']['products']['Insert'] = {
-        project_id: projectId,
-        name: name.trim(),
-        name_en: nameEn.trim() || null,
-        description: description.trim() || null,
-        price: money(parsedPrice, currencyDecimals(currency)),
-        category_id: categoryId || null,
-        is_available: isAvailable,
-        image_url: imageUrl.trim() || null,
-        sort_order: nextSortOrder,
-      };
-      const { data, error } = await supabase
-        .from('products')
-        .insert(insertPayload)
-        .select('*')
-        .single();
-
-      if (error || !data) {
-        toast.error('فشل الإضافة');
-        return;
-      }
-
-      // Verify the new product belongs to this project before adding addons
-      const { data: owned } = await supabase
-        .from('products')
-        .select('id')
-        .eq('id', data.id)
-        .eq('project_id', projectId)
-        .maybeSingle();
-      if (!owned) {
-        toast.error('فشل الإضافة');
-        return;
-      }
-
-      if (processedAddons.length > 0) {
-        const { error: insAddonErr } = await supabase.from('product_addons').insert(
-          processedAddons.map((a) => ({
-            product_id: data.id,
-            name: a.name,
-            price: a.price,
-            is_available: true,
-          }))
-        );
-        if (insAddonErr) {
-          console.error('[Products] Failed to insert addons:', insAddonErr);
-          toast.error('أُضيف المنتج لكن فشلت الإضافات');
-        }
-      }
-
-      const { data: withAddons } = await supabase
-        .from('products')
-        .select('*, product_addons(*)')
-        .eq('id', data.id)
-        .single();
-
-      setProducts((prev) => [
-        ...prev,
-        (withAddons ?? { ...data, product_addons: [] }) as ProductWithAddons,
-      ]);
-      toast.success('تمت إضافة المنتج');
-      setShowProductForm(false);
-      revalidateMenuCache(projectId);
-    }
-    } catch {
-      console.error('[Products] saveProduct unexpected error');
-      toast.error('خطأ غير متوقع — حاول مجددًا');
-    } finally {
-      setLoading(false);
-    }
   }
 
   // Delete confirmation state
@@ -940,383 +619,50 @@ export function ProductsClient({
 
       </PullToRefresh>
 
-      {/* ======== PRODUCT FORM MODAL ======== */}
+      {/* ======== PRODUCT FORM MODAL — FIX-C-001: extracted component ======== */}
       {showProductForm && (
-        <Modal
-          title={editing ? 'تعديل منتج' : 'منتج جديد'}
+        <ProductFormModal
+          projectId={projectId}
+          currency={currency}
+          categories={categories}
+          products={products}
+          editing={editing}
           onClose={() => setShowProductForm(false)}
-        >
-          <form onSubmit={saveProduct} className="space-y-5">
-            {/* NAME + NAME EN (2-col) */}
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="field">
-                <label className="label">الاسم بالعربي</label>
-                <input
-                  className={`input ${fieldErrors.name ? 'input-error' : ''}`}
-                  required
-                  maxLength={100}
-                  value={name}
-                  onChange={(e) => {
-                    setName(e.target.value);
-                    if (fieldErrors.name) setFieldErrors((prev) => ({ ...prev, name: undefined }));
-                  }}
-                  onBlur={() => {
-                    const err = validateProduct(name, price);
-                    if (err.name) setFieldErrors((prev) => ({ ...prev, name: err.name }));
-                  }}
-                  placeholder="مثال: قهوة عربية"
-                />
-                {fieldErrors.name && <p className="error-text">{fieldErrors.name}</p>}
-              </div>
-              <div className="field">
-                <label className="label">بالإنجليزي</label>
-                <input
-                  className="input"
-                  dir="ltr"
-                  maxLength={100}
-                  value={nameEn}
-                  onChange={(e) => setNameEn(e.target.value)}
-                  placeholder="Arabic Coffee"
-                />
-              </div>
-            </div>
-
-            {/* DESCRIPTION */}
-            <div className="field">
-              <label className="label">الوصف</label>
-              <textarea
-                className="textarea"
-                rows={3}
-                maxLength={500}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="وصف مختصر للمنتج يظهر للعملاء في القائمة"
-              />
-            </div>
-
-            {/* PRICE + CATEGORY (2-col) */}
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="field">
-                <label className="label">
-                  السعر <span className="text-[var(--color-text-muted)]">({currency})</span>
-                </label>
-                <div className="relative">
-                  <input
-                    className={`input ${fieldErrors.price ? 'input-error' : ''}`}
-                    type="number"
-                    inputMode="decimal"
-                    step="0.001"
-                    min="0"
-                    required
-                    dir="ltr"
-                    value={price}
-                    onChange={(e) => {
-                      setPrice(e.target.value);
-                      if (fieldErrors.price) setFieldErrors((prev) => ({ ...prev, price: undefined }));
-                    }}
-                    onBlur={() => {
-                      const err = validateProduct(name, price);
-                      if (err.price) setFieldErrors((prev) => ({ ...prev, price: err.price }));
-                    }}
-                    placeholder={`0.${'0'.repeat(currencyDecimals(currency))}`}
-                  />
-                </div>
-                {fieldErrors.price && <p className="error-text">{fieldErrors.price}</p>}
-              </div>
-
-              {/* Category select with inline quick-add */}
-              <div className="field">
-                <label className="label">التصنيف</label>
-                <div className="flex gap-1">
-                  <select
-                    className="select flex-1"
-                    value={categoryId}
-                    onChange={(e) => setCategoryId(e.target.value)}
-                  >
-                    <option value="">بدون تصنيف</option>
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => { setShowQuickCat(true); setQuickCatName(''); }}
-                    className="btn btn-secondary btn-sm min-h-[44px] min-w-[44px] flex items-center justify-center"
-                    title="تصنيف جديد"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </button>
-                </div>
-                {/* Inline quick-add category */}
-                {showQuickCat && (
-                  <div className="mt-2 flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-primary)] bg-[var(--color-primary-tint)] p-2">
-                    <input
-                      className="input flex-1 border-0 bg-white text-sm"
-                      placeholder="اسم التصنيف الجديد"
-                      maxLength={50}
-                      value={quickCatName}
-                      onChange={(e) => setQuickCatName(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addQuickCategory(); } }}
-                      autoFocus
-                    />
-                    <button
-                      type="button"
-                      onClick={addQuickCategory}
-                      disabled={loading || !quickCatName.trim()}
-                      className="btn btn-primary btn-sm whitespace-nowrap"
-                    >
-                      {loading ? '…' : 'إضافة'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowQuickCat(false)}
-                      aria-label="إلغاء إضافة تصنيف"
-                      className="btn btn-ghost btn-sm"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* ======== IMAGE UPLOAD — FIX-C-001: extracted component ======== */}
-            <ImageUploader
-              projectId={projectId}
-              imageUrl={imageUrl}
-              onImageUrlChange={setImageUrl}
-            />
-
-            {/* ======== ADDONS ======== */}
-            <div className="rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg)] p-3">
-              <div className="mb-3 flex items-center justify-between">
-                <label className="label mb-0">الإضافات <span className="text-[var(--color-text-muted)]">(اختياري)</span></label>
-                <button
-                  type="button"
-                  onClick={addFormAddon}
-                  className="btn btn-ghost btn-sm gap-1"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  إضافة
-                </button>
-              </div>
-
-              {formAddons.length === 0 && (
-                <p className="rounded-[var(--radius-md)] bg-[var(--color-surface)] px-3 py-4 text-center text-xs text-[var(--color-text-muted)]">
-                  ما فيه إضافات. أضف إضافات مثل {`{حليب، صوص، جبنة إضافية}`}
-                </p>
-              )}
-
-              {formAddons.map((addon, idx) => (
-                <div
-                  key={addon.key}
-                  className="mb-2 flex items-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-surface)] p-2"
-                >
-                  <input
-                    className="input flex-1 text-sm"
-                    placeholder="اسم الإضافة"
-                    maxLength={50}
-                    value={addon.name}
-                    onChange={(e) => updateFormAddon(addon.key, 'name', e.target.value)}
-                  />
-                  <div className="relative w-24 shrink-0">
-                    <input
-                      className="input w-full text-sm"
-                      type="number"
-                      step="0.001"
-                      min="0"
-                      dir="ltr"
-                      inputMode="decimal"
-                      placeholder={`0.${'0'.repeat(currencyDecimals(currency))}`}
-                      value={addon.price}
-                      onChange={(e) => updateFormAddon(addon.key, 'price', e.target.value)}
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => removeFormAddon(addon.key)}
-                    aria-label={`حذف الإضافة ${addon.name || ''}`.trim()}
-                    className="btn btn-ghost btn-sm shrink-0 text-[var(--color-danger)]"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            {/* ======== AVAILABLE TOGGLE ======== */}
-            <div className="flex items-center gap-3">
-              <Toggle
-                id="product-available"
-                checked={isAvailable}
-                onChange={setIsAvailable}
-                aria-label="المنتج متاح للطلب"
-              />
-              <label htmlFor="product-available" className="cursor-pointer text-sm font-semibold">
-                المنتج متاح للطلب
-              </label>
-            </div>
-
-            {/* ======== BUTTONS ======== */}
-            <div className="flex gap-2">
-              <Button type="submit" block disabled={loading}>
-                {loading
-                  ? 'جاري الحفظ…'
-                  : editing
-                  ? 'حفظ التغييرات'
-                  : 'إضافة المنتج'}
-              </Button>
-              {editing && (
-                <>
-                  <Button
-                    type="button"
-                    variant="danger"
-                    onClick={() => {
-                      setShowProductForm(false);
-                      setConfirmDelete(editing);
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    حذف
-                  </Button>
-                </>
-              )}
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => setShowProductForm(false)}
-              >
-                إلغاء
-              </Button>
-            </div>
-          </form>
-        </Modal>
+          onSaved={(product, editingId) => {
+            // FIX-C-001: تحديث القائمة من النموذج المستخرج
+            setProducts((prev) =>
+              editingId
+                ? prev.map((p) => (p.id === editingId ? product : p))
+                : [...prev, product]
+            );
+          }}
+          onRequestDelete={(p) => {
+            setShowProductForm(false);
+            setConfirmDelete(p);
+          }}
+        />
       )}
 
-      {/* ======== CATEGORY MODAL ======== */}
-      {showCategoryForm && (
-        <Modal title="تصنيف جديد" onClose={() => setShowCategoryForm(false)}>
-          <form onSubmit={saveCategory} className="space-y-4">
-            <div className="field">
-              <label className="label">اسم التصنيف</label>
-              <input
-                className={`input ${catError ? 'input-error' : ''}`}
-                required
-                maxLength={50}
-                value={catName}
-                onChange={(e) => {
-                  setCatName(e.target.value);
-                  if (catError) setCatError('');
-                }}
-                onBlur={() => {
-                  if (!catName.trim()) setCatError('اسم التصنيف مطلوب');
-                }}
-                placeholder="مثال: مشروبات ساخنة"
-                autoFocus
-              />
-              {catError && <p className="error-text">{catError}</p>}
-            </div>
-            <div className="flex gap-2">
-              <Button type="submit" block disabled={loading || !catName.trim()}>
-                {loading ? 'جاري…' : 'إنشاء'}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => setShowCategoryForm(false)}
-              >
-                إلغاء
-              </Button>
-            </div>
-          </form>
-        </Modal>
-      )}
+      {/* ======== CATEGORY MODALS — FIX-C-001: extracted component ======== */}
+      <CategoryManager
+        showCategoryForm={showCategoryForm}
+        catName={catName}
+        setCatName={setCatName}
+        catError={catError}
+        setCatError={setCatError}
+        saveCategory={saveCategory}
+        loading={loading}
+        onCloseCreate={() => setShowCategoryForm(false)}
+        editingCat={editingCat}
+        editCatName={editCatName}
+        setEditCatName={setEditCatName}
+        updateCategory={updateCategory}
+        onCloseEdit={() => setEditingCat(null)}
+        confirmDeleteCat={confirmDeleteCat}
+        deleteCategory={deleteCategory}
+        onCloseDelete={() => setConfirmDeleteCat(null)}
+      />
 
-      {confirmDelete && (
-        <Modal
-          title="تأكيد الحذف"
-          onClose={() => setConfirmDelete(null)}
-        >
-          <div className="text-center">
-            <div className="mb-3 mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-danger-tint)]">
-              <Trash2 className="h-6 w-6 text-[var(--color-danger)]" />
-            </div>
-            <p className="mb-1 text-sm font-bold">{confirmDelete.name}</p>
-            <p className="mb-5 text-xs text-[var(--color-text-secondary)]">
-              هل أنت متأكد؟ هذا الإجراء لا يمكن التراجع عنه.
-            </p>
-            <div className="flex gap-2">
-              <Button
-                variant="danger"
-                block
-                onClick={() => {
-                  const p = confirmDelete;
-                  setConfirmDelete(null);
-                  deleteProduct(p.id);
-                }}
-              >
-                نعم، احذف
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => setConfirmDelete(null)}
-              >
-                إلغاء
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {editingCat && (
-        <Modal title="تعديل التصنيف" onClose={() => setEditingCat(null)}>
-          <form onSubmit={(e) => { e.preventDefault(); updateCategory(); }} className="space-y-4">
-            <div className="field">
-              <label className="label">اسم التصنيف</label>
-              <input
-                className="input"
-                required
-                maxLength={50}
-                value={editCatName}
-                onChange={(e) => setEditCatName(e.target.value)}
-                autoFocus
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button type="submit" block disabled={loading || !editCatName.trim()}>
-                {loading ? 'جاري…' : 'حفظ'}
-              </Button>
-              <Button type="button" variant="secondary" onClick={() => setEditingCat(null)}>
-                إلغاء
-              </Button>
-            </div>
-          </form>
-        </Modal>
-      )}
-
-      {confirmDeleteCat && (
-        <Modal title="حذف التصنيف" onClose={() => setConfirmDeleteCat(null)}>
-          <div className="text-center">
-            <div className="mb-3 mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-danger-tint)]">
-              <Trash2 className="h-6 w-6 text-[var(--color-danger)]" />
-            </div>
-            <p className="mb-1 text-sm font-bold">{confirmDeleteCat.name}</p>
-            <p className="mb-5 text-xs text-[var(--color-text-secondary)]">
-              هل أنت متأكد؟ المنتجات المرتبطة بهذا التصنيف ستبقى بدون تصنيف.
-            </p>
-            <div className="flex gap-2">
-              <Button variant="danger" block disabled={loading} onClick={deleteCategory}>
-                {loading ? 'جاري…' : 'نعم، احذف'}
-              </Button>
-              <Button variant="secondary" onClick={() => setConfirmDeleteCat(null)}>
-                إلغاء
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
       {confirmBulkDelete && (
         <Modal title="حذف المنتجات المحددة" onClose={() => setConfirmBulkDelete(false)}>
           <div className="text-center">
