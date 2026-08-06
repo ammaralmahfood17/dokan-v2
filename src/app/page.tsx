@@ -8,6 +8,14 @@ import {
   Zap,
 } from 'lucide-react';
 
+// سنة الحقوق بتوقيت البحرين (خادم UTC قد يعرض 2026 بينما البحرين في 2027
+// عند منتصف ليلة 31 ديسمبر — Intl مرة واحدة لا إعادة حساب في كل render)
+const COPYRIGHT_YEAR = new Intl.DateTimeFormat('en-US', {
+  year: 'numeric',
+  timeZone: 'Asia/Bahrain',
+}).format(new Date());
+
+
 const FEATURES = [
   {
     icon: QrCode,
@@ -106,7 +114,7 @@ export default function LandingPage() {
       </main>
 
       <footer className="border-t border-[var(--color-border)] py-6 text-center text-xs text-[var(--color-text-muted)]">
-        © {new Date().getFullYear()} دكان — منصة طلبات للمؤسسات الصغيرة
+        © {COPYRIGHT_YEAR} دكان — منصة طلبات للمؤسسات الصغيرة
       </footer>
     </div>
   );
