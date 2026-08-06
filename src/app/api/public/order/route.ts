@@ -51,14 +51,24 @@ export async function POST(request: NextRequest) {
 
     const supabase = createAdminClient();
 
-    // 1. Validate project
+    // 1. Validate project — HARD subscription cutoff via the SECURITY
+    //    DEFINER RPC (reads subscription_expires_at exactly; anon can't
+    //    select that column and pg_cron's daily is_active flip would leak
+    //    up to 24h of free orders after expiry).
+    const { data: isAvailable } = await supabase.rpc('is_project_publicly_available', {
+      p_slug: projectSlug,
+    });
+    if (!isAvailable) {
+      return NextResponse.json({ error: 'المتجر غير متاح' }, { status: 404 });
+    }
+
     const { data: project, error: projectErr } = await supabase
       .from('projects')
-      .select('id, is_active, currency')
+      .select('id, currency')
       .eq('slug', projectSlug)
       .single();
 
-    if (projectErr || !project || !project.is_active) {
+    if (projectErr || !project) {
       return NextResponse.json({ error: 'المتجر غير متاح' }, { status: 404 });
     }
 

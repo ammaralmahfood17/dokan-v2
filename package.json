@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --max-warnings 0",
-    "db:types": "supabase gen types typescript --local > src/lib/database.types.ts",
+    "db:types": "supabase gen types typescript --linked --schema public > src/lib/database.types.ts",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
   },

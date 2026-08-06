@@ -735,6 +735,10 @@ export type Database = {
         Returns: boolean
       }
       is_project_owner: { Args: { p_project_id: string }; Returns: boolean }
+      is_project_publicly_available: {
+        Args: { p_slug: string }
+        Returns: boolean
+      }
       is_super_admin: { Args: never; Returns: boolean }
       next_order_number: {
         Args: { p_caller_user_id?: string; p_project_id: string }
