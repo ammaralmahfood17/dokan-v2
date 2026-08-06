@@ -63,7 +63,7 @@ export default async function DashboardLayout({
       {/* Content */}
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Mobile header */}
-        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface)]/95 backdrop-blur-md px-4 py-3 lg:hidden print:hidden">
+        <header className="sticky top-0 z-[var(--z-sticky)] flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface)]/95 backdrop-blur-md px-4 py-3 lg:hidden print:hidden">
           <div className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-[8px] bg-[var(--color-primary)] text-xs font-bold text-white shadow-sm">
               {ctx.project.name.slice(0, 1)}

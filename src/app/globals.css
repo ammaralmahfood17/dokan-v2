@@ -178,6 +178,12 @@
 .btn-secondary:hover:not(:disabled) {
   background: var(--color-surface-sunken);
 }
+/* FIX-S-001: حالة active للأزرار الثانوية والشفافة */
+.btn-secondary:active:not(:disabled),
+.btn-ghost:active:not(:disabled) {
+  background: var(--color-surface-sunken);
+  transform: translateY(1px);
+}
 
 .btn-ghost {
   background: transparent; color: var(--color-text-secondary);
@@ -288,8 +294,9 @@
    Section title — tracking instead of uppercase (Arabic-safe, spec §6.6)
    ========================================================================== */
 .section-title {
+  /* FIX-T-001: تخفيف التتبع على العربي (0.03em → 0.01em) */
   font-size: 0.75rem; font-weight: 600;
-  letter-spacing: 0.03em; color: var(--color-text-secondary); margin-bottom: 0.75rem;
+  letter-spacing: 0.01em; color: var(--color-text-secondary); margin-bottom: 0.75rem;
 }
 
 /* ==========================================================================

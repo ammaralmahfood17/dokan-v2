@@ -408,7 +408,7 @@ export function PosClient({
       </div>
 
       {/* ── Mobile: floating total bar ───────────────────────────────── */}
-      <div data-pos-floating-bar className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-border)] bg-[var(--color-surface)]/95 p-3 pb-safe-bottom backdrop-blur-md md:hidden">
+      <div data-pos-floating-bar className="fixed inset-x-0 bottom-0 z-[var(--z-drawer)] border-t border-[var(--color-border)] bg-[var(--color-surface)]/95 p-3 pb-safe-bottom backdrop-blur-md md:hidden">
         <button
           type="button"
           onClick={() => setCartOpen(true)}
@@ -430,7 +430,7 @@ export function PosClient({
       {/* ── Mobile: cart bottom sheet ────────────────────────────────── */}
       {cartOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 md:hidden"
+          className="fixed inset-0 z-[var(--z-modal)] flex items-end justify-center bg-black/40 md:hidden"
           role="dialog"
           aria-modal="true"
           aria-label="سلة الطلب"
@@ -473,7 +473,7 @@ export function PosClient({
 
       {/* ── Order-confirmed banner: the order reached the kitchen ─────── */}
       {lastConfirmed && (
-        <div className="fixed inset-x-0 top-3 z-50 flex justify-center px-4">
+        <div className="fixed inset-x-0 top-3 z-[var(--z-modal)] flex justify-center px-4">
           <div className="flex min-h-[52px] w-full max-w-md items-center justify-between gap-3 rounded-[10px] bg-[var(--color-success)] px-4 py-2.5 text-white shadow-lg">
             <div className="flex min-w-0 items-center gap-2.5">
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/20 text-sm font-bold">
@@ -501,7 +501,7 @@ export function PosClient({
       {/* ── Addon picker ─────────────────────────────────────────────── */}
       {picker && (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4"
+          className="fixed inset-0 z-[var(--z-modal)] flex items-end justify-center bg-black/40 sm:items-center sm:p-4"
           role="dialog"
           aria-modal="true"
           aria-label={`إضافات — ${picker.name}`}

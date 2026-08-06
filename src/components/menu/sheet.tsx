@@ -97,7 +97,7 @@ export function Sheet({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4"
+      className="fixed inset-0 z-[var(--z-modal)] flex items-end justify-center bg-black/40 sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-label={title}
@@ -108,7 +108,7 @@ export function Sheet({
         className="max-h-dvh w-full max-w-lg overflow-y-auto rounded-t-[12px] bg-[var(--color-surface)] pb-safe-bottom shadow-xl transition-transform duration-300 sm:max-h-[85vh] sm:rounded-[12px] animate-slide-up"
       >
         {/* Drag handle + header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3">
+        <div className="sticky top-0 z-[var(--z-sticky)] flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3">
           <div className="flex items-center gap-2">
             {/* Drag handle indicator */}
             <div

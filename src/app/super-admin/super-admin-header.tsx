@@ -27,7 +27,7 @@ export function SuperAdminHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
+    <header className="sticky top-0 z-[var(--z-sticky)] border-b border-[var(--color-border)] bg-[var(--color-surface)]">
       <div className="flex items-center justify-between gap-2 px-4 py-3">
         <div className="flex min-w-0 items-center gap-3">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--color-danger)] text-xs font-bold text-white">

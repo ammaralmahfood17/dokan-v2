@@ -32,7 +32,7 @@ export function InstallPrompt() {
     <div
       role="dialog"
       aria-label="تثبيت التطبيق"
-      className="fixed bottom-20 inset-x-0 z-40 mx-auto flex w-[calc(100%-2rem)] max-w-md items-center gap-3 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-xl"
+      className="fixed bottom-20 inset-x-0 z-[var(--z-drawer)] mx-auto flex w-[calc(100%-2rem)] max-w-md items-center gap-3 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-xl"
     >
       <div className="min-w-0 flex-1">
         <p className="text-[13px] font-bold">ثبّت تطبيق دكان</p>

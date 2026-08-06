@@ -112,7 +112,7 @@ function SubscriptionCard({
 
       {confirming && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center bg-black/60 p-4"
           role="dialog"
           aria-modal="true"
           aria-label="تأكيد التجديد"
@@ -321,7 +321,7 @@ export function SettingsClient({
 
       {confirmDeactivate && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center bg-black/60 p-4"
           role="dialog"
           aria-modal="true"
           aria-label="إيقاف المتجر"

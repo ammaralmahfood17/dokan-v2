@@ -322,6 +322,7 @@ export function TablesClient({
               <input
                 className="input"
                 type="number"
+                inputMode="numeric"
                 min={1}
                 max={999}
                 required

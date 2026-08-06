@@ -85,7 +85,7 @@ export function Modal({ title, children, onClose }: ModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 sm:items-center sm:p-4"
+      className="fixed inset-0 z-[var(--z-modal)] flex items-start justify-center bg-black/40 sm:items-center sm:p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}

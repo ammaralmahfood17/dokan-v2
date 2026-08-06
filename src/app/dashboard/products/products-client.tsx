@@ -1005,7 +1005,7 @@ export function ProductsClient({
 
           {/* Bulk action bar */}
           {bulkMode && (
-            <div className="sticky bottom-3 z-30 mt-4 flex items-center justify-between gap-2 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] p-2 shadow-lg">
+            <div className="sticky bottom-3 z-[var(--z-sticky)] mt-4 flex items-center justify-between gap-2 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] p-2 shadow-lg">
               <button
                 type="button"
                 onClick={toggleSelectAllVisible}
@@ -1119,11 +1119,11 @@ export function ProductsClient({
                   <input
                     className={`input ${fieldErrors.price ? 'input-error' : ''}`}
                     type="number"
+                    inputMode="decimal"
                     step="0.001"
                     min="0"
                     required
                     dir="ltr"
-                    inputMode="decimal"
                     value={price}
                     onChange={(e) => {
                       setPrice(e.target.value);

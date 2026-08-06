@@ -374,7 +374,7 @@ export function MenuClient({
       <OfflineBanner />
       {/* HEADER — brand mark + TABLE chip */}
       <header
-        className="sticky top-0 z-20 border-b border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3.5"
+        className="sticky top-0 z-[var(--z-sticky)] border-b border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3.5"
       >
         <div className="mx-auto flex max-w-[480px] items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2.5">
@@ -420,8 +420,16 @@ export function MenuClient({
 
       {/* CATEGORIES — pills, active = primary (mockup) */}
       {categories.length > 0 && (
-        <div className="sticky top-[57px] z-10 border-b border-[var(--color-border)] bg-[var(--color-bg)]">
-          <div className="mx-auto flex max-w-[480px] gap-2 overflow-x-auto px-3 pb-1 pt-1" style={{ scrollbarWidth: 'none' }}>
+        <div className="sticky top-[57px] z-[var(--z-sticky)] border-b border-[var(--color-border)] bg-[var(--color-bg)]">
+          {/* FIX-R-003: fade على الحواف يشير لوجود محتوى إضافي (scrollbar مخفي) */}
+          <div
+            className="mx-auto flex max-w-[480px] gap-2 overflow-x-auto px-3 pb-1 pt-1"
+            style={{
+              scrollbarWidth: 'none',
+              maskImage: 'linear-gradient(to left, transparent, black 24px)',
+              WebkitMaskImage: 'linear-gradient(to left, transparent, black 24px)',
+            }}
+          >
             <button
               type="button"
               onClick={() => handleCategoryChange('all')}
@@ -545,7 +553,7 @@ export function MenuClient({
 
       {/* CART FLOATING BAR — ink bar (mockup), primary accents */}
       {cartBadge && (
-        <div className="fixed inset-x-0 bottom-0 z-30 p-3 pb-safe-bottom">
+        <div className="fixed inset-x-0 bottom-0 z-[var(--z-sticky)] p-3 pb-safe-bottom">
           <div className="mx-auto w-full max-w-[480px] px-1 pb-1">
             <button
               type="button"

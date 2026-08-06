@@ -42,7 +42,7 @@ export function DashboardSkeleton() {
       {/* Main content skeleton */}
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Mobile header skeleton */}
-        <div className="sticky top-0 z-30 flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 lg:hidden">
+        <div className="sticky top-0 z-[var(--z-sticky)] flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 lg:hidden">
           <div className="flex items-center gap-2">
             <Skeleton className="h-8 w-8 rounded-[8px]" />
             <Skeleton className="h-4 w-20" />
@@ -73,7 +73,7 @@ export function DashboardSkeleton() {
         </div>
 
         {/* Mobile nav skeleton */}
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-border)] bg-[var(--color-surface)] lg:hidden">
+        <div className="fixed inset-x-0 bottom-0 z-[var(--z-drawer)] border-t border-[var(--color-border)] bg-[var(--color-surface)] lg:hidden">
           <div className="mx-auto flex max-w-lg items-stretch justify-between px-4 py-2">
             {Array.from({ length: 5 }).map((_, i) => (
               <Skeleton key={i} className="h-10 w-10 rounded-lg" />
