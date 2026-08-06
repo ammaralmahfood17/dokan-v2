@@ -317,7 +317,7 @@ export function PosClient({
         {/* ── Left: product grid ─────────────────────────────────────── */}
         <div className="min-w-0">
           {/* Mobile order type — desktop keeps it in the cart header */}
-          <div className="mb-3 flex gap-1 rounded-[8px] bg-[var(--color-surface-sunken)] p-1 md:hidden" role="tablist" aria-label="نوع الطلب">
+          <div className="mb-3 flex gap-1 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] p-1 md:hidden" role="tablist" aria-label="نوع الطلب">
             {ORDER_TYPES.map(([value, label]) => (
               <button
                 key={value}
@@ -415,7 +415,7 @@ export function PosClient({
           disabled={submitting}
           aria-haspopup="dialog"
           aria-label="عرض السلة"
-          className="flex min-h-[48px] w-full items-center justify-between gap-3 rounded-[8px] bg-[var(--color-primary)] px-4 text-white transition-colors active:scale-[0.98] hover:bg-[var(--color-primary-hover)]"
+          className="flex min-h-[48px] w-full items-center justify-between gap-3 rounded-[var(--radius-md)] bg-[var(--color-primary)] px-4 text-white transition-colors active:scale-[0.98] hover:bg-[var(--color-primary-hover)]"
         >
           <span className="flex items-center gap-2 text-sm font-semibold">
             <ShoppingBag className="h-4 w-4" />
@@ -531,7 +531,7 @@ export function PosClient({
                 .map((a) => (
                   <label
                     key={a.id}
-                    className="flex items-center justify-between gap-2 rounded-[8px] border border-[var(--color-border)] px-3 py-2 text-sm"
+                    className="flex items-center justify-between gap-2 rounded-[var(--radius-md)] border border-[var(--color-border)] px-3 py-2 text-sm"
                   >
                     <span className="flex items-center gap-2">
                       <input

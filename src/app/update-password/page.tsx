@@ -110,7 +110,7 @@ export default function UpdatePasswordPage() {
     <div className="flex min-h-dvh items-center justify-center bg-[var(--color-bg)] px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-[8px] bg-[var(--color-primary)] text-base font-bold text-white">
+          <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-primary)] text-base font-bold text-white">
             <Lock className="h-5 w-5" />
           </div>
           <h1 className="text-xl font-bold">تعيين كلمة مرور جديدة</h1>
@@ -121,7 +121,7 @@ export default function UpdatePasswordPage() {
 
         <form onSubmit={onSubmit} className="card card-body space-y-4">
           {error && (
-            <div className="rounded-[8px] border border-[var(--color-danger)]/20 bg-[var(--color-danger-tint)] px-3 py-2 text-xs text-[var(--color-danger)]">
+            <div className="rounded-[var(--radius-md)] border border-[var(--color-danger)]/20 bg-[var(--color-danger-tint)] px-3 py-2 text-xs text-[var(--color-danger)]">
               {error}
             </div>
           )}

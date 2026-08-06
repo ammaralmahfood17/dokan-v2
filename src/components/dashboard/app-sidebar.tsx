@@ -92,7 +92,7 @@ export function AppSidebar({
         )}
       >
         <div className={cn(
-          'flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] transition-all duration-200',
+          'flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-md)] transition-all duration-200',
           active
             ? 'bg-[var(--color-primary-tint-strong)] text-[var(--color-primary)]'
             : 'bg-transparent text-[var(--color-text-muted)] group-hover:text-[var(--color-text)]'
@@ -161,7 +161,7 @@ export function AppSidebar({
           <button
             type="button"
             onClick={() => setIsOpen(false)}
-            className="flex h-11 w-11 items-center justify-center rounded-[8px] hover:bg-[var(--color-bg)] lg:hidden"
+            className="flex h-11 w-11 items-center justify-center rounded-[var(--radius-md)] hover:bg-[var(--color-bg)] lg:hidden"
             aria-label="إغلاق"
           >
             <X className="h-4 w-4 text-[var(--color-text-muted)]" />
@@ -183,7 +183,7 @@ export function AppSidebar({
             onClick={logout}
             className="flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-[13px] font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-danger-tint)] hover:text-[var(--color-danger)] transition-all duration-200"
           >
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px]">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-md)]">
               <LogOut className="h-4 w-4" />
             </div>
             <span>تسجيل الخروج</span>

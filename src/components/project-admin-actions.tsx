@@ -215,7 +215,7 @@ export function ProjectRowActions({
       {deleteOpen && (
         <Modal onClose={() => setDeleteOpen(false)} title="حذف نهائي — لا رجعة">
           <div className="space-y-4">
-            <div className="rounded-[8px] border border-[var(--color-danger)]/30 bg-[var(--color-danger-tint)] p-3 text-xs leading-relaxed text-[var(--color-danger)]">
+            <div className="rounded-[var(--radius-md)] border border-[var(--color-danger)]/30 bg-[var(--color-danger-tint)] p-3 text-xs leading-relaxed text-[var(--color-danger)]">
               ⚠️ الحذف النهائي <span className="font-bold">يمسح المتجر وكل بياناته</span> من
               القاعدة نهائيًا (الطلبات، المنتجات، الطاولات، الحسابات). هذا إجراء
               تنظيف بيانات، <span className="font-bold">ليس</span> لإيقاف خدمة عادي —

@@ -29,7 +29,7 @@ export function DashboardSkeleton() {
       {/* Sidebar skeleton (hidden on mobile) */}
       <div className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col gap-4 border-l border-[var(--color-border)] p-4 lg:flex">
         <div className="flex items-center gap-2">
-          <Skeleton className="h-8 w-8 rounded-[8px]" />
+          <Skeleton className="h-8 w-8 rounded-[var(--radius-md)]" />
           <Skeleton className="h-4 w-24" />
         </div>
         <div className="mt-4 flex flex-col gap-2">
@@ -44,7 +44,7 @@ export function DashboardSkeleton() {
         {/* Mobile header skeleton */}
         <div className="sticky top-0 z-[var(--z-sticky)] flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 lg:hidden">
           <div className="flex items-center gap-2">
-            <Skeleton className="h-8 w-8 rounded-[8px]" />
+            <Skeleton className="h-8 w-8 rounded-[var(--radius-md)]" />
             <Skeleton className="h-4 w-20" />
           </div>
           <Skeleton className="h-3 w-10" />
@@ -94,8 +94,8 @@ export function MenuSkeleton() {
     <div className="mx-auto min-h-dvh max-w-lg bg-[var(--color-bg)] px-4 pb-24 pt-4">
       {/* Brand header */}
       <div className="mb-5 flex items-center justify-between">
-        <div className="h-9 w-9 animate-pulse rounded-[8px] bg-[var(--color-surface-sunken)]" />
-        <div className="h-6 w-24 animate-pulse rounded-[8px] bg-[var(--color-surface-sunken)]" />
+        <div className="h-9 w-9 animate-pulse rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)]" />
+        <div className="h-6 w-24 animate-pulse rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)]" />
       </div>
       {/* Category pills */}
       <div className="mb-5 flex gap-2 overflow-hidden">
@@ -109,7 +109,7 @@ export function MenuSkeleton() {
       {/* Product rows */}
       {[0, 1, 2, 3, 4, 5].map((i) => (
         <div key={i} className="flex items-center gap-3 border-b border-[var(--color-border)] py-3">
-          <div className="h-[72px] w-[72px] shrink-0 animate-pulse rounded-[8px] bg-[var(--color-surface-sunken)]" />
+          <div className="h-[72px] w-[72px] shrink-0 animate-pulse rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)]" />
           <div className="flex-1 space-y-2">
             <div className="h-4 w-2/3 animate-pulse rounded bg-[var(--color-surface-sunken)]" />
             <div className="h-3 w-1/2 animate-pulse rounded bg-[var(--color-surface-sunken)]" />

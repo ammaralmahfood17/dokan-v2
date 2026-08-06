@@ -32,10 +32,10 @@ export function CartLineItem({
         <img
           src={thumbnail}
           alt=""
-          className="mt-0.5 h-11 w-11 shrink-0 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface-sunken)] object-cover"
+          className="mt-0.5 h-11 w-11 shrink-0 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface-sunken)] object-cover"
         />
       ) : (
-        <span className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-[8px] bg-[var(--color-surface-sunken)] text-[var(--color-text-secondary)]">
+        <span className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] text-[var(--color-text-secondary)]">
           🍽️
         </span>
       )}
@@ -58,7 +58,7 @@ export function CartLineItem({
         </div>
 
         <div className="mt-2 flex items-center justify-between gap-2">
-          <div className="flex items-center rounded-[8px] border border-[var(--color-border)]">
+          <div className="flex items-center rounded-[var(--radius-md)] border border-[var(--color-border)]">
             <button
               type="button"
               onClick={onDecrement}
@@ -102,7 +102,7 @@ export function CartLineItem({
             type="button"
             onClick={onRemove}
             aria-label={`حذف ${line.productName} من السلة`}
-            className="flex h-11 w-11 items-center justify-center rounded-[8px] text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-danger-tint)] hover:text-[var(--color-danger)]"
+            className="flex h-11 w-11 items-center justify-center rounded-[var(--radius-md)] text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-danger-tint)] hover:text-[var(--color-danger)]"
           >
             <Trash2 className="h-4 w-4" />
           </button>

@@ -34,20 +34,20 @@ function PosLoader() {
       </div>
       <div className="md:grid md:grid-cols-[minmax(0,1fr)_380px] md:items-start md:gap-4">
         <div className="min-w-0">
-          <div className="mb-3 flex gap-1 rounded-[8px] bg-[var(--color-surface-sunken)] p-1">
+          <div className="mb-3 flex gap-1 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] p-1">
             {[0, 1, 2].map((i) => (
               <div key={i} className="h-11 flex-1 rounded-[6px] bg-[var(--color-surface)]" />
             ))}
           </div>
           <div className="mb-3 flex gap-2">
-            <div className="h-11 flex-1 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)]" />
-            <div className="h-11 flex-1 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)]" />
+            <div className="h-11 flex-1 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)]" />
+            <div className="h-11 flex-1 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)]" />
           </div>
           <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3">
             {Array.from({ length: 8 }).map((_, i) => (
               <div
                 key={i}
-                className="overflow-hidden rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)]"
+                className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)]"
               >
                 <div className="aspect-[4/3] w-full animate-pulse bg-[var(--color-surface-sunken)]" />
                 <div className="space-y-2 p-2.5">
@@ -64,12 +64,12 @@ function PosLoader() {
             <div className="mt-6 space-y-4">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="space-y-2">
-                  <div className="h-11 w-full animate-pulse rounded-[8px] bg-[var(--color-surface-sunken)]" />
+                  <div className="h-11 w-full animate-pulse rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)]" />
                   <div className="h-3 w-2/3 animate-pulse rounded bg-[var(--color-border)]" />
                 </div>
               ))}
             </div>
-            <div className="mt-8 h-11 w-full animate-pulse rounded-[8px] bg-[var(--color-primary-tint)]" />
+            <div className="mt-8 h-11 w-full animate-pulse rounded-[var(--radius-md)] bg-[var(--color-primary-tint)]" />
           </div>
         </aside>
       </div>

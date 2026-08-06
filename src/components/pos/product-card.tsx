@@ -26,7 +26,7 @@ export function ProductCard({
       data-pos-card
       aria-label={`${product.name} — ${formatMoney(Number(product.price), currency)}`}
       className={cn(
-        'group flex w-full flex-col overflow-hidden rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)] text-start',
+        'group flex w-full flex-col overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] text-start',
         'transition-[transform,box-shadow,border-color] duration-150 will-change-transform',
         'hover:-translate-y-px hover:shadow-sm hover:border-[var(--color-text-secondary)]',
         'active:scale-[0.97]',

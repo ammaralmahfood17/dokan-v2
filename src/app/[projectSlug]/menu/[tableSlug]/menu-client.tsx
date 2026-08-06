@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Minus, Plus, ShoppingBag, X, Check, Bell, FileText, Search, Languages } from 'lucide-react';
+import { ShoppingBag, X, Check, Bell, FileText, Search, Languages } from 'lucide-react';
 import { formatMoney, money, currencyDecimals } from '@/lib/utils';
 import type {
   CartLine,
@@ -17,6 +17,9 @@ import { toast } from 'sonner';
 // D2: extracted sections — bottom sheet + product row now live in
 // src/components/menu/ (menu-client stays the orchestrator).
 import { Sheet } from '@/components/menu/sheet';
+// FIX-C-003: الأسطح المستخرجة — cart + success state
+import { CartSheet } from '@/components/menu/cart-sheet';
+import { OrderSuccessState } from '@/components/menu/order-success-state';
 import { MenuProductRow } from '@/components/menu/product-card';
 // D7: offline indicator on the customer-facing menu (banner, not blocker).
 import { OfflineBanner } from '@/components/ui/offline-banner';
@@ -292,59 +295,17 @@ export function MenuClient({
     }
   }
 
-  // ======== ORDER DONE SCREEN (full-screen calm success) ========
+  // ======== ORDER DONE SCREEN (FIX-C-003: extracted component) ========
   if (orderDone) {
     return (
-      <div className="flex min-h-dvh flex-col items-center justify-center bg-[var(--color-bg)] px-6 text-center page-enter">
-        <div
-          className="mb-5 flex h-16 w-16 items-center justify-center rounded-full text-white"
-          style={{ background: "var(--color-primary)" }}
-        >
-          <Check className="h-8 w-8" />
-        </div>
-        <h1 className="text-xl font-bold">تم استلام طلبك</h1>
-        <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-          رقم الطلب{' '}
-          <span dir="ltr" className="font-bold">
-            order-{orderDone.orderNumber}
-          </span>
-        </p>
-        <p className="mt-2 text-lg font-bold">
-          {formatMoney(orderDone.totalAmount, currency)}
-        </p>
-        <p className="mt-4 text-xs text-[var(--color-text-muted)]">
-          يمكنك طلب الموظف أو الفاتورة من الأزرار أدناه
-        </p>
-
-        <div className="mt-6 flex w-full max-w-xs flex-col gap-3">
-          <button
-            type="button"
-            disabled={busyAction !== null}
-            onClick={() => callService('waiter')}
-            className="min-h-[48px] flex w-full items-center justify-center gap-2 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 text-sm font-bold transition-colors hover:bg-[var(--color-bg)] disabled:opacity-50"
-          >
-            <Bell className="h-4 w-4" />
-            {busyAction === 'waiter' ? 'جاري…' : 'طلب موظف'}
-          </button>
-          <button
-            type="button"
-            disabled={busyAction !== null}
-            onClick={() => callService('bill')}
-            className="min-h-[48px] flex w-full items-center justify-center gap-2 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 text-sm font-bold transition-colors hover:bg-[var(--color-bg)] disabled:opacity-50"
-          >
-            <FileText className="h-4 w-4" />
-            {busyAction === 'bill' ? 'جاري…' : 'طلب الفاتورة'}
-          </button>
-        </div>
-
-        <Button
-          className="mt-6"
-          variant="secondary"
-          onClick={() => setOrderDone(null)}
-        >
-          طلب المزيد
-        </Button>
-      </div>
+      <OrderSuccessState
+        orderNumber={orderDone.orderNumber}
+        totalAmount={orderDone.totalAmount}
+        currency={currency}
+        busyAction={busyAction}
+        onCallService={callService}
+        onOrderMore={() => setOrderDone(null)}
+      />
     );
   }
 
@@ -402,7 +363,7 @@ export function MenuClient({
               type="button"
               disabled={busyAction !== null}
               onClick={() => callService('waiter')}
-              className="min-h-[44px] rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-xs font-bold transition-colors hover:bg-[var(--color-bg)] disabled:opacity-50"
+              className="min-h-[44px] rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-xs font-bold transition-colors hover:bg-[var(--color-bg)] disabled:opacity-50"
             >
               موظف
             </button>
@@ -410,7 +371,7 @@ export function MenuClient({
               type="button"
               disabled={busyAction !== null}
               onClick={() => callService('bill')}
-              className="min-h-[44px] rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-xs font-bold transition-colors hover:bg-[var(--color-bg)] disabled:opacity-50"
+              className="min-h-[44px] rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-xs font-bold transition-colors hover:bg-[var(--color-bg)] disabled:opacity-50"
             >
               فاتورة
             </button>
@@ -494,7 +455,7 @@ export function MenuClient({
               onClick={() => setLang((l) => (l === 'ar' ? 'en' : 'ar'))}
               aria-label={lang === 'ar' ? 'التبديل إلى الإنجليزية' : 'Switch to Arabic'}
               aria-pressed={lang === 'en'}
-              className="flex h-[44px] shrink-0 items-center gap-1.5 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-xs font-bold text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-primary)]"
+              className="flex h-[44px] shrink-0 items-center gap-1.5 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-xs font-bold text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-primary)]"
             >
               <Languages className="h-4 w-4" />
               {lang === 'ar' ? 'EN' : 'عربي'}
@@ -600,7 +561,7 @@ export function MenuClient({
                   .map((a) => (
                     <label
                       key={a.id}
-                      className="flex items-center justify-between gap-2 rounded-[8px] border border-[var(--color-border)] px-3 py-2.5 text-sm"
+                      className="flex items-center justify-between gap-2 rounded-[var(--radius-md)] border border-[var(--color-border)] px-3 py-2.5 text-sm"
                     >
                       <span className="flex items-center gap-2">
                         <input
@@ -644,115 +605,24 @@ export function MenuClient({
         </Sheet>
       )}
 
-      {/* CART SHEET */}
+      {/* CART SHEET — FIX-C-003: extracted component */}
       {cartOpen && (
-        <Sheet onClose={() => setCartOpen(false)} title="سلتك">
-          <ul className="mb-4 space-y-3">
-            {cart.map((l) => (
-              <li
-                key={l.key}
-                className="flex items-start justify-between gap-2 border-b border-[var(--color-border)] pb-3"
-              >
-                <div className="min-w-0">
-                  <p className="text-sm font-bold">{l.productName}</p>
-                  {l.addons.length > 0 && (
-                    <p className="text-xs text-[var(--color-text-muted)]">
-                      {l.addons.map((a) => a.name).join(' · ')}
-                    </p>
-                  )}
-                  {l.notes && (
-                    <p className="text-xs text-[var(--color-text-secondary)]">
-                      {l.notes}
-                    </p>
-                  )}
-                  <p className="mt-0.5 text-xs font-semibold">
-                    {formatMoney(l.unitPrice, currency)}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    aria-label="إنقاص الكمية"
-                    className="min-h-[44px] min-w-[44px] rounded-lg border border-[var(--color-border)] text-sm font-bold transition-colors hover:bg-[var(--color-bg)]"
-                    onClick={() => updateQty(l.key, -1)}
-                  >
-                    <Minus className="mx-auto h-4 w-4" />
-                  </button>
-                  <span className="flex w-8 items-center justify-center text-sm font-bold">
-                    {l.quantity}
-                  </span>
-                  <button
-                    type="button"
-                    aria-label="زيادة الكمية"
-                    className="min-h-[44px] min-w-[44px] rounded-lg border border-[var(--color-border)] text-sm font-bold transition-colors hover:bg-[var(--color-bg)]"
-                    onClick={() => updateQty(l.key, 1)}
-                  >
-                    <Plus className="mx-auto h-4 w-4" />
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-          <div className="mb-4">
-            <label className="label">ملاحظة للطلب</label>
-            <input
-              className="input"
-              value={orderNotes}
-              onChange={(e) => { if (e.target.value.length <= 500) setOrderNotes(e.target.value); }}
-              placeholder="مثال: تحساسية من المكسرات"
-              maxLength={500}
-            />
-            <p className="hint">{orderNotes.length}/500</p>
-          </div>
-          <div className="mb-4 flex items-center justify-between">
-            <span className="font-semibold">الإجمالي</span>
-            <span className="text-base font-bold">
-              {formatMoney(total, currency)}
-            </span>
-          </div>
-          <Button
-            block
-            disabled={submitting || !cart.length}
-            onClick={placeOrder}
-            style={{ background: "var(--color-primary)" }}
-            className="min-h-[48px]"
-          >
-            {submitting ? (
-              <span className="flex items-center gap-2">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent motion-reduce:hidden" />
-                جاري الإرسال…
-              </span>
-            ) : (
-              'تأكيد الطلب'
-            )}
-          </Button>
-          {/* D10: retry — persistent error with a one-tap retry button */}
-          {orderError && (
-            <div
-              role="alert"
-              className="mt-3 rounded-[8px] border border-[var(--color-danger)] bg-[var(--color-danger-tint)] p-3 text-center"
-            >
-              <p className="mb-2 text-[12.5px] font-semibold text-[var(--color-danger)]">
-                {orderError}
-              </p>
-              <Button
-                block
-                size="sm"
-                variant="danger"
-                disabled={submitting}
-                onClick={() => {
-                  setOrderError(null);
-                  placeOrder();
-                }}
-              >
-                إعادة المحاولة
-              </Button>
-            </div>
-          )}
-          <p className="mt-2 text-center text-[11px] text-[var(--color-text-muted)]">
-            الأسعار تُحسب من الخادم
-          </p>
-        </Sheet>
+        <CartSheet
+          open={cartOpen}
+          lines={cart}
+          currency={currency}
+          orderNotes={orderNotes}
+          onOrderNotesChange={(v) => setOrderNotes(v)}
+          onQty={updateQty}
+          submitting={submitting}
+          orderError={orderError}
+          onRetry={() => {
+            setOrderError(null);
+            placeOrder();
+          }}
+          onPlaceOrder={placeOrder}
+          onClose={() => setCartOpen(false)}
+        />
       )}
     </div>
   );

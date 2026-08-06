@@ -89,7 +89,7 @@ export function CartPanel({
               disabled={repeatLoading}
               aria-label="إعادة آخر طلب"
               title="إعادة آخر طلب"
-              className="flex h-11 items-center gap-1.5 rounded-[8px] px-2.5 text-sm font-semibold text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-primary-tint)] hover:text-[var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex h-11 items-center gap-1.5 rounded-[var(--radius-md)] px-2.5 text-sm font-semibold text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-primary-tint)] hover:text-[var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-40"
             >
               <RotateCcw className={`h-4 w-4 ${repeatLoading ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">{repeatLoading ? 'جاري…' : 'آخر طلب'}</span>
@@ -99,7 +99,7 @@ export function CartPanel({
               onClick={() => setConfirmClear(true)}
               disabled={!lines.length}
               aria-label="تفريغ السلة"
-              className="flex h-11 items-center gap-1.5 rounded-[8px] px-2.5 text-sm font-semibold text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-danger-tint)] hover:text-[var(--color-danger)] disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex h-11 items-center gap-1.5 rounded-[var(--radius-md)] px-2.5 text-sm font-semibold text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-danger-tint)] hover:text-[var(--color-danger)] disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Trash2 className="h-4 w-4" />
               <span className="hidden sm:inline">تفريغ</span>
@@ -110,7 +110,7 @@ export function CartPanel({
         {/* Order type — Polaris segmented control (desktop column only;
             mobile keeps it above the product grid). */}
         <div
-          className="mt-3 hidden gap-1 rounded-[8px] bg-[var(--color-surface-sunken)] p-1 md:flex"
+          className="mt-3 hidden gap-1 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] p-1 md:flex"
           role="tablist"
           aria-label="نوع الطلب"
         >
@@ -234,14 +234,14 @@ export function CartPanel({
                   onClear();
                   setConfirmClear(false);
                 }}
-                className="min-h-[44px] flex-1 rounded-[8px] bg-[var(--color-danger)] px-4 text-sm font-bold text-white transition-colors hover:opacity-90"
+                className="min-h-[44px] flex-1 rounded-[var(--radius-md)] bg-[var(--color-danger)] px-4 text-sm font-bold text-white transition-colors hover:opacity-90"
               >
                 نعم، افرغ السلة
               </button>
               <button
                 type="button"
                 onClick={() => setConfirmClear(false)}
-                className="min-h-[44px] flex-1 rounded-[8px] border border-[var(--color-border)] px-4 text-sm font-bold text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg)]"
+                className="min-h-[44px] flex-1 rounded-[var(--radius-md)] border border-[var(--color-border)] px-4 text-sm font-bold text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg)]"
               >
                 إلغاء
               </button>

@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useMemo, useRef, useState, useCallback } from 'react';
+import { FormEvent, useCallback, useDeferredValue, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import { Plus, Pencil, Trash2, X, ImageIcon, Check, Search } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
@@ -23,6 +23,9 @@ type ProductWithAddons = Product & { product_addons: ProductAddon[] };
  * after the 60s ISR window. Fire-and-forget — cache purge must never block or
  * fail the user's action. The endpoint re-checks membership server-side.
  */
+// FIX-C-001: helpers مستخرجة (validate/remove/compress)
+import { validateProduct, removeProductImage, compressImage, type FieldErrors } from '@/lib/products-utils';
+
 function revalidateMenuCache(projectId: string) {
   void fetch('/api/revalidate-menu', {
     method: 'POST',
@@ -34,44 +37,7 @@ function revalidateMenuCache(projectId: string) {
 /** Temporary addon line in the product form — id is set for existing (persisted) addons */
 type FormAddon = { key: string; id?: string; name: string; price: string };
 
-/** Per-field validation errors */
-type FieldErrors = {
-  name?: string;
-  price?: string;
-};
-
-function validateProduct(name: string, price: string): FieldErrors {
-  const errors: FieldErrors = {};
-  if (!name.trim()) {
-    errors.name = 'الاسم مطلوب';
-  } else if (name.trim().length < 2) {
-    errors.name = 'الاسم يجب أن يكون حرفين على الأقل';
-  }
-  const parsedPrice = Number(price);
-  if (!price.trim()) {
-    errors.price = 'السعر مطلوب';
-  } else if (!Number.isFinite(parsedPrice) || parsedPrice < 0) {
-    errors.price = 'السعر غير صالح — أدخل رقماً صحيحاً';
-  }
-  return errors;
-}
-
 /** Best-effort: delete the storage object behind a product image URL (ignore failures) */
-async function removeProductImage(url: string | null | undefined) {
-  if (!url) return;
-  const marker = '/product-images/';
-  const idx = url.indexOf(marker);
-  if (idx === -1) return;
-  const path = url.slice(idx + marker.length).split('?')[0];
-  if (!path) return;
-  try {
-    const supabase = createClient();
-    await supabase.storage.from('product-images').remove([path]);
-  } catch {
-    // best-effort — an orphaned object is preferable to failing the UI action
-  }
-}
-
 export function ProductsClient({
   projectId,
   currency,
@@ -130,6 +96,8 @@ export function ProductsClient({
 
   // Search + category filter
   const [searchQuery, setSearchQuery] = useState('');
+  // FIX-P-002: تأجيل الفلترة — لا تحجب الـ main thread أثناء الكتابة
+  const deferredSearch = useDeferredValue(searchQuery);
   const [activeCat, setActiveCat] = useState<string | null>(null);
 
   const sortedProducts = useMemo(
@@ -142,8 +110,8 @@ export function ProductsClient({
     if (activeCat) {
       list = list.filter((p) => p.category_id === activeCat);
     }
-    if (searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase();
+    if (deferredSearch.trim()) {
+      const q = deferredSearch.trim().toLowerCase();
       list = list.filter(
         (p) =>
           p.name.toLowerCase().includes(q) ||
@@ -151,7 +119,7 @@ export function ProductsClient({
       );
     }
     return list;
-  }, [sortedProducts, activeCat, searchQuery]);
+  }, [sortedProducts, activeCat, deferredSearch]);
 
   // Live product counts per category (updates as products change).
   const categoryCounts = useMemo(() => {
@@ -908,7 +876,8 @@ export function ProductsClient({
         />
       ) : (
         <>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3">
+          {/* FIX-P-003: containment لعزل الشبكة الثقيلة */}
+          <div className="product-grid grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3">
             {filteredProducts.map((p) => (
               <div
                 key={p.id}
@@ -1009,7 +978,7 @@ export function ProductsClient({
               <button
                 type="button"
                 onClick={toggleSelectAllVisible}
-                className="flex min-h-[44px] items-center gap-2 rounded-[8px] px-3 text-sm font-semibold text-[var(--color-text-secondary)]"
+                className="flex min-h-[44px] items-center gap-2 rounded-[var(--radius-md)] px-3 text-sm font-semibold text-[var(--color-text-secondary)]"
               >
                 <span
                   className={`flex h-5 w-5 items-center justify-center rounded border-2 ${
@@ -1166,7 +1135,7 @@ export function ProductsClient({
                 </div>
                 {/* Inline quick-add category */}
                 {showQuickCat && (
-                  <div className="mt-2 flex items-center gap-2 rounded-[8px] border border-[var(--color-primary)] bg-[var(--color-primary-tint)] p-2">
+                  <div className="mt-2 flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-primary)] bg-[var(--color-primary-tint)] p-2">
                     <input
                       className="input flex-1 border-0 bg-white text-sm"
                       placeholder="اسم التصنيف الجديد"
@@ -1283,7 +1252,7 @@ export function ProductsClient({
               </div>
 
               {formAddons.length === 0 && (
-                <p className="rounded-[8px] bg-[var(--color-surface)] px-3 py-4 text-center text-xs text-[var(--color-text-muted)]">
+                <p className="rounded-[var(--radius-md)] bg-[var(--color-surface)] px-3 py-4 text-center text-xs text-[var(--color-text-muted)]">
                   ما فيه إضافات. أضف إضافات مثل {`{حليب، صوص، جبنة إضافية}`}
                 </p>
               )}
@@ -1291,7 +1260,7 @@ export function ProductsClient({
               {formAddons.map((addon, idx) => (
                 <div
                   key={addon.key}
-                  className="mb-2 flex items-center gap-2 rounded-[8px] bg-[var(--color-surface)] p-2"
+                  className="mb-2 flex items-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-surface)] p-2"
                 >
                   <input
                     className="input flex-1 text-sm"

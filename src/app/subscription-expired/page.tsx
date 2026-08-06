@@ -14,7 +14,7 @@ export default function SubscriptionExpiredPage() {
         </p>
         <Link
           href="/"
-          className="mt-5 inline-flex w-full items-center justify-center rounded-[8px] bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-primary-hover)]"
+          className="mt-5 inline-flex w-full items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-primary-hover)]"
         >
           العودة للرئيسية
         </Link>

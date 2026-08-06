@@ -503,6 +503,20 @@
 }
 
 /* ==========================================================================
+   CSS containment — FIX-P-003: عزل layout للرسوم والشبكات الثقيلة
+   ========================================================================== */
+.chart-container { contain: layout style paint; }
+.product-grid { contain: layout; }
+.ticket-grid { contain: layout style; }
+
+/* FIX-O-002: exit animation للمودال — transition بدل framer-motion (لا اعتماد) */
+.modal-enter { animation: slide-up 0.24s ease-out; }
+.modal-exit {
+  animation: slide-up 0.2s ease-in reverse forwards;
+  pointer-events: none;
+}
+
+/* ==========================================================================
    Missing classes (restored from previous design)
    ========================================================================== */
 .dashboard-card:hover {

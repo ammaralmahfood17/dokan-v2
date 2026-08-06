@@ -14,7 +14,7 @@ export function RecentOrdersTable({
   currency: string;
 }) {
   return (
-    <div className="border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm">
+    <div className="chart-container border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm">
       <h2 className="mb-3.5 flex items-center justify-between font-display text-[14.5px] font-bold">
         آخر الطلبات
         <Link

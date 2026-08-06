@@ -125,7 +125,7 @@ export function Sheet({
             type="button"
             aria-label="إغلاق"
             onClick={onClose}
-            className="min-h-[44px] min-w-[44px] rounded-[8px] transition-colors hover:bg-[var(--color-bg)]"
+            className="min-h-[44px] min-w-[44px] rounded-[var(--radius-md)] transition-colors hover:bg-[var(--color-bg)]"
           >
             <X className="mx-auto h-5 w-5 text-[var(--color-text-muted)]" />
           </button>

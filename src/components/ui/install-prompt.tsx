@@ -46,7 +46,7 @@ export function InstallPrompt() {
           await deferred.prompt();
           setDeferred(null);
         }}
-        className="flex h-11 shrink-0 items-center gap-1.5 rounded-[8px] bg-[var(--color-primary)] px-3.5 text-[12.5px] font-bold text-white transition-colors hover:opacity-90"
+        className="flex h-11 shrink-0 items-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--color-primary)] px-3.5 text-[12.5px] font-bold text-white transition-colors hover:opacity-90"
       >
         <Download className="h-4 w-4" />
         تثبيت
@@ -55,7 +55,7 @@ export function InstallPrompt() {
         type="button"
         aria-label="إغلاق"
         onClick={() => setDismissed(true)}
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[8px] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-sunken)]"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-sunken)]"
       >
         <X className="h-4 w-4" />
       </button>

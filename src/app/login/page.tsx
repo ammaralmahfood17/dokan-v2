@@ -10,7 +10,7 @@ function RegisteredNotice() {
   const searchParams = useSearchParams();
   if (searchParams.get('registered') !== '1') return null;
   return (
-    <p className="mt-3 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-primary-tint)] px-3 py-2 text-center text-xs font-semibold text-[var(--color-primary)]">
+    <p className="mt-3 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-primary-tint)] px-3 py-2 text-center text-xs font-semibold text-[var(--color-primary)]">
       تم إنشاء الحساب. يمكنك تسجيل الدخول الآن.
     </p>
   );
@@ -137,7 +137,7 @@ export default function LoginPage() {
     <div className="flex min-h-dvh items-center justify-center bg-[var(--color-bg)] px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-[8px] bg-[var(--color-primary)] text-white font-bold">د</div>
+          <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-primary)] text-white font-bold">د</div>
           <h1 className="text-xl font-bold">تسجيل الدخول</h1>
           <p className="mt-1 text-sm text-[var(--color-text-secondary)]">مرحباً بك في دكان</p>
         </div>

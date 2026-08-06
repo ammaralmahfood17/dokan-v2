@@ -71,7 +71,7 @@ export default function RegisterPage() {
     <div className="flex min-h-dvh items-center justify-center bg-[var(--color-bg)] px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-[8px] bg-[var(--color-primary)] text-white font-bold">
+          <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-primary)] text-white font-bold">
             د
           </div>
           <h1 className="text-xl font-bold">إنشاء حساب</h1>

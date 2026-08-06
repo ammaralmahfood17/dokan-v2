@@ -131,7 +131,7 @@ export default function OnboardingPage() {
         </div>
 
         {error && (
-          <div className="mb-4 rounded-[8px] border border-[var(--color-danger)]/20 bg-[var(--color-danger-tint)] px-3 py-2 text-xs text-[var(--color-danger)]">
+          <div className="mb-4 rounded-[var(--radius-md)] border border-[var(--color-danger)]/20 bg-[var(--color-danger-tint)] px-3 py-2 text-xs text-[var(--color-danger)]">
             {error}
           </div>
         )}
@@ -293,7 +293,7 @@ export default function OnboardingPage() {
                   />
                 </div>
                 <div
-                  className="mt-3 h-12 rounded-[8px] flex items-center justify-center text-sm font-bold text-white transition-all"
+                  className="mt-3 h-12 rounded-[var(--radius-md)] flex items-center justify-center text-sm font-bold text-white transition-all"
                   style={{ background: primaryColor }}
                 >
                   معاينة: رأس القائمة

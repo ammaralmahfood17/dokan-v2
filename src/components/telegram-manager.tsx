@@ -106,7 +106,7 @@ export function TelegramManager({ projectId }: { projectId: string }) {
           {links.map((l) => (
             <li
               key={l.id}
-              className="flex items-center justify-between gap-2 rounded-[8px] border border-[var(--color-border)] px-3 py-2"
+              className="flex items-center justify-between gap-2 rounded-[var(--radius-md)] border border-[var(--color-border)] px-3 py-2"
             >
               <span className="flex min-w-0 items-center gap-2 text-sm">
                 <CheckCircle2 className="h-4 w-4 shrink-0 text-green-600" />
@@ -121,7 +121,7 @@ export function TelegramManager({ projectId }: { projectId: string }) {
                 type="button"
                 aria-label="إلغاء الربط"
                 onClick={() => removeLink(l.chat_id)}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-danger-tint)] hover:text-[var(--color-danger)]"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-danger-tint)] hover:text-[var(--color-danger)]"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
@@ -147,12 +147,12 @@ export function TelegramManager({ projectId }: { projectId: string }) {
             target="_blank"
             rel="noopener noreferrer"
             dir="ltr"
-            className="mt-1 block truncate rounded-[8px] bg-white px-3 py-2 text-center text-sm font-bold text-sky-700 underline"
+            className="mt-1 block truncate rounded-[var(--radius-md)] bg-white px-3 py-2 text-center text-sm font-bold text-sky-700 underline"
           >
             {pending.url}
           </a>
           <p className="mt-2 text-xs font-bold text-sky-800">٢. أو أرسل للبوت هذا الرمز:</p>
-          <p dir="ltr" className="mt-1 rounded-[8px] bg-white px-3 py-2 text-center font-mono text-sm font-bold">
+          <p dir="ltr" className="mt-1 rounded-[var(--radius-md)] bg-white px-3 py-2 text-center font-mono text-sm font-bold">
             /start {pending.code}
           </p>
           <p className="mt-2 text-xs text-sky-700">

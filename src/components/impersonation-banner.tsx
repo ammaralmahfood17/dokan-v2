@@ -90,7 +90,7 @@ export function ImpersonationBanner({
           type="button"
           onClick={end}
           disabled={ending}
-          className="rounded-[8px] bg-white px-3 py-1.5 text-xs font-bold text-[var(--color-danger)] transition-opacity hover:opacity-90 disabled:opacity-50"
+          className="rounded-[var(--radius-md)] bg-white px-3 py-1.5 text-xs font-bold text-[var(--color-danger)] transition-opacity hover:opacity-90 disabled:opacity-50"
         >
           {ending ? 'جاري الإنتهاء…' : 'إنهاء الجلسة'}
         </button>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowUpDown, Search, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { formatMoney } from '@/lib/utils';
@@ -65,6 +65,8 @@ export function OrdersClient({
   const [dateKey, setDateKey] = useState(() => toDateKey(new Date()));
   // بحث فوري — رقم الطلب / اسم المنتج / طاولة
   const [query, setQuery] = useState('');
+  // FIX-P-002: تأجيل الفلترة — لا تحجب الـ main thread أثناء الكتابة
+  const deferredQuery = useDeferredValue(query);
   // تحميل المزيد — إزاحة للصفحة التالية (50/صفحة)
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -220,8 +222,8 @@ export function OrdersClient({
   const filtered = useMemo(() => {
     let list = orders;
     if (filter !== 'all') list = list.filter((o) => o.status === filter);
-    // بحث فوري: رقم الطلب / اسم المنتج / طاولة
-    const q = query.trim().toLowerCase();
+    // بحث فوري: رقم الطلب / اسم المنتج / طاولة (FIX-P-002: deferredQuery)
+    const q = deferredQuery.trim().toLowerCase();
     if (q) {
       list = list.filter((o) => {
         if (String(o.order_number).includes(q)) return true;
@@ -240,7 +242,7 @@ export function OrdersClient({
     }
     // newest = الترتيب الافتراضي من الـ query (created_at desc)
     return sorted;
-  }, [orders, filter, query, sortBy]);
+  }, [orders, filter, deferredQuery, sortBy]);
 
   // مجموع مبيعات اليوم (غير الملغاة) — يعرض في الرأس
   const dayTotal = useMemo(
@@ -284,7 +286,7 @@ export function OrdersClient({
       {realtimeOffline && (
         <div
           role="status"
-          className="mb-4 flex items-center gap-2 rounded-[8px] border border-[var(--color-danger)]/20 bg-[var(--color-danger-tint)] px-3 py-2 text-xs font-medium text-[var(--color-danger)]"
+          className="mb-4 flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-danger)]/20 bg-[var(--color-danger-tint)] px-3 py-2 text-xs font-medium text-[var(--color-danger)]"
         >
           <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-[var(--color-danger)]" />
           انقطع الاتصال المباشر — يُحدَّث تلقائيًا كل 30 ثانية
@@ -512,7 +514,7 @@ export function OrdersClient({
             type="button"
             onClick={() => void loadMore()}
             disabled={loadingMore}
-            className="min-h-[44px] rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)] px-6 text-sm font-bold text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] disabled:opacity-50"
+            className="min-h-[44px] rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] px-6 text-sm font-bold text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] disabled:opacity-50"
           >
             {loadingMore ? 'جاري التحميل…' : 'تحميل المزيد'}
           </button>
