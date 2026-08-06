@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Minus, Plus, ShoppingBag, X, Check, Bell, FileText, GripHorizontal } from 'lucide-react';
+import { Minus, Plus, ShoppingBag, X, Check, Bell, FileText, GripHorizontal, Search, Languages } from 'lucide-react';
 import Image from 'next/image';
 import { formatMoney, money, currencyDecimals } from '@/lib/utils';
 import type {
@@ -49,6 +49,16 @@ export function MenuClient({
   const [busyAction, setBusyAction] = useState<'waiter' | 'bill' | null>(null);
   const [lastAddedKey, setLastAddedKey] = useState<string | null>(null);
   const lastAddedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // بحث في المنتجات (فقط للمنيو الكبير — 12+ منتج)
+  const [menuQuery, setMenuQuery] = useState('');
+  // تبديل لغة العرض: عربي / English (يستخدم name_en عندما متاح)
+  const [lang, setLang] = useState<'ar' | 'en'>('ar');
+
+  const displayName = useCallback(
+    (p: ProductWithAddons) =>
+      lang === 'en' && p.name_en ? p.name_en : p.name,
+    [lang]
+  );
 
   // Cleanup lastAddedTimer on unmount
   useEffect(() => {
@@ -63,9 +73,23 @@ export function MenuClient({
   const currency = project.currency;
 
   const filtered = useMemo(() => {
-    if (activeCategory === 'all') return products;
-    return products.filter((p) => p.category_id === activeCategory);
-  }, [products, activeCategory]);
+    let list = products;
+    if (activeCategory !== 'all') {
+      list = list.filter((p) => p.category_id === activeCategory);
+    }
+    const q = menuQuery.trim().toLowerCase();
+    if (q) {
+      list = list.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          (p.name_en ?? '').toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [products, activeCategory, menuQuery]);
+
+  // البحث يظهر فقط للمنيو الكبير (12+ منتج) — لا يزحم المنيو الصغير
+  const showMenuSearch = products.length >= 12;
 
   const total = useMemo(
     () => money(cart.reduce((s, l) => s + l.unitPrice * l.quantity, 0), currencyDecimals(currency)),
@@ -318,23 +342,25 @@ export function MenuClient({
 
   /** Render a single product row — mockup: square 72px image, price, add-btn */
   function renderProduct(p: ProductWithAddons, isFirst = false) {
+    const name = displayName(p);
     return (
       <div key={p.id} className="flex items-center gap-3 border-b border-[var(--color-border)] pb-3 pt-1">
         <button
           type="button"
           onClick={() => quickAdd(p)}
-          aria-label={`إضافة ${p.name}`}
+          aria-label={`إضافة ${name}`}
           className="flex min-w-0 flex-1 items-center gap-3 text-start"
         >
           {p.image_url ? (
             <Image
               src={p.image_url}
-              alt={p.name}
+              alt={name}
               width={72}
               height={72}
               priority={isFirst}
               placeholder="blur"
               blurDataURL={BLUR_PLACEHOLDER}
+              sizes="72px"
               className="h-[72px] w-[72px] shrink-0 object-cover"
             />
           ) : (
@@ -342,11 +368,11 @@ export function MenuClient({
               className="flex h-[72px] w-[72px] shrink-0 items-center justify-center text-[22px] font-bold bg-[var(--color-surface-sunken)]"
               style={{ color: 'var(--color-primary)' }}
             >
-              {p.name.slice(0, 1)}
+              {name.slice(0, 1)}
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <h3 className="truncate text-[15px] font-semibold">{p.name}</h3>
+            <h3 className="truncate text-[15px] font-semibold">{name}</h3>
             {p.description && (
               <p className="mt-0.5 line-clamp-2 text-[12.5px] leading-[1.5] text-[var(--color-text-secondary)]">
                 {p.description}
@@ -360,7 +386,7 @@ export function MenuClient({
         <button
           type="button"
           onClick={() => quickAdd(p)}
-          aria-label={`إضافة ${p.name} إلى السلة`}
+          aria-label={`إضافة ${name} إلى السلة`}
           className={`flex h-[44px] w-[44px] shrink-0 items-center justify-center bg-[var(--color-text)] text-[20px] font-semibold leading-none text-[var(--color-primary)] transition-transform duration-200 active:scale-95 ${
             lastAddedKey === p.id ? 'scale-110' : ''
           }`}
@@ -455,6 +481,46 @@ export function MenuClient({
 
       {/* PRODUCTS — grouped by category */}
       <main ref={productsRef} className="mx-auto max-w-lg px-3 py-4">
+        {/* Search + language toggle — search only for big menus */}
+        <div className="mb-4 flex items-center gap-2">
+          {showMenuSearch && (
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
+              <input
+                type="search"
+                inputMode="search"
+                value={menuQuery}
+                onChange={(e) => setMenuQuery(e.target.value)}
+                placeholder="ابحث عن منتج…"
+                aria-label="ابحث في القائمة"
+                maxLength={60}
+                className="input min-h-[44px] w-full ps-10 pe-10"
+              />
+              {menuQuery && (
+                <button
+                  type="button"
+                  onClick={() => setMenuQuery('')}
+                  aria-label="مسح البحث"
+                  className="absolute end-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-[var(--color-text-muted)] hover:bg-[var(--color-surface-sunken)]"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          )}
+          {products.some((p) => p.name_en) && (
+            <button
+              type="button"
+              onClick={() => setLang((l) => (l === 'ar' ? 'en' : 'ar'))}
+              aria-label={lang === 'ar' ? 'التبديل إلى الإنجليزية' : 'Switch to Arabic'}
+              aria-pressed={lang === 'en'}
+              className="flex h-[44px] shrink-0 items-center gap-1.5 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-xs font-bold text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-primary)]"
+            >
+              <Languages className="h-4 w-4" />
+              {lang === 'ar' ? 'EN' : 'عربي'}
+            </button>
+          )}
+        </div>
         {!filtered.length ? (
           <div className="card empty">
             <h3>القائمة فارغة</h3>
