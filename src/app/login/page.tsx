@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { FormEvent, Suspense, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
+import { Eye, EyeOff } from 'lucide-react';
 
 function RegisteredNotice() {
   const searchParams = useSearchParams();
@@ -21,6 +22,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const nextParam = searchParams.get('next');
 
+  const [showPass, setShowPass] = useState(false); // FIX-S-007
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -99,20 +101,31 @@ function LoginForm() {
       </div>
       <div className="field">
         <label className="label" htmlFor="password">كلمة المرور</label>
-        <input
-          id="password"
-          className={`input ${passErr ? 'input-error' : ''}`}
-          type="password"
-          autoComplete="current-password"
-          required
-          minLength={6}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          onBlur={blur('password')}
-          dir="ltr"
-          aria-invalid={!!passErr}
-          aria-describedby={passErr ? 'password-error' : undefined}
-        />
+        <div className="relative">
+          <input
+            id="password"
+            className={`input pe-10 ${passErr ? 'input-error' : ''}`}
+            type={showPass ? 'text' : 'password'}
+            autoComplete="current-password"
+            required
+            minLength={6}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onBlur={blur('password')}
+            dir="ltr"
+            aria-invalid={!!passErr}
+            aria-describedby={passErr ? 'password-error' : undefined}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPass((v) => !v)}
+            aria-label={showPass ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+            aria-pressed={showPass}
+            className="absolute end-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]"
+          >
+            {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
         {passErr && (
           <p id="password-error" className="error-text" role="alert">
             {passErr}

@@ -239,3 +239,56 @@ function networkFirst(request, cacheName) {
     });
   });
 }
+
+/* ==========================================================================
+   FIX-W-002: Background Sync — orders submitted while offline are queued
+   in IndexedDB and retried when connectivity returns (Chromium only —
+   Safari/Firefox lack the API; the client-side retry button covers them).
+   ========================================================================== */
+const PENDING_DB = 'dokan-pending-orders';
+const PENDING_STORE = 'orders';
+
+function openPendingDb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(PENDING_DB, 1);
+    req.onupgradeneeded = () => {
+      req.result.createObjectStore(PENDING_STORE, { keyPath: 'id' });
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function submitPendingOrders() {
+  const db = await openPendingDb();
+  const tx = db.transaction(PENDING_STORE, 'readwrite');
+  const store = tx.objectStore(PENDING_STORE);
+  const all = await new Promise((resolve) => {
+    const req = store.getAll();
+    req.onsuccess = () => resolve(req.result || []);
+  });
+
+  for (const order of all) {
+    try {
+      const res = await fetch('/api/public/order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(order.payload),
+      });
+      if (res.ok) {
+        store.delete(order.id);
+      } else {
+        // Permanent failure (4xx) — drop it; the customer saw the error
+        if (res.status >= 400 && res.status < 500) store.delete(order.id);
+      }
+    } catch {
+      // still offline — leave in queue, sync will retry
+    }
+  }
+}
+
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'submit-pending-order') {
+    event.waitUntil(submitPendingOrders());
+  }
+});

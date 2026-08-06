@@ -68,7 +68,18 @@ export function MenuClient({
   // بحث في المنتجات (فقط للمنيو الكبير — 12+ منتج)
   const [menuQuery, setMenuQuery] = useState('');
   // تبديل لغة العرض: عربي / English (يستخدم name_en عندما متاح)
-  const [lang, setLang] = useState<'ar' | 'en'>('ar');
+  // FIX-I-003: حفظ تفضيل اللغة في localStorage (لا يضيع عند refresh)
+  const [lang, setLang] = useState<'ar' | 'en'>(() => {
+    if (typeof window === 'undefined') return 'ar';
+    return localStorage.getItem('dokan-lang') === 'en' ? 'en' : 'ar';
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem('dokan-lang', lang);
+    } catch {
+      // privacy mode — تجاهل بصمت
+    }
+  }, [lang]);
 
   const displayName = useCallback(
     (p: ProductWithAddons) =>
@@ -271,7 +282,45 @@ export function MenuClient({
       setOrderNotes('');
       setItemNotes('');
     } catch {
-      setOrderError('تعذّر الاتصال — تحقق من الإنترنت ثم أعد المحاولة');
+      // FIX-W-002: حفظ الطلب في IndexedDB + تسجيل Background Sync —
+      // عند عودة الاتصال يُرسل تلقائيًا (Chromium). Safari/Firefox:
+      // زر إعادة المحاولة (D10) يغطيهم.
+      setOrderError('تعذّر الاتصال — سيُرسل الطلب تلقائيًا عند عودة الإنترنت');
+      try {
+        const payload = {
+          projectSlug: project.slug,
+          tableSlug: table.slug,
+          notes: orderNotes.trim() || undefined,
+          items: cart.map((l) => ({
+            productId: l.productId,
+            quantity: l.quantity,
+            addonIds: l.addons.map((a) => a.id),
+            notes: l.notes || undefined,
+          })),
+        };
+        const dbReq = indexedDB.open('dokan-pending-orders', 1);
+        dbReq.onupgradeneeded = () => {
+          dbReq.result.createObjectStore('orders', { keyPath: 'id' });
+        };
+        dbReq.onsuccess = () => {
+          const db = dbReq.result;
+          const tx = db.transaction('orders', 'readwrite');
+          tx.objectStore('orders').put({
+            id: crypto.randomUUID(),
+            payload,
+          });
+          // Register background sync (best-effort — Safari/Firefox throw)
+          // FIX-W-002: sync غير معرّف في TS types — وصول آمن عبر optional
+          navigator.serviceWorker?.ready
+            .then((reg) =>
+              (reg as unknown as { sync?: { register: (t: string) => Promise<void> } })
+                .sync?.register('submit-pending-order')
+            )
+            .catch(() => {});
+        };
+      } catch {
+        // IndexedDB غير متاح — زر إعادة المحاولة يبقى الخيار
+      }
     } finally {
       setSubmitting(false);
     }
