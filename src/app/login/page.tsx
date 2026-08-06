@@ -88,8 +88,14 @@ function LoginForm() {
           onChange={(e) => setEmail(e.target.value)}
           onBlur={blur('email')}
           dir="ltr"
+          aria-invalid={!!emailErr}
+          aria-describedby={emailErr ? 'email-error' : undefined}
         />
-        {emailErr && <p className="error-text">{emailErr}</p>}
+        {emailErr && (
+          <p id="email-error" className="error-text" role="alert">
+            {emailErr}
+          </p>
+        )}
       </div>
       <div className="field">
         <label className="label" htmlFor="password">كلمة المرور</label>
@@ -104,8 +110,14 @@ function LoginForm() {
           onChange={(e) => setPassword(e.target.value)}
           onBlur={blur('password')}
           dir="ltr"
+          aria-invalid={!!passErr}
+          aria-describedby={passErr ? 'password-error' : undefined}
         />
-        {passErr && <p className="error-text">{passErr}</p>}
+        {passErr && (
+          <p id="password-error" className="error-text" role="alert">
+            {passErr}
+          </p>
+        )}
       </div>
       {error && <p className="error-text mb-3">{error}</p>}
       <Button type="submit" block disabled={loading || !!emailErr || !!passErr}>

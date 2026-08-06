@@ -32,7 +32,8 @@ function statusBadge(p: ProjectRow): { label: string; cls: string } {
   if (!p.is_active) return { label: 'موقوف', cls: 'bg-[var(--color-danger-tint)] text-[var(--color-danger)]' };
   if (d === null) return { label: 'نشط', cls: 'bg-[var(--color-success)]/10 text-[var(--color-success)]' };
   if (d < 0) return { label: 'منتهي', cls: 'bg-[var(--color-danger-tint)] text-[var(--color-danger)]' };
-  if (d <= 7) return { label: `ينتهي قريبًا (${d}d)`, cls: 'bg-[#FEF3C7] text-[#B45309]' };
+  // FIX-D-002: ألوان tokens بدل hex يدوي (warn-tint/warn = نفس الدرجة اللونية)
+  if (d <= 7) return { label: `ينتهي قريبًا (${d}d)`, cls: 'bg-[var(--color-warn-tint)] text-[var(--color-warn)]' };
   return { label: 'نشط', cls: 'bg-[var(--color-success)]/10 text-[var(--color-success)]' };
 }
 

@@ -106,9 +106,9 @@ export function AnalyticsClient({
         </div>
       </div>
 
-      {/* Print-only header */}
+      {/* Print-only header — FIX-A-008: h2 بدل h1 (هرمية عنوان واحدة لكل صفحة) */}
       <div className="hidden print:block mb-4">
-        <h1 className="text-lg font-bold">تقرير الإحصائيات — {projectName}</h1>
+        <h2 className="text-lg font-bold">تقرير الإحصائيات — {projectName}</h2>
         <p className="text-xs text-[var(--color-text-secondary)]">
           {RANGES.find((r) => r.value === range)?.label} · {new Date().toLocaleDateString('ar-BH')}
         </p>

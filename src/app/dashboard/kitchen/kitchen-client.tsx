@@ -57,10 +57,13 @@ function useAudioSystem() {
   const playChimeRef = useRef<() => void>(() => {});
 
   const getAudioCtx = useCallback((): AudioContext | null => {
-    const Ctor = window.AudioContext || (window as any).webkitAudioContext;
-    if (!Ctor) return null;
+    // FIX-A-001: typed cast بدل as any (آخر as any في codebase)
+    const AudioCtx =
+      (window as unknown as { webkitAudioContext?: typeof AudioContext })
+        .webkitAudioContext ?? AudioContext;
+    if (!AudioCtx) return null;
     if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
-      audioCtxRef.current = new Ctor();
+      audioCtxRef.current = new AudioCtx();
     }
     return audioCtxRef.current;
   }, []);
@@ -719,6 +722,10 @@ export function KitchenClient({
         <h1 className="font-display text-xl font-bold text-[var(--color-primary)]">
           {projectName} — شاشة المطبخ
         </h1>
+        {/* FIX-A-006: إعلام قارئ الشاشة بوصول طلبات جديدة */}
+        <div aria-live="polite" aria-atomic="true" className="sr-only">
+          {pendingCount > 0 ? `وصل ${pendingCount} طلبات جديدة` : ''}
+        </div>
 
         <div className="flex items-center gap-2.5">
           {pendingCount > 0 && (

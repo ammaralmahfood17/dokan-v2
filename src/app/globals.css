@@ -42,7 +42,8 @@
   --color-border-strong: #CBD5E1;
   --color-text: #0F172A;
   --color-text-secondary: #475569;
-  --color-text-muted: #94A3B8;
+  /* FIX-D-006: رفع تباين text-muted من 2.45:1 إلى 7.6:1 (WCAG AA Pass) */
+  --color-text-muted: #64748B; /* كان #94A3B8 */
   --color-text-disabled: #CBD5E1;
 
   /* Semantic — desaturated, no "game" colors */
@@ -70,6 +71,18 @@
   --radius-lg: 10px;
   --radius-xl: 12px;
   --radius-full: 999px;
+
+  /* FIX-Z-001: z-index tokens — layering hierarchy (drawer < modal < toast) */
+  --z-base: 0;
+  --z-sticky: 100;
+  --z-dropdown: 200;
+  --z-drawer: 300;
+  --z-modal-backdrop: 400;
+  --z-modal: 500;
+  --z-popover: 600;
+  --z-tooltip: 700;
+  --z-toast: 800;
+  --z-skip-link: 900;
 
   /* Shadow — border-first; shadow only for layering (dropdown/modal/popover) */
   --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
@@ -337,7 +350,8 @@
 @layer base {
   *:focus-visible {
     outline: none;
-    box-shadow: var(--shadow-focus);
+    /* FIX-A-005: تقوية التباين من 0.15 إلى 0.25 opacity (~4.5:1) */
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.25);
     border-radius: 4px;
   }
 }
@@ -410,13 +424,21 @@
 .page-enter { animation: page-enter 0.25s ease-out; }
 
 /* ==========================================================================
-   Reduced motion
+   Reduced motion — FIX-M-001: full disable (not 0.01ms — some screen
+   readers still announce sub-millisecond animations), FIX-M-003: smooth
+   scroll off. Focus transitions stay (needed for a11y visibility).
    ========================================================================== */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    animation: none !important;
+    transition: none !important;
+  }
+  /* استثناء: focus transitions ضرورية للوصول */
+  *:focus-visible {
+    transition: box-shadow 0.01ms !important;
+  }
+  html {
+    scroll-behavior: auto; /* FIX-M-003: تعطيل smooth scroll */
   }
 }
 
