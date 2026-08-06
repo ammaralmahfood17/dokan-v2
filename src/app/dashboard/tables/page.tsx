@@ -15,6 +15,19 @@ export default async function TablesPage() {
     .eq('project_id', ctx.project.id)
     .order('number');
 
+  // Which tables have ACTIVE orders right now (pending/preparing/ready)?
+  // Shown as a مشغولة/متاحة chip on each table card.
+  const { data: activeOrders } = await supabase
+    .from('orders')
+    .select('table_id')
+    .eq('project_id', ctx.project.id)
+    .is('service_type', null)
+    .not('table_id', 'is', null)
+    .in('status', ['pending', 'preparing', 'ready']);
+  const occupiedTableIds = new Set(
+    (activeOrders ?? []).map((o) => o.table_id).filter(Boolean)
+  );
+
   const siteUrl =
     process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') ||
     'http://localhost:3000';
@@ -25,6 +38,7 @@ export default async function TablesPage() {
       projectSlug={ctx.project.slug}
       siteUrl={siteUrl}
       initialTables={(tables ?? []) as Table[]}
+      occupiedTableIds={occupiedTableIds}
     />
   );
 }

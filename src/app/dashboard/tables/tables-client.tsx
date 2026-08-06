@@ -22,11 +22,13 @@ export function TablesClient({
   projectSlug,
   siteUrl,
   initialTables,
+  occupiedTableIds,
 }: {
   projectId: string;
   projectSlug: string;
   siteUrl: string;
   initialTables: Table[];
+  occupiedTableIds: Set<string>;
 }) {
   const router = useRouter();
   const [tables, setTables] = useState(initialTables);
@@ -187,6 +189,21 @@ export function TablesClient({
   async function deleteTable(table: Table) {
     setLoading(true);
     const supabase = createClient();
+    // Guard: a table with ACTIVE orders (pending/preparing/ready) cannot be
+    // deleted — the kitchen/orders screens still reference it. Only
+    // delivered/cancelled (or zero) orders allow deletion.
+    const { count: activeOrders } = await supabase
+      .from('orders')
+      .select('id', { count: 'exact', head: true })
+      .eq('project_id', projectId)
+      .eq('table_id', table.id)
+      .in('status', ['pending', 'preparing', 'ready']);
+    if ((activeOrders ?? 0) > 0) {
+      setLoading(false);
+      setConfirmDelete(null);
+      toast.error(`لا يمكن الحذف — ${activeOrders} طلب نشط على هذه الطاولة`);
+      return;
+    }
     const { error } = await supabase.from('tables').delete().eq('id', table.id).eq('project_id', projectId);
     setLoading(false);
     setConfirmDelete(null);
@@ -238,8 +255,19 @@ export function TablesClient({
                   className="dashboard-card card flex flex-wrap items-center justify-between gap-3 px-4 py-3"
                 >
                   <div>
-                    <p className="text-sm font-bold">طاولة {t.number}</p>
-                    <p className="text-xs text-[var(--color-text-secondary)]">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-bold">طاولة {t.number}</p>
+                      {occupiedTableIds.has(t.id) ? (
+                        <span className="rounded-full bg-[var(--color-warn-tint)] px-2 py-0.5 text-[10px] font-bold text-[var(--color-warn)]">
+                          مشغولة
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-[var(--color-success-tint)] px-2 py-0.5 text-[10px] font-bold text-[var(--color-success)]">
+                          متاحة
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-0.5 text-xs text-[var(--color-text-secondary)]">
                       <span dir="ltr">{t.slug}</span>
                     </p>
                   </div>
@@ -375,6 +403,7 @@ export function TablesClient({
             <p className="mb-1 text-sm font-bold">طاولة {confirmDelete.number}</p>
             <p className="mb-5 text-xs text-[var(--color-text-secondary)]">
               هل أنت متأكد من حذف هذه الطاولة؟ الطلبات المرتبطة ستبقى.
+              لا يمكن الحذف إذا كان عليها طلبات نشطة (قيد التحضير أو جاهزة).
             </p>
             <div className="flex gap-2">
               <Button variant="danger" block disabled={loading} onClick={() => deleteTable(confirmDelete)}>
