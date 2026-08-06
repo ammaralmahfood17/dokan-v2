@@ -38,6 +38,7 @@ function statusBadge(p: ProjectRow): { label: string; cls: string } {
 }
 
 const dateFmt = new Intl.DateTimeFormat('ar', {
+  numberingSystem: 'latn',
   timeZone: 'Asia/Bahrain',
   year: 'numeric',
   month: 'short',

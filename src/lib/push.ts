@@ -87,14 +87,19 @@ export async function sendPushToProject(
         body?: string;
         message?: string;
       };
-      console.log('[Push] sub', i, 'FAILED —', reason?.statusCode, reason?.body || reason?.message);
+      // AR-7: سطر الفشل فقط في الإنتاج (بدون ضجيج لكل إرسال ناجح/ملخص)
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[Push] sub', i, 'FAILED —', reason?.statusCode, reason?.body || reason?.message);
+      }
       if (reason?.statusCode === 410 || reason?.statusCode === 404) {
         expiredEndpoints.push(subs[i].endpoint);
       }
     }
   }
 
-  console.log('[Push] result — sent:', sent, 'failed:', failed, 'cleaned:', expiredEndpoints.length);
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[Push] result — sent:', sent, 'failed:', failed, 'cleaned:', expiredEndpoints.length);
+  }
 
   // Clean up expired subscriptions
   if (expiredEndpoints.length > 0) {

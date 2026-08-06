@@ -61,7 +61,11 @@ export async function POST(request: NextRequest) {
     }
 
     const code = match[1].toUpperCase();
-    const admin = createAdminClient() as any;
+    // AR-6: أزل as any — النوع الطبيعي من createAdminClient() يكفي (الخدمات
+    // المستخدمة هنا معرّفة في database.types). جدول telegram_link_codes:
+    // يُحمَل الحقلان + القيود عبر الأنواع — إن عجز النوع عن عمود واحد يُضاف
+    // للمخطط لا للـ any.
+    const admin = createAdminClient();
 
     const { data: linkCode, error: codeErr } = await admin
       .from('telegram_link_codes')

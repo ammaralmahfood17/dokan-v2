@@ -18,6 +18,7 @@ export function buildWeekBuckets(
     dayKeys.push(dayFmt.format(new Date(now - i * 86_400_000)));
   }
   const weekdayFmt = new Intl.DateTimeFormat('ar-BH', {
+    numberingSystem: 'latn',
     weekday: 'short',
     timeZone: 'Asia/Bahrain',
   });
@@ -48,6 +49,8 @@ export function buildHourBuckets(): HourBucket[] {
   // +3h shift (that double-converts on UTC+3 hosts and is wrong everywhere
   // except pure-UTC servers).
   const labelFmt = new Intl.DateTimeFormat('ar-BH', {
+    // AR-9: أرقام لاتينية إجبارية على ساعات المخطط
+    numberingSystem: 'latn',
     hour: 'numeric',
     timeZone: 'Asia/Bahrain',
   });

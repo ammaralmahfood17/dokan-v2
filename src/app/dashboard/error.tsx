@@ -40,6 +40,14 @@ export default function DashboardError({
     persistErrorLog(error, details);
   }, [error, details]);
 
+  // AR-8: تنظيف الـ timeout المرتبط بحالة "copied" — إن أُنجز النسخ مرة أخرى
+  // أو أُزال المكوّن قبل انتهاء الـ 2ث، نلغي المؤقت السابق (لا تسريب).
+  useEffect(() => {
+    if (!copied) return;
+    const t = setTimeout(() => setCopied(false), 2000);
+    return () => clearTimeout(t);
+  }, [copied]);
+
   function handleCopyLog() {
     const textToCopy = `[دكان — سجل الخطأ]
 التصنيف: ${details.badgeText}
@@ -49,7 +57,6 @@ export default function DashboardError({
 
     navigator.clipboard.writeText(textToCopy).then(() => {
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     }).catch(() => {});
   }
 

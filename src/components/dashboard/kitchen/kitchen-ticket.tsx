@@ -99,7 +99,11 @@ export function KitchenTicket({
   const timeLabel = mins < 1 ? 'الآن' : `قبل ${mins} دقيقة`;
 
   return (
-    <article className={`border-2 bg-[var(--color-surface)] p-4 ${toneBorder[badgeTone]}`}>
+    /* AR-4: اسم وصفي للتذكرة لقارئ الشاشة (رقم الطلب + التأخر) */
+    <article
+      aria-label={`طلب رقم ${order.order_number}${overdue ? ' - متأخر' : ''}`}
+      className={`border-2 bg-[var(--color-surface)] p-4 ${toneBorder[badgeTone]}`}
+    >
       {/* Head: order number + table/time */}
       <div className="mb-2.5 flex items-start justify-between gap-2">
         <span className="rounded-md border border-[var(--color-border-strong)] bg-[var(--color-surface-sunken)] px-2 py-0.5 font-mono text-[12px] font-bold tabular-nums text-[var(--color-text)]" dir="ltr">

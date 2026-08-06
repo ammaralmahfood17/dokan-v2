@@ -170,12 +170,12 @@ export default async function DashboardPage() {
 
   // Vercel runs UTC — without an explicit timeZone the TODAY chip would show
   // UTC and the date would flip a day between 00:00–03:00 Bahrain time.
-  const nowTime = new Date().toLocaleTimeString('ar-BH', {
+  const nowTime = new Date().toLocaleTimeString('ar-BH-u-nu-latn', {
     hour: '2-digit',
     minute: '2-digit',
     timeZone: 'Asia/Bahrain',
   });
-  const todayLabel = new Date().toLocaleDateString('ar-BH', {
+  const todayLabel = new Date().toLocaleDateString('ar-BH-u-nu-latn', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',

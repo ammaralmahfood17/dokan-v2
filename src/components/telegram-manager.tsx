@@ -90,7 +90,7 @@ export function TelegramManager({ projectId }: { projectId: string }) {
   return (
     <div className="card card-body">
       <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-sky-100 text-sky-600">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-[var(--color-info-tint)] text-[var(--color-info)]">
           <Send className="h-5 w-5" />
         </div>
         <div className="flex-1">
@@ -109,7 +109,7 @@ export function TelegramManager({ projectId }: { projectId: string }) {
               className="flex items-center justify-between gap-2 rounded-[var(--radius-md)] border border-[var(--color-border)] px-3 py-2"
             >
               <span className="flex min-w-0 items-center gap-2 text-sm">
-                <CheckCircle2 className="h-4 w-4 shrink-0 text-green-600" />
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--color-success)]" />
                 <span className="truncate font-semibold" dir="auto">
                   {l.label || (l.kind === 'group' ? 'مجموعة' : 'حساب تيليجرام')}
                 </span>
@@ -141,21 +141,21 @@ export function TelegramManager({ projectId }: { projectId: string }) {
         </Button>
       ) : (
         <div className="mt-3 rounded-[10px] border border-sky-200 bg-sky-50 p-3">
-          <p className="text-xs font-bold text-sky-800">١. افتح تيليجرام واضغط الرابط:</p>
+          <p className="text-xs font-bold text-[var(--color-info)]">١. افتح تيليجرام واضغط الرابط:</p>
           <a
             href={pending.url}
             target="_blank"
             rel="noopener noreferrer"
             dir="ltr"
-            className="mt-1 block truncate rounded-[var(--radius-md)] bg-white px-3 py-2 text-center text-sm font-bold text-sky-700 underline"
+            className="mt-1 block truncate rounded-[var(--radius-md)] bg-white px-3 py-2 text-center text-sm font-bold text-[var(--color-info)] underline"
           >
             {pending.url}
           </a>
-          <p className="mt-2 text-xs font-bold text-sky-800">٢. أو أرسل للبوت هذا الرمز:</p>
+          <p className="mt-2 text-xs font-bold text-[var(--color-info)]">٢. أو أرسل للبوت هذا الرمز:</p>
           <p dir="ltr" className="mt-1 rounded-[var(--radius-md)] bg-white px-3 py-2 text-center font-mono text-sm font-bold">
             /start {pending.code}
           </p>
-          <p className="mt-2 text-xs text-sky-700">
+          <p className="mt-2 text-xs text-[var(--color-info)]">
             الرمز صالح لمدة 15 دقيقة. بعد ما ترسله، اضغط:
           </p>
           <Button className="mt-2" variant="secondary" size="sm" onClick={loadLinks}>

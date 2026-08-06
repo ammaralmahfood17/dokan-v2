@@ -13,10 +13,13 @@ export function ImageUploader({
   projectId,
   imageUrl,
   onImageUrlChange,
+  productName,
 }: {
   projectId: string;
   imageUrl: string;
   onImageUrlChange: (url: string) => void;
+  /** AR-2: اسم المنتج للصورة الوصفية (صورة ${productName}) — اختياري */
+  productName?: string;
 }) {
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null); // Fix 6
@@ -110,7 +113,7 @@ export function ImageUploader({
         <div className="relative inline-block">
           <Image
             src={imageUrl}
-            alt=""
+            alt={productName ? `صورة ${productName}` : 'صورة المنتج'}
             width={112}
             height={112}
             className="h-28 w-28 rounded-[10px] border border-[var(--color-border)] object-cover shadow-sm"

@@ -110,7 +110,7 @@ export function AnalyticsClient({
       <div className="hidden print:block mb-4">
         <h2 className="text-lg font-bold">تقرير الإحصائيات — {projectName}</h2>
         <p className="text-xs text-[var(--color-text-secondary)]">
-          {RANGES.find((r) => r.value === range)?.label} · {new Date().toLocaleDateString('ar-BH')}
+          {RANGES.find((r) => r.value === range)?.label} · {new Date().toLocaleDateString('ar-BH-u-nu-latn')}
         </p>
       </div>
 

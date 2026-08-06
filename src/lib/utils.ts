@@ -96,11 +96,43 @@ export function isValidMoney(value: unknown): value is number {
   return Number.isFinite(n) && n >= 0;
 }
 
-/** Format money for display with currency code (currency-aware decimals). */
+// AR-1: locale عربي لكل عملة خليجية — الأرقام تُثبَّت لاتينية (0-9) عبر
+// لاحقة -u-nu-latn إجباريًا (لا ٠١٢ هندية). النص المحيط يبقى عربيًا.
+const CURRENCY_LOCALES: Record<string, string> = {
+  BHD: 'ar-BH-u-nu-latn',
+  KWD: 'ar-KW-u-nu-latn',
+  OMR: 'ar-OM-u-nu-latn',
+  SAR: 'ar-SA-u-nu-latn',
+  AED: 'ar-AE-u-nu-latn',
+  QAR: 'ar-QA-u-nu-latn',
+};
+
+// AR-1: cache المنسّق لكل (عملة × خانات) — formatMoney يُستدعى بكثرة في POS
+// والقائمة العامة ولوحة التحكم (لا نعيد إنشاء Intl.NumberFormat كل مرة).
+const moneyFormatterCache = new Map<string, Intl.NumberFormat>();
+
+function getMoneyFormatter(currency: string, decimals: number): Intl.NumberFormat {
+  const key = `${currency}:${decimals}`;
+  let fmt = moneyFormatterCache.get(key);
+  if (!fmt) {
+    const locale = CURRENCY_LOCALES[currency.toUpperCase()] ?? 'ar-BH-u-nu-latn';
+    fmt = new Intl.NumberFormat(locale, {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    });
+    moneyFormatterCache.set(key, fmt);
+  }
+  return fmt;
+}
+
+/** Format money for display with currency code (currency-aware decimals).
+ * AR-1: Intl.NumberFormat بلوكيل عربي (ar-BH/ar-KW/...) مع numberingSystem
+ * لاتيني إجباري — الأرقام تظهر 0-9 دائمًا، الصياغة والوحدة تبقى عربية. */
 export function formatMoney(value: number, currency = 'BHD'): string {
   const decimals = currencyDecimals(currency);
   const n = Number.isFinite(value) ? money(value, decimals) : 0;
-  return `${n.toFixed(decimals)} ${currency}`;
+  const formatted = getMoneyFormatter(currency, decimals).format(n);
+  return `${formatted} ${currency}`;
 }
 
 /** Build public menu URL path */

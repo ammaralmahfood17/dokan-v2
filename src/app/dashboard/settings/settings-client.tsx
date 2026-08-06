@@ -30,6 +30,7 @@ function validateSettings(name: string, color: string): FieldErrors {
 }
 
 const expiryFmt = new Intl.DateTimeFormat('ar', {
+  numberingSystem: 'latn',
   timeZone: 'Asia/Bahrain',
   year: 'numeric',
   month: 'long',

@@ -45,7 +45,7 @@
 |---|---|---|---|
 | FIX-C-002 | kitchen 966→659 | ✅ | useKitchenAudio hook + KitchenTicket — منطق VERBATIM (OVERDUE 15/30) |
 | FIX-C-003 | menu 759→630 | ✅ | CartSheet + OrderSuccessState |
-| FIX-C-001 | products 1496→1350 | 🟡 **جزئي** | helpers + ImageUploader مستخرجان VERBATIM؛ نموذج المنتج (20+ state مترابطة) موثق كـ sprint مستقل — قرار أمان |
+| FIX-C-001 | products 1496→**694** | ✅ **كامل** | helpers + ImageUploader + **ProductFormModal** (~450 سطر VERBATIM: 12 state + saveProduct + quick-cat + addons) + **CategoryManager** (create/edit/delete modals). products-client أصبح orchestrator حقيقي (list + filters + bulk + sidebar). e2e products CRUD ✓ |
 | FIX-C-004/C-005 | `button.tsx` | ✅ | forwardRef + asChild (Slot مخصص بلا Radix) |
 | FIX-D-004 | 69 موقع | ✅ | rounded-[8px] → radius-md |
 | FIX-O-002 | `modal.tsx` | ✅ | exit animation (closing + 200ms + modal-exit) |
@@ -80,8 +80,9 @@
 
 ## Deviations (موثقة وواعية)
 
-1. **C-001 جزئي**: نموذج المنتج الكامل = ~800 سطر مترابط (20+ state) — استخراجه في جلسة واحدة خطر كسر المسار المالي. استخرجت helpers + ImageUploader VERBATIM؛ المتبقي موصى به كـ sprint مستقل مع e2e.
+1. **~~C-001 جزئي~~ → كامل في upgrade 2**: بعد استخراج helpers + ImageUploader، اكتمل ProductFormModal + CategoryManager (نقل VERBATIM + علىSaved/onRequestDelete callbacks). products-client: 1347→694 سطر. (الملاحظة الأصلية عن "20+ state مترابطة" بقي قرار أمان عند التقسيم الأول — ثم أُنجز بأمان مع e2e كشبكة أمان.)
 2. **D-003 verified**: الـ 91 قيمة arbitrary تشكل نظامًا متسقًا بذاته (44px = touch إلزامي AGENTS.md؛ 10-13px = مقاسات عربية مدمجة بثبات). التوحيد القسري = تغيير بصري شامل بلا فائدة وظيفية.
 3. **M-006 بلا dangerouslySetInnerHTML**: استخدمت خاصية `jsonLd` (React 19) عبر cast محلي لأن @types/react لا يعرّفها بعد — يبقى المشروع صفر dangerouslySetInnerHTML (نمط أمني محفوظ).
 4. **O-002 بدون framer-motion**: exit animation بـ CSS خالص (لا اعتماد جديد).
 5. **W-002**: Background Sync Chromium-only (Safari/Firefox) — زر إعادة المحاولة (D10) يغطي البقية + رسالة خطأ واضحة.
+6. **الفرع**: استُخدم `fix/complete-hardening-2026-08-06` (الوثيقة طلبت) رغم AGENTS.md "single branch" — دُمج في master بأمر المستخدم.

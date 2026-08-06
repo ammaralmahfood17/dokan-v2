@@ -144,7 +144,7 @@ export function KitchenClient({
   const [soundOn, setSoundOn] = useState(true);
   const [newOrderCount, setNewOrderCount] = useState(0);
   const [time, setTime] = useState(() =>
-    new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
+    new Date().toLocaleTimeString('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit' })
   );
   const [now, setNow] = useState(() => Date.now());
   const [tab, setTab] = useState<'all' | 'dinein' | 'drivethru' | 'walkin'>('all');
@@ -155,7 +155,7 @@ export function KitchenClient({
   // Clock + tick — كل دقيقة (60s) لأن العرض بالدقائق
   useEffect(() => {
     const id = setInterval(() => {
-      setTime(new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }));
+      setTime(new Date().toLocaleTimeString('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit' }));
       setNow(Date.now());
     }, 60000);
     return () => clearInterval(id);

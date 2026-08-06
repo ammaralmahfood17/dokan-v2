@@ -461,10 +461,12 @@ export function ProductFormModal({
         </div>
 
         {/* ======== IMAGE UPLOAD — extracted component ======== */}
+        {/* AR-2: اسم المنتج يُمرَّر للـ alt الوصفي */}
         <ImageUploader
           projectId={projectId}
           imageUrl={imageUrl}
           onImageUrlChange={setImageUrl}
+          productName={name.trim() || undefined}
         />
 
         {/* ======== ADDONS ======== */}

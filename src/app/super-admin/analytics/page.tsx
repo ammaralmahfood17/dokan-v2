@@ -49,8 +49,8 @@ function bahrainBounds(daysAgoStart: number, daysAgoEndExclusive: number): { sta
   return { start: start.toISOString(), end: end.toISOString() };
 }
 
-const moneyFmt = new Intl.NumberFormat('ar', { maximumFractionDigits: 3 });
-const numFmt = new Intl.NumberFormat('ar');
+const moneyFmt = new Intl.NumberFormat('ar', { numberingSystem: 'latn', maximumFractionDigits: 3 });
+const numFmt = new Intl.NumberFormat('ar', { numberingSystem: 'latn' });
 
 export default async function SuperAdminAnalyticsPage({
   searchParams,
@@ -103,6 +103,7 @@ export default async function SuperAdminAnalyticsPage({
     const b = bahrainBounds(i, i + 1);
     const dayOrders = completedOrders.filter((o) => o.created_at >= b.start && o.created_at < b.end);
     const label = new Intl.DateTimeFormat('ar', {
+      numberingSystem: 'latn',
       timeZone: 'Asia/Bahrain',
       day: 'numeric',
       month: 'short',
@@ -145,6 +146,7 @@ export default async function SuperAdminAnalyticsPage({
   });
 
   const lastActiveFmt = new Intl.DateTimeFormat('ar', {
+      numberingSystem: 'latn',
     timeZone: 'Asia/Bahrain',
     day: 'numeric',
     month: 'short',

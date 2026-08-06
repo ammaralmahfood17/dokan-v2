@@ -421,7 +421,7 @@ export function OrdersClient({
                     {order.tables
                       ? `طاولة ${order.tables.number}`
                       : 'بدون طاولة'}{' '}
-                    · {new Date(order.created_at).toLocaleString('ar-BH')}
+                    · {new Date(order.created_at).toLocaleString('ar-BH-u-nu-latn')}
                   </p>
                 </div>
                 <p className="text-sm font-bold tabular-nums">

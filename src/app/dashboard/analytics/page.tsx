@@ -49,7 +49,7 @@ const TYPE_AR: Record<string, string> = {
 const TZ = 'Asia/Bahrain';
 const dayFmt = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
 const hourFmt = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hour: 'numeric', hour12: false });
-const arWeekdayFmt = new Intl.DateTimeFormat('ar', { timeZone: TZ, weekday: 'long' });
+const arWeekdayFmt = new Intl.DateTimeFormat('ar', { numberingSystem: 'latn', timeZone: TZ, weekday: 'long' });
 
 function tzDayKey(d: Date): string {
   return dayFmt.format(d); // YYYY-MM-DD in Asia/Bahrain

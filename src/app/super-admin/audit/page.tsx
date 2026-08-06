@@ -20,6 +20,7 @@ const ACTION_LABELS: Record<string, string> = {
 };
 
 const dateFmt = new Intl.DateTimeFormat('ar', {
+  numberingSystem: 'latn',
   timeZone: 'Asia/Bahrain',
   year: 'numeric',
   month: 'short',
