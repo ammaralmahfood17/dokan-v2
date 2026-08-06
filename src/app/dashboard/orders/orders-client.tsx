@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowUpDown, Search, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { formatMoney } from '@/lib/utils';
 import {
@@ -62,12 +63,19 @@ export function OrdersClient({
   const [filter, setFilter] = useState<OrderStatus | 'all'>('all');
   // التاريخ المعروض — اليوم افتراضيًا (التقويم مقيد بـ max=اليوم)
   const [dateKey, setDateKey] = useState(() => toDateKey(new Date()));
+  // بحث فوري — رقم الطلب / اسم المنتج / طاولة
+  const [query, setQuery] = useState('');
+  // تحميل المزيد — إزاحة للصفحة التالية (50/صفحة)
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  // فرز: أحدث / أقدم / أعلى مبلغ
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'amount'>('newest');
 
   const isToday = dateKey === toDateKey(new Date());
   const mountedRef = useRef(false);
 
   const refresh = useCallback(
-    async (key?: string) => {
+    async (key?: string, append = false) => {
       const target = key ?? dateKey;
       const { start, end } = dayRange(target);
       const supabase = createClient();
@@ -79,11 +87,44 @@ export function OrdersClient({
         .gte('created_at', start.toISOString())
         .lt('created_at', end.toISOString())
         .order('created_at', { ascending: false })
-        .limit(50);
-      if (data) setOrders(data as unknown as OrderRow[]);
+        .range(0, 49);
+      if (data) {
+        setOrders((prev) => {
+          // When appending, merge by id (realtime may have added rows).
+          if (!append) return data as unknown as OrderRow[];
+          const byId = new Map(prev.map((o) => [o.id, o]));
+          for (const o of data as unknown as OrderRow[]) byId.set(o.id, o);
+          return [...byId.values()];
+        });
+        // Fewer than 50 rows → no more pages for this day.
+        setHasMore(data.length === 50);
+      }
     },
     [projectId, dateKey]
   );
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    const { start, end } = dayRange(dateKey);
+    const supabase = createClient();
+    const { data } = await supabase
+      .from('orders')
+      .select('*, tables(number, slug), order_items(*)')
+      .eq('project_id', projectId)
+      .is('service_type', null)
+      .gte('created_at', start.toISOString())
+      .lt('created_at', end.toISOString())
+      .order('created_at', { ascending: false })
+      .range(orders.length, orders.length + 49);
+    if (data) {
+      const byId = new Map(orders.map((o) => [o.id, o]));
+      for (const o of data as unknown as OrderRow[]) byId.set(o.id, o);
+      setOrders([...byId.values()]);
+      setHasMore(data.length === 50);
+    }
+    setLoadingMore(false);
+  }, [loadingMore, hasMore, dateKey, orders, projectId]);
 
   // SSR (Vercel = UTC) يجلب نطاقًا مختلفًا عن نطاق المتصفح المحلي (Asia/Bahrain) —
   // إعادة جلب واحدة عند أول mount توحّد العرض على توقيت المستخدم.
@@ -177,9 +218,38 @@ export function OrdersClient({
   }, [projectId, refresh, isToday]);
 
   const filtered = useMemo(() => {
-    if (filter === 'all') return orders;
-    return orders.filter((o) => o.status === filter);
-  }, [orders, filter]);
+    let list = orders;
+    if (filter !== 'all') list = list.filter((o) => o.status === filter);
+    // بحث فوري: رقم الطلب / اسم المنتج / طاولة
+    const q = query.trim().toLowerCase();
+    if (q) {
+      list = list.filter((o) => {
+        if (String(o.order_number).includes(q)) return true;
+        if (o.tables && String(o.tables.number).includes(q)) return true;
+        return (o.order_items ?? []).some((it) =>
+          (it.product_name ?? '').toLowerCase().includes(q)
+        );
+      });
+    }
+    // فرز
+    const sorted = [...list];
+    if (sortBy === 'oldest') {
+      sorted.sort((a, b) => a.created_at.localeCompare(b.created_at));
+    } else if (sortBy === 'amount') {
+      sorted.sort((a, b) => Number(b.total_amount) - Number(a.total_amount));
+    }
+    // newest = الترتيب الافتراضي من الـ query (created_at desc)
+    return sorted;
+  }, [orders, filter, query, sortBy]);
+
+  // مجموع مبيعات اليوم (غير الملغاة) — يعرض في الرأس
+  const dayTotal = useMemo(
+    () =>
+      orders
+        .filter((o) => o.status !== 'cancelled')
+        .reduce((s, o) => s + Number(o.total_amount), 0),
+    [orders]
+  );
 
   // عدادات حية لكل حالة — معلومة حقيقية من البيانات المعروضة
   const counts = useMemo(() => {
@@ -202,6 +272,12 @@ export function OrdersClient({
         <div>
           <h1>الطلبات</h1>
           <p>متابعة فقط · الحالة تتحدث من شاشة المطبخ</p>
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          <p className="text-[11px] text-[var(--color-text-secondary)]">مبيعات اليوم</p>
+          <p className="font-mono text-lg font-bold tabular-nums text-[var(--color-text)]" dir="ltr">
+            {formatMoney(dayTotal, currency)}
+          </p>
         </div>
       </div>
 
@@ -248,6 +324,46 @@ export function OrdersClient({
             className="bg-transparent text-xs font-semibold outline-none"
             aria-label="اختيار تاريخ"
           />
+        </label>
+      </div>
+
+      {/* بحث فوري + فرز */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="relative min-w-[200px] flex-1">
+          <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
+          <input
+            type="search"
+            inputMode="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="ابحث برقم الطلب أو المنتج أو الطاولة…"
+            aria-label="ابحث في الطلبات"
+            maxLength={60}
+            className="input min-h-[44px] w-full ps-10 pe-10"
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery('')}
+              aria-label="مسح البحث"
+              className="absolute end-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-[var(--color-text-muted)] hover:bg-[var(--color-surface-sunken)]"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+        <label className="flex min-h-[44px] cursor-pointer items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-xs font-semibold text-[var(--color-text-secondary)]">
+          <ArrowUpDown className="h-3.5 w-3.5" />
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'amount')}
+            aria-label="ترتيب الطلبات"
+            className="bg-transparent text-xs font-semibold outline-none"
+          >
+            <option value="newest">الأحدث</option>
+            <option value="oldest">الأقدم</option>
+            <option value="amount">الأعلى مبلغًا</option>
+          </select>
         </label>
       </div>
 
@@ -387,6 +503,19 @@ export function OrdersClient({
               )}
             </article>
           ))}
+        </div>
+      )}
+      {/* تحميل المزيد — صفحة تالية (50/صفحة) */}
+      {hasMore && filtered.length >= 50 && (
+        <div className="mt-5 flex justify-center">
+          <button
+            type="button"
+            onClick={() => void loadMore()}
+            disabled={loadingMore}
+            className="min-h-[44px] rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)] px-6 text-sm font-bold text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] disabled:opacity-50"
+          >
+            {loadingMore ? 'جاري التحميل…' : 'تحميل المزيد'}
+          </button>
         </div>
       )}
       </PullToRefresh>
