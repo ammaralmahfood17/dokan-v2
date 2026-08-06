@@ -25,6 +25,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
     }
 
+    // B6: منع إنشاء مشاريع مفرطة — 3 مشاريع في الساعة لكل مستخدم
+    // (حماية من أتمتة إنشاء متاجر للتجربة المجانية أو الإساءة).
+    const { rateLimit } = await import('@/lib/rate-limit');
+    const limitResult = await rateLimit(user.id, {
+      limit: 3,
+      windowMs: 60 * 60 * 1000,
+      keyPrefix: 'onboarding-project',
+    });
+    if (!limitResult.allowed) {
+      return NextResponse.json(
+        { error: 'طلبات كثيرة — حاول لاحقاً' },
+        { status: 429 }
+      );
+    }
+
     const admin = createAdminClient();
 
     // Guard: user already has a project? (covers old registrations)

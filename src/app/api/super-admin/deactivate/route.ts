@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+// F4: purge the project's cached public menu after activation changes.
+import { revalidateTag } from 'next/cache';
 import * as Sentry from '@sentry/nextjs';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -51,6 +53,11 @@ export async function POST(request: NextRequest) {
       targetProjectId: projectId,
       metadata: { projectName: project.name, slug: project.slug },
     });
+
+    // F4: purge the cached public menu for this project immediately — a
+    // deactivated store must stop serving its menu right away, not up to
+    // 60s later (unstable_cache TTL).
+    revalidateTag(`menu-${projectId}`, 'max');
 
     return NextResponse.json({ ok: true });
   } catch (err) {

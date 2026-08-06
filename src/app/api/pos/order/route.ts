@@ -18,17 +18,22 @@ import type { OrderType, PublicOrderItemInput } from '@/lib/types';
 export async function POST(request: NextRequest) {
   try {
     const userClient = await createClient();
-    // PERF: getSession() reads the JWT locally (~1ms) — the proxy matcher
-    // now covers /api/pos/* and already ran getSession() on this request.
-    // getUser() (Auth API, 200-800ms) is no longer needed for the identity
-    // read; the real membership guard is requireMembership below (queries
-    // staff_members), so a fired/revoked staff member is still blocked.
+    // PERF: getSession() reads the JWT locally (~1ms) for the fast path.
+    // B1: BUT a locally-read session never learns about revoked tokens —
+    // a fired staff member's JWT stays "valid" until expiry. Force a
+    // server-side verification via getUser() for this money-mutating route.
     const {
       data: { session },
     } = await userClient.auth.getSession();
-    const user = session?.user ?? null;
+    if (!session) {
+      return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
+    }
 
-    if (!user) {
+    const {
+      data: { user },
+      error: userErr,
+    } = await userClient.auth.getUser();
+    if (userErr || !user) {
       return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
     }
 
@@ -56,6 +61,27 @@ export async function POST(request: NextRequest) {
 
     if (!membership) {
       return NextResponse.json({ error: 'لا يوجد مشروع' }, { status: 403 });
+    }
+
+    // B2: POS must also respect project activity + subscription — an owner
+    // could keep using the POS after their store was deactivated/expired
+    // (the public menu is cut, but the internal register wasn't). Same
+    // SECURITY DEFINER RPC the public order API uses (reads
+    // subscription_expires_at exactly; anon/auth can't select that column
+    // due to column-scoped grants, so the RPC keeps one source of truth).
+    const { data: projSlug } = await userClient
+      .from('projects')
+      .select('slug')
+      .eq('id', membership.project_id)
+      .single();
+    const { data: isActive } = await userClient.rpc('is_project_publicly_available', {
+      p_slug: projSlug?.slug ?? '',
+    });
+    if (!isActive) {
+      return NextResponse.json(
+        { error: 'المشروع غير نشط — يرجى التواصل مع الإدارة' },
+        { status: 403 }
+      );
     }
 
     // Rate limit POS orders per staff user (prevent spam)

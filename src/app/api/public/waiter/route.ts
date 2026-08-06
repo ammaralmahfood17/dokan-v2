@@ -42,12 +42,21 @@ export async function POST(request: NextRequest) {
 
     // Strict rate limit for waiter calls (anti-abuse) — first IP only; a
     // comma-list header would otherwise make the key vary per proxy hop.
+    // B3: two independent limits — per (table+IP) burst AND a global per-IP
+    // cap so one IP can't fan out across many tables in the same minute.
     const ip = getClientIp(request);
     const rateKey = `${projectSlug}:${tableSlug}:${ip}`;
-    const limitResult = await rateLimit(rateKey, { limit: 8, windowMs: 60 * 1000, keyPrefix: 'public-waiter' });
+    const [limitResult, ipLimitResult] = await Promise.all([
+      rateLimit(rateKey, { limit: 8, windowMs: 60 * 1000, keyPrefix: 'public-waiter' }),
+      rateLimit(`ip:${ip}`, { limit: 20, windowMs: 60 * 1000, keyPrefix: 'public-waiter-ip' }),
+    ]);
 
     if (!limitResult.allowed) {
       const res = createRateLimitResponse(limitResult.resetIn);
+      return NextResponse.json({ error: res.error }, { status: res.status });
+    }
+    if (!ipLimitResult.allowed) {
+      const res = createRateLimitResponse(ipLimitResult.resetIn);
       return NextResponse.json({ error: res.error }, { status: res.status });
     }
 

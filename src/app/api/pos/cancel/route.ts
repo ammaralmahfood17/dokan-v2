@@ -13,14 +13,21 @@ import { createAdminClient } from '@/lib/supabase/admin';
 export async function POST(request: NextRequest) {
   try {
     const userClient = await createClient();
-    // PERF: getSession() local read (~1ms) — proxy covers /api/pos/*; the
-    // membership guard below (staff_members query) is the real authz check.
+    // B1: getSession() fast local read, then force server-side JWT
+    // verification via getUser() — a revoked session (fired staff) must
+    // not be able to cancel orders with an unexpired-but-revoked token.
     const {
       data: { session },
     } = await userClient.auth.getSession();
-    const user = session?.user ?? null;
+    if (!session) {
+      return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
+    }
 
-    if (!user) {
+    const {
+      data: { user },
+      error: userErr,
+    } = await userClient.auth.getUser();
+    if (userErr || !user) {
       return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
     }
 

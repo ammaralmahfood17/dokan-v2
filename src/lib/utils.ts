@@ -118,9 +118,11 @@ export function generateQrToken(): string {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID().replace(/-/g, '');
   }
-  return Array.from({ length: 32 }, () =>
-    Math.floor(Math.random() * 16).toString(16)
-  ).join('');
+  // B8: CSPRNG fallback — Math.random() is not cryptographically secure and
+  // must never back a secret token (predictable = forgeable table QR links).
+  const buf = new Uint8Array(16);
+  crypto.getRandomValues(buf);
+  return Array.from(buf, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 /** Reserved slugs that cannot be used as project slugs */
