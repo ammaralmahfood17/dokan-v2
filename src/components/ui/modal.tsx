@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useRef, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 
 interface ModalProps {
@@ -13,8 +13,11 @@ interface ModalProps {
  * Modal with focus trap, ESC to close, and backdrop click.
  * A11Y: traps focus inside modal, closes on Escape, animates from bottom on mobile.
  */
+// D3: aria-labelledby — the dialog title id links to the heading so screen
+// readers announce the modal's purpose instead of just "dialog".
 export function Modal({ title, children, onClose }: ModalProps) {
   const trapRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
 
   // Focus trap: keep Tab within modal
   const handleKeyDown = useCallback(
@@ -93,10 +96,10 @@ export function Modal({ title, children, onClose }: ModalProps) {
         style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}
         role="dialog"
         aria-modal="true"
-        aria-label={title}
+        aria-labelledby={titleId}
       >
         <div className="flex items-center justify-between border-b border-[var(--color-border)] px-4 py-3">
-          <h3 className="text-sm font-bold">{title}</h3>
+          <h3 id={titleId} className="text-sm font-bold">{title}</h3>
           <button
             type="button"
             onClick={onClose}

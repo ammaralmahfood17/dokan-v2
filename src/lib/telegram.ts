@@ -42,7 +42,7 @@ export async function sendTelegramAlert(
 ): Promise<{ sent: number; failed: number }> {
   if (!TOKEN) return { sent: 0, failed: 0 };
 
-  const admin = createAdminClient() as any;
+  const admin = createAdminClient();
   const { data: links } = await admin
     .from('telegram_links')
     .select('chat_id, user_id')

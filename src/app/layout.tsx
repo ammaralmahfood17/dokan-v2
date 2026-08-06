@@ -3,6 +3,8 @@ import { Cairo } from 'next/font/google';
 import { Toaster } from 'sonner';
 import { ServiceWorkerRegister } from '@/components/service-worker-register';
 import { WebVitals } from '@/components/web-vitals';
+// D15: install-to-homescreen prompt (beforeinstallprompt on Android/Chrome).
+import { InstallPrompt } from '@/components/ui/install-prompt';
 import './globals.css';
 
 // "دكان" — Enterprise identity v1.0
@@ -72,10 +74,21 @@ export default function RootLayout({
         <link rel="prefetch" href="/login" as="document" />
       </head>
       <body>
-        {children}
+        {/* D5: skip-to-content — keyboard users jump straight past the
+            nav/chrome to the page content (visually hidden until focused). */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:rounded-[8px] focus:bg-[var(--color-primary)] focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-white"
+        >
+          تخطي إلى المحتوى
+        </a>
+        <div id="main-content">
+          {children}
+        </div>
         <Toaster position="top-center" richColors dir="rtl" />
         <ServiceWorkerRegister />
         <WebVitals />
+        <InstallPrompt />
       </body>
     </html>
   );

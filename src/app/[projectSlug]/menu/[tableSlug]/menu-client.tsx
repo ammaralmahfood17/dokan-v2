@@ -1,8 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Minus, Plus, ShoppingBag, X, Check, Bell, FileText, GripHorizontal, Search, Languages } from 'lucide-react';
-import Image from 'next/image';
+import { Minus, Plus, ShoppingBag, X, Check, Bell, FileText, Search, Languages } from 'lucide-react';
 import { formatMoney, money, currencyDecimals } from '@/lib/utils';
 import type {
   CartLine,
@@ -15,6 +14,12 @@ import type {
 } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+// D2: extracted sections — bottom sheet + product row now live in
+// src/components/menu/ (menu-client stays the orchestrator).
+import { Sheet } from '@/components/menu/sheet';
+import { MenuProductRow } from '@/components/menu/product-card';
+// D7: offline indicator on the customer-facing menu (banner, not blocker).
+import { OfflineBanner } from '@/components/ui/offline-banner';
 
 /** Generic blur placeholder for product images — tiny 16×16 grey base64 */
 const BLUR_PLACEHOLDER =
@@ -40,6 +45,9 @@ export function MenuClient({
   const [itemNotes, setItemNotes] = useState('');
   const [orderNotes, setOrderNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // D10: persistent order error with a retry button (toast alone vanishes
+  // and the customer is left guessing what happened).
+  const [orderError, setOrderError] = useState<string | null>(null);
   const [orderDone, setOrderDone] = useState<{
     id: string;
     totalAmount: number;
@@ -239,9 +247,12 @@ export function MenuClient({
         order?: { id: string; status: string; totalAmount: number; orderNumber: number };
       };
       if (!res.ok || !data.order) {
-        toast.error(data.error || 'فشل إرسال الطلب');
+        // D10: keep the error visible next to the confirm button so the
+        // customer can retry — a toast disappears and leaves them stuck.
+        setOrderError(data.error || 'فشل إرسال الطلب');
         return;
       }
+      setOrderError(null);
       setOrderDone({
         id: data.order.id,
         totalAmount: data.order.totalAmount,
@@ -252,7 +263,7 @@ export function MenuClient({
       setOrderNotes('');
       setItemNotes('');
     } catch {
-      toast.error('تعذّر الاتصال');
+      setOrderError('تعذّر الاتصال — تحقق من الإنترنت ثم أعد المحاولة');
     } finally {
       setSubmitting(false);
     }
@@ -342,64 +353,25 @@ export function MenuClient({
 
   /** Render a single product row — mockup: square 72px image, price, add-btn */
   function renderProduct(p: ProductWithAddons, isFirst = false) {
-    const name = displayName(p);
     return (
-      <div key={p.id} className="flex items-center gap-3 border-b border-[var(--color-border)] pb-3 pt-1">
-        <button
-          type="button"
-          onClick={() => quickAdd(p)}
-          aria-label={`إضافة ${name}`}
-          className="flex min-w-0 flex-1 items-center gap-3 text-start"
-        >
-          {p.image_url ? (
-            <Image
-              src={p.image_url}
-              alt={name}
-              width={72}
-              height={72}
-              priority={isFirst}
-              placeholder="blur"
-              blurDataURL={BLUR_PLACEHOLDER}
-              sizes="72px"
-              className="h-[72px] w-[72px] shrink-0 object-cover"
-            />
-          ) : (
-            <div
-              className="flex h-[72px] w-[72px] shrink-0 items-center justify-center text-[22px] font-bold bg-[var(--color-surface-sunken)]"
-              style={{ color: 'var(--color-primary)' }}
-            >
-              {name.slice(0, 1)}
-            </div>
-          )}
-          <div className="min-w-0 flex-1">
-            <h3 className="truncate text-[15px] font-semibold">{name}</h3>
-            {p.description && (
-              <p className="mt-0.5 line-clamp-2 text-[12.5px] leading-[1.5] text-[var(--color-text-secondary)]">
-                {p.description}
-              </p>
-            )}
-            <span className="mt-1 inline-block font-mono text-[14px] font-semibold tabular-nums text-[var(--color-success)]" dir="ltr">
-              {formatMoney(Number(p.price), currency)}
-            </span>
-          </div>
-        </button>
-        <button
-          type="button"
-          onClick={() => quickAdd(p)}
-          aria-label={`إضافة ${name} إلى السلة`}
-          className={`flex h-[44px] w-[44px] shrink-0 items-center justify-center bg-[var(--color-text)] text-[20px] font-semibold leading-none text-[var(--color-primary)] transition-transform duration-200 active:scale-95 ${
-            lastAddedKey === p.id ? 'scale-110' : ''
-          }`}
-        >
-          {lastAddedKey === p.id ? <Check className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
-        </button>
-      </div>
+      <MenuProductRow
+        key={p.id}
+        product={p}
+        currency={currency}
+        isFirst={isFirst}
+        lastAdded={lastAddedKey === p.id}
+        displayName={displayName(p)}
+        onQuickAdd={quickAdd}
+      />
     );
   }
 
   // ======== MAIN MENU ========
   return (
     <div className="min-h-dvh bg-[var(--color-bg)] pb-24 page-enter">
+      {/* D7: offline notice — replaces the full-screen blocker (design: the
+          customer should still be able to browse the cached menu) */}
+      <OfflineBanner />
       {/* HEADER — brand mark + TABLE chip */}
       <header
         className="sticky top-0 z-20 border-b border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3.5"
@@ -746,146 +718,34 @@ export function MenuClient({
               'تأكيد الطلب'
             )}
           </Button>
+          {/* D10: retry — persistent error with a one-tap retry button */}
+          {orderError && (
+            <div
+              role="alert"
+              className="mt-3 rounded-[8px] border border-[var(--color-danger)] bg-[var(--color-danger-tint)] p-3 text-center"
+            >
+              <p className="mb-2 text-[12.5px] font-semibold text-[var(--color-danger)]">
+                {orderError}
+              </p>
+              <Button
+                block
+                size="sm"
+                variant="danger"
+                disabled={submitting}
+                onClick={() => {
+                  setOrderError(null);
+                  placeOrder();
+                }}
+              >
+                إعادة المحاولة
+              </Button>
+            </div>
+          )}
           <p className="mt-2 text-center text-[11px] text-[var(--color-text-muted)]">
             الأسعار تُحسب من الخادم
           </p>
         </Sheet>
       )}
-    </div>
-  );
-}
-
-/**
- * Bottom sheet with drag-to-dismiss gesture.
- * Pull the handle down past threshold (80px) or tap X to close.
- */
-function Sheet({
-  title,
-  children,
-  onClose,
-}: {
-  title: string;
-  children: React.ReactNode;
-  onClose: () => void;
-}) {
-  const sheetRef = useRef<HTMLDivElement>(null);
-  const startY = useRef(0);
-  const currentY = useRef(0);
-
-  // Focus trap
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { onClose(); return; }
-      if (e.key !== 'Tab') return;
-      const el = sheetRef.current;
-      if (!el) return;
-      const focusable = el.querySelectorAll<HTMLElement>(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-      );
-      if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last?.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first?.focus();
-      }
-    },
-    [onClose]
-  );
-
-  // Scroll lock + keyboard listener + focus management
-  useEffect(() => {
-    document.addEventListener('keydown', handleKeyDown);
-    const scrollY = window.scrollY;
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.width = '100%';
-    document.body.style.overflowY = 'scroll';
-
-    // Focus trap: move focus INTO the sheet on open so the first Tab lands
-    // inside the dialog, not on background controls behind the overlay.
-    const previouslyFocused = document.activeElement as HTMLElement | null;
-    const panel = sheetRef.current?.querySelector<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    );
-    panel?.focus();
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
-      document.body.style.overflowY = '';
-      window.scrollTo(0, scrollY);
-      // Restore focus to whatever opened the sheet.
-      previouslyFocused?.focus?.();
-    };
-  }, [handleKeyDown]);
-
-  function onTouchStart(e: React.TouchEvent) {
-    startY.current = e.touches[0].clientY;
-    currentY.current = 0;
-  }
-
-  function onTouchMove(e: React.TouchEvent) {
-    const dy = e.touches[0].clientY - startY.current;
-    if (dy < 0) return;
-    currentY.current = dy;
-    if (sheetRef.current) {
-      sheetRef.current.style.transform = `translateY(${dy}px)`;
-      sheetRef.current.style.transition = 'none';
-    }
-  }
-
-  function onTouchEnd() {
-    if (currentY.current > 80) onClose();
-    if (sheetRef.current) {
-      sheetRef.current.style.transform = '';
-      sheetRef.current.style.transition = '';
-    }
-    currentY.current = 0;
-  }
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-label={title}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div
-        ref={sheetRef}
-        className="max-h-dvh w-full max-w-lg overflow-y-auto rounded-t-[12px] bg-[var(--color-surface)] pb-safe-bottom shadow-xl transition-transform duration-300 sm:max-h-[85vh] sm:rounded-[12px] animate-slide-up"
-      >
-        {/* Drag handle + header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3">
-          <div className="flex items-center gap-2">
-            {/* Drag handle indicator */}
-            <div
-              className="flex cursor-grab touch-none items-center justify-center active:cursor-grabbing"
-              onTouchStart={onTouchStart}
-              onTouchMove={onTouchMove}
-              onTouchEnd={onTouchEnd}
-            >
-              <GripHorizontal className="h-4 w-4 text-[var(--color-text-muted)]" />
-            </div>
-            <h3 className="text-sm font-bold">{title}</h3>
-          </div>
-          <button
-            type="button"
-            aria-label="إغلاق"
-            onClick={onClose}
-            className="min-h-[44px] min-w-[44px] rounded-[8px] transition-colors hover:bg-[var(--color-bg)]"
-          >
-            <X className="mx-auto h-5 w-5 text-[var(--color-text-muted)]" />
-          </button>
-        </div>
-        <div className="p-4">{children}</div>
-      </div>
     </div>
   );
 }

@@ -35,7 +35,7 @@ export async function sendPushToProject(
 
   webpush.setVapidDetails(contact, publicKey, privateKey);
 
-  const admin = createAdminClient() as any;
+  const admin = createAdminClient();
 
   // Only staff who opted in for push (notify_push) receive order alerts.
   // Fetch opted-in staff ids FIRST, then filter subscriptions — passing a
@@ -80,7 +80,13 @@ export async function sendPushToProject(
       sent++;
     } else {
       failed++;
-      const reason = r.reason as any;
+      // B7: web-push lacks TS types for the error object — narrow through
+      // unknown instead of `as any` (keeps type safety at the boundary).
+      const reason = r.reason as unknown as {
+        statusCode?: number;
+        body?: string;
+        message?: string;
+      };
       console.log('[Push] sub', i, 'FAILED —', reason?.statusCode, reason?.body || reason?.message);
       if (reason?.statusCode === 410 || reason?.statusCode === 404) {
         expiredEndpoints.push(subs[i].endpoint);
