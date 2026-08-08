@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import * as Sentry from '@sentry/nextjs';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { createSecureOrder } from '@/lib/order-pricing';
+import { createSecureOrder, findExistingOrderByKey, isIdempotencyKeyValid } from '@/lib/order-pricing';
 import { rateLimit, createRateLimitResponse } from '@/lib/rate-limit';
 import { getClientIp } from '@/lib/ip';
 import { sendPushToProject } from '@/lib/push';
@@ -16,6 +16,7 @@ export async function POST(request: NextRequest) {
       tableSlug?: string;
       items?: PublicOrderItemInput[];
       notes?: string;
+      idempotencyKey?: string;
     };
 
     const { projectSlug, tableSlug, items, notes } = body;
@@ -26,6 +27,13 @@ export async function POST(request: NextRequest) {
 
     // Cap slug length — a 1MB slug would blow up the rate-limit key/query.
     if (projectSlug.length > 100 || tableSlug.length > 100) {
+      return NextResponse.json({ error: 'بيانات غير صالحة' }, { status: 400 });
+    }
+
+    // Idempotency key (audit MEDIUM fix): a retry of the SAME order attempt
+    // reuses the key, so a dropped response can never double-create the order.
+    const idempotencyKey = body.idempotencyKey;
+    if (idempotencyKey !== undefined && !isIdempotencyKeyValid(idempotencyKey)) {
       return NextResponse.json({ error: 'بيانات غير صالحة' }, { status: 400 });
     }
 
@@ -87,7 +95,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. Server-side pricing + insert (core security)
+    // 3. Idempotency pre-check — same key already created? Return that order.
+    if (idempotencyKey) {
+      const existing = await findExistingOrderByKey(supabase, project.id, idempotencyKey);
+      if (existing) {
+        return NextResponse.json({
+          order: {
+            id: existing.id,
+            status: existing.status,
+            totalAmount: existing.totalAmount,
+            orderNumber: existing.orderNumber,
+          },
+          duplicate: true,
+        });
+      }
+    }
+
+    // 4. Server-side pricing + insert (core security)
     const result = await createSecureOrder(supabase, {
       projectId: project.id,
       currency: project.currency,
@@ -95,9 +119,26 @@ export async function POST(request: NextRequest) {
       type: 'dinein',
       items,
       notes: body.notes,
+      idempotencyKey,
     });
 
     if (!result.ok) {
+      // A concurrent retry of the same key hit the unique index inside the
+      // RPC — return the winning order instead of a 500.
+      if (result.duplicateKey && idempotencyKey) {
+        const existing = await findExistingOrderByKey(supabase, project.id, idempotencyKey);
+        if (existing) {
+          return NextResponse.json({
+            order: {
+              id: existing.id,
+              status: existing.status,
+              totalAmount: existing.totalAmount,
+              orderNumber: existing.orderNumber,
+            },
+            duplicate: true,
+          });
+        }
+      }
       return NextResponse.json({ error: result.error }, { status: result.status });
     }
 

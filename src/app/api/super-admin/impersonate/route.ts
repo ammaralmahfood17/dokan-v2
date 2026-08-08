@@ -56,8 +56,18 @@ export async function POST(request: NextRequest) {
       expiresAt: result.expiresAt,
       targetSession: result.targetSession,
     });
-    // The client sets the session cookie (non-httpOnly swap happens via the
-    // browser-side supabase client with the minted tokens).
+    // The client swaps the auth cookie via the browser-side supabase client
+    // with the minted tokens. The impersonation MARKER cookie is set here
+    // server-side as HttpOnly so page JS can never read sessionId out of it
+    // (audit CRITICAL fix) — the dashboard layout reads it server-side for
+    // the banner, and /impersonate/end validates that it matches.
+    response.cookies.set('dokan-impersonation', result.sessionId, {
+      path: '/',
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 60 * 60 * 12, // 12h marker window (row TTL is 30 min)
+    });
     return response;
   } catch (err) {
     const message = err instanceof Error ? err.message : 'unknown';

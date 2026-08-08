@@ -26,14 +26,31 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { email, password, fullName } = body;
 
-    if (!email || !password) {
-      return NextResponse.json({ 
-        error: 'البريد الإلكتروني وكلمة المرور مطلوبان' 
-      }, { status: 400 });
+    // Input hardening FIRST (audit MEDIUM fix) — the raw values feed the
+    // rate-limit DB key and admin.createUser; a 1MB email would otherwise
+    // persist a huge rate_limits row and a numeric password would 500.
+    if (
+      typeof email !== 'string' ||
+      typeof password !== 'string' ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim()) ||
+      email.trim().length > 254
+    ) {
+      return NextResponse.json(
+        { error: 'البريد الإلكتروني غير صالح' },
+        { status: 400 }
+      );
     }
+    if (password.length < 8 || password.length > 72) {
+      return NextResponse.json(
+        { error: 'كلمة المرور يجب أن تكون بين 8 و 72 حرفاً' },
+        { status: 400 }
+      );
+    }
+    const cleanEmail = email.trim().toLowerCase();
 
-    // Rate limit: 3 signups per email per minute
-    const rateKey = `signup:${email.trim().toLowerCase()}`;
+    // Rate limit: 3 signups per email per minute (keyed on the CLAMPED
+    // email so a huge address can never balloon the key table)
+    const rateKey = `signup:${cleanEmail}`;
     const limitResult = await rateLimit(rateKey, { limit: 3, windowMs: 60 * 1000, keyPrefix: 'auth-signup' });
     if (!limitResult.allowed) {
       const res = createRateLimitResponse(limitResult.resetIn);
@@ -57,7 +74,7 @@ export async function POST(request: Request) {
 
     // Create user using admin client (reliable, works with email_confirm disabled)
     const { data: createData, error: createError } = await admin.auth.admin.createUser({
-      email: email.trim().toLowerCase(),
+      email: cleanEmail,
       password: String(password),
       email_confirm: true, // confirmation is disabled in this project
       user_metadata: {

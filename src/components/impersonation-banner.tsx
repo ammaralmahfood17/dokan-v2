@@ -58,8 +58,8 @@ export function ImpersonationBanner({
           refresh_token: data.superAdminSession.refresh_token,
         });
       }
-      // Clear the marker cookie and reload.
-      document.cookie = 'dokan-impersonation=; path=/; max-age=0';
+      // The server response already cleared the HttpOnly marker cookie —
+      // navigations back to /dashboard will render without the banner.
       router.push('/super-admin/subscriptions');
       router.refresh();
     } catch {

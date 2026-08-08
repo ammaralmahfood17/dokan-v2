@@ -152,8 +152,17 @@ export async function POST(request: NextRequest) {
 
     if (staffErr) {
       console.error('Staff create error:', staffErr);
-      // Best-effort rollback
+      // Best-effort rollback of the orphaned project row.
       await admin.from('projects').delete().eq('id', project.id);
+      // Race fix (audit MEDIUM): the new unique owner index
+      // (staff_members_single_owner) caught a concurrent onboarding — the
+      // other click already owns a project. Reply 409, not a confusing 500.
+      if ((staffErr as { code?: string }).code === '23505') {
+        return NextResponse.json(
+          { error: 'لديك مشروع بالفعل', redirect: '/dashboard' },
+          { status: 409 }
+        );
+      }
       return NextResponse.json(
         { error: 'فشل ربط الملكية بالمشروع' },
         { status: 500 }

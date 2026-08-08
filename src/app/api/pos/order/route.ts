@@ -2,7 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server';
 import * as Sentry from '@sentry/nextjs';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { createSecureOrder } from '@/lib/order-pricing';
+import { createSecureOrder, findExistingOrderByKey, isIdempotencyKeyValid } from '@/lib/order-pricing';
 import { rateLimit, createRateLimitResponse } from '@/lib/rate-limit';
 import { sendPushToProject } from '@/lib/push';
 import { sendTelegramAlert } from '@/lib/telegram';
@@ -41,6 +41,7 @@ export async function POST(request: NextRequest) {
       type?: OrderType;
       items?: PublicOrderItemInput[];
       notes?: string;
+      idempotencyKey?: string;
     };
 
     const type: OrderType =
@@ -50,6 +51,13 @@ export async function POST(request: NextRequest) {
 
     if (!Array.isArray(body.items) || body.items.length === 0) {
       return NextResponse.json({ error: 'السلة فارغة' }, { status: 400 });
+    }
+
+    // Idempotency key (audit MEDIUM fix) — a retried POS submit reuses the
+    // key so a dropped response can't double-create the order.
+    const idempotencyKey = body.idempotencyKey;
+    if (idempotencyKey !== undefined && !isIdempotencyKeyValid(idempotencyKey)) {
+      return NextResponse.json({ error: 'بيانات غير صالحة' }, { status: 400 });
     }
 
     const { data: membership } = await userClient
@@ -105,6 +113,27 @@ export async function POST(request: NextRequest) {
     const currency =
       (membership as unknown as { projects?: { currency?: string } }).projects
         ?.currency || 'BHD';
+
+    // Idempotency pre-check — the same key already produced an order?
+    if (idempotencyKey) {
+      const existing = await findExistingOrderByKey(
+        supabase,
+        membership.project_id,
+        idempotencyKey
+      );
+      if (existing) {
+        return NextResponse.json({
+          order: {
+            id: existing.id,
+            status: existing.status,
+            totalAmount: existing.totalAmount,
+            orderNumber: existing.orderNumber,
+          },
+          duplicate: true,
+        });
+      }
+    }
+
     const result = await createSecureOrder(supabase, {
       projectId: membership.project_id,
       currency,
@@ -113,9 +142,29 @@ export async function POST(request: NextRequest) {
       items: body.items,
       notes: body.notes,
       callerUserId: user.id,
+      idempotencyKey,
     });
 
     if (!result.ok) {
+      // A concurrent retry of the same key won inside the RPC — return it.
+      if (result.duplicateKey && idempotencyKey) {
+        const existing = await findExistingOrderByKey(
+          supabase,
+          membership.project_id,
+          idempotencyKey
+        );
+        if (existing) {
+          return NextResponse.json({
+            order: {
+              id: existing.id,
+              status: existing.status,
+              totalAmount: existing.totalAmount,
+              orderNumber: existing.orderNumber,
+            },
+            duplicate: true,
+          });
+        }
+      }
       return NextResponse.json({ error: result.error }, { status: result.status });
     }
 

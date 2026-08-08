@@ -180,7 +180,9 @@ export async function getImpersonationById(
 }
 
 /** End an impersonation: mark ended and return the stored sessions for
- *  cookie restoration (service_role). */
+ *  cookie restoration (service_role). The stored token columns are nulled
+ *  after the read, so a leaked sessionId can never be replayed to harvest
+ *  the super admin's tokens (audit CRITICAL fix). */
 export async function endImpersonation(sessionId: string): Promise<{
   superAdminSession: Json | null;
   targetUserId: string;
@@ -193,9 +195,20 @@ export async function endImpersonation(sessionId: string): Promise<{
     .maybeSingle();
   if (!row || row.ended_at) return null;
 
-  await admin.from('impersonation_sessions').update({ ended_at: new Date().toISOString() }).eq('id', sessionId);
-  return {
+  // Read first, null after — one-time token delivery.
+  const result = {
     superAdminSession: (row.super_admin_session as Json | null) ?? null,
     targetUserId: row.target_user_id as string,
   };
+
+  await admin
+    .from('impersonation_sessions')
+    .update({
+      ended_at: new Date().toISOString(),
+      super_admin_session: null,
+      target_session: null,
+    })
+    .eq('id', sessionId);
+
+  return result;
 }

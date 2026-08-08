@@ -43,13 +43,13 @@ export function ImpersonateButton({
         return;
       }
       // Swap the auth cookie to the target owner's session (supabase/ssr
-      // writes the cookie automatically), then set the marker.
+      // writes the cookie automatically). The impersonation marker cookie is
+      // set server-side (HttpOnly) by /api/super-admin/impersonate.
       const supabase = createClient();
       await supabase.auth.setSession({
         access_token: data.targetSession.access_token,
         refresh_token: data.targetSession.refresh_token,
       });
-      document.cookie = `dokan-impersonation=${data.sessionId}; path=/; max-age=${60 * 60 * 12}`;
       toast.success(`دخلت باسم ${ownerEmail}`);
       router.push('/dashboard');
       router.refresh();

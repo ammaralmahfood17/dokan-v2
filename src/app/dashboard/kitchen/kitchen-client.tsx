@@ -243,10 +243,14 @@ export function KitchenClient({
             byId.set(o.id, o);
           }
         }
+        // Reset the refs INSIDE the updater: React executes this callback
+        // later (at render), so clearing them here (in the same synchronous
+        // continuation as setOrders) would wipe ids that other realtime
+        // events added in between — the merge protection then silently died.
+        realtimeAddedRef.current.clear();
+        realtimeTouchedRef.current.clear();
         return [...byId.values()];
       });
-      realtimeAddedRef.current.clear();
-      realtimeTouchedRef.current.clear();
     } catch (err) {
       // Silently fail the refresh — keep the previous board state.
       console.error('fullRefresh failed', err);
@@ -358,7 +362,14 @@ export function KitchenClient({
           void refetchOrder(itemOrderId);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        // Realtime died? Trigger an immediate poll refresh instead of
+        // waiting for the 30s fallback — the next poll re-checks everything
+        // and the channel reconnects on its own.
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          setTimeout(() => void fullRefresh(), 0);
+        }
+      });
 
     // Fallback polling every 30s
     const interval = setInterval(() => void fullRefresh(), 30000);

@@ -65,6 +65,9 @@ export function MenuClient({
   const [busyAction, setBusyAction] = useState<'waiter' | 'bill' | null>(null);
   const [lastAddedKey, setLastAddedKey] = useState<string | null>(null);
   const lastAddedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // One idempotency key per order attempt — reused across retries of the
+  // SAME attempt (incl. the offline IndexedDB queue), fresh after success.
+  const attemptKeyRef = useRef<string | null>(null);
   // بحث في المنتجات (فقط للمنيو الكبير — 12+ منتج)
   const [menuQuery, setMenuQuery] = useState('');
   // تبديل لغة العرض: عربي / English (يستخدم name_en عندما متاح)
@@ -244,6 +247,10 @@ export function MenuClient({
 
   async function placeOrder() {
     if (!cart.length) return;
+    // One key per attempt — retries (incl. the offline queue) reuse it, and
+    // the key is reset only after a definitive success.
+    const idempotencyKey =
+      attemptKeyRef.current ?? (attemptKeyRef.current = crypto.randomUUID());
     setSubmitting(true);
     try {
       const res = await fetch('/api/public/order', {
@@ -253,6 +260,7 @@ export function MenuClient({
           projectSlug: project.slug,
           tableSlug: table.slug,
           notes: orderNotes.trim() || undefined,
+          idempotencyKey,
           items: cart.map((l) => ({
             productId: l.productId,
             quantity: l.quantity,
@@ -281,6 +289,8 @@ export function MenuClient({
       setCartOpen(false);
       setOrderNotes('');
       setItemNotes('');
+      // Fresh key for the NEXT order — this attempt is definitively done.
+      attemptKeyRef.current = null;
     } catch {
       // FIX-W-002: حفظ الطلب في IndexedDB + تسجيل Background Sync —
       // عند عودة الاتصال يُرسل تلقائيًا (Chromium). Safari/Firefox:
@@ -291,6 +301,7 @@ export function MenuClient({
           projectSlug: project.slug,
           tableSlug: table.slug,
           notes: orderNotes.trim() || undefined,
+          idempotencyKey,
           items: cart.map((l) => ({
             productId: l.productId,
             quantity: l.quantity,

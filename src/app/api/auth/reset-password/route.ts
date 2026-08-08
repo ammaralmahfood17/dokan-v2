@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { rateLimit, createRateLimitResponse } from '@/lib/rate-limit';
+import { getClientIp } from '@/lib/ip';
 
 /**
  * POST /api/auth/reset-password
@@ -10,13 +11,19 @@ import { rateLimit, createRateLimitResponse } from '@/lib/rate-limit';
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as { email?: string };
-    const email = body.email?.trim().toLowerCase();
 
-    if (!email) {
+    // Input hardening FIRST (audit MEDIUM fix) — validate before the value
+    // becomes a rate-limit DB key.
+    if (
+      typeof body.email !== 'string' ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(body.email.trim()) ||
+      body.email.trim().length > 254
+    ) {
       return NextResponse.json({ error: 'البريد الإلكتروني مطلوب' }, { status: 400 });
     }
+    const email = body.email.trim().toLowerCase();
 
-    // Rate limit: 2 requests per email per 5 minutes
+    // Rate limit: 2 requests per email per 5 minutes (clamped email key)
     const limitResult = await rateLimit(`reset:${email}`, {
       limit: 2,
       windowMs: 5 * 60 * 1000,
@@ -25,6 +32,19 @@ export async function POST(request: Request) {
 
     if (!limitResult.allowed) {
       const res = createRateLimitResponse(limitResult.resetIn);
+      return NextResponse.json({ error: res.error }, { status: res.status });
+    }
+
+    // IP cap too — mass reset attempts across many emails from one IP
+    // (enumeration/email-bombing) bypasses the per-email limit entirely.
+    const ip = getClientIp(request);
+    const ipLimit = await rateLimit(`reset-ip:${ip}`, {
+      limit: 10,
+      windowMs: 60 * 60 * 1000,
+      keyPrefix: 'auth-reset-ip',
+    });
+    if (!ipLimit.allowed) {
+      const res = createRateLimitResponse(ipLimit.resetIn);
       return NextResponse.json({ error: res.error }, { status: res.status });
     }
 

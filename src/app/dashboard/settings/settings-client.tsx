@@ -175,6 +175,13 @@ export function SettingsClient({
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
+    // Owner-only (audit HIGH fix): RLS (projects_update_owner) enforces this
+    // server-side; the client gate just avoids the failed request + keeps
+    // the form read-only for staff.
+    if (!isOwner) {
+      toast.error('فقط مالك المتجر يقدر يعدّل الإعدادات');
+      return;
+    }
     const errs = validateSettings(name, primaryColor);
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
@@ -305,7 +312,9 @@ export function SettingsClient({
           <Toggle
             id="store-active"
             checked={isActive}
+            disabled={!isOwner}
             onChange={(v) => {
+              if (!isOwner) return;
               if (!v) {
                 setConfirmDeactivate(true);
               } else {
@@ -314,8 +323,13 @@ export function SettingsClient({
             }}
           />
         </div>
+        {!isOwner && (
+          <p className="mb-4 text-xs text-[var(--color-text-secondary)]">
+            🔒 فقط مالك المتجر يقدر يعدّل الإعدادات أو يوقف المتجر.
+          </p>
+        )}
 
-        <Button type="submit" disabled={loading}>
+        <Button type="submit" disabled={loading || !isOwner}>
           {loading ? 'جاري الحفظ…' : 'حفظ التغييرات'}
         </Button>
       </form>

@@ -43,6 +43,10 @@ export function PosClient({
   } | null>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  // One idempotency key per order attempt — regenerated only after a
+  // definitive success, so a network-drop retry reuses the same key and can
+  // never double-create the order (audit MEDIUM fix).
+  const attemptKeyRef = useRef<string | null>(null);
 
   const pickerKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape') { setPicker(null); return; }
@@ -262,12 +266,15 @@ export function PosClient({
     }
     setSubmitting(true);
     try {
+      const idempotencyKey =
+        attemptKeyRef.current ?? (attemptKeyRef.current = crypto.randomUUID());
       const res = await fetch('/api/pos/order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type,
           notes: notes.trim() || undefined,
+          idempotencyKey,
           items: lines.map((l) => ({
             productId: l.productId,
             quantity: l.quantity,
@@ -293,6 +300,8 @@ export function PosClient({
       setLines([]);
       setNotes('');
       setCartOpen(false);
+      // Fresh idempotency key for the NEXT order (the current key is spent).
+      attemptKeyRef.current = null;
       // Confirmation state — shows "الطلب وصل المطبخ" banner + allows
       // repeat-last-order to restore the exact same cart in one tap.
       setLastConfirmed({ orderNumber: data.order?.orderNumber ?? 0, totalAmount: data.order?.totalAmount ?? 0 });

@@ -1,7 +1,7 @@
 // Dokan Service Worker — Precache build assets + RSC caching + Push + Offline-first
 // M6: single source of truth for cache versioning — bump CACHE_VERSION on every
 // SW change so old caches are evicted by activate() (matched by prefix).
-const CACHE_VERSION = 'v7';
+const CACHE_VERSION = 'v8';
 const CACHE_SHELL = `dokan-shell-${CACHE_VERSION}`;
 const CACHE_IMAGES = `dokan-images-${CACHE_VERSION}`;
 const CACHE_STATIC = `dokan-static-${CACHE_VERSION}`;
@@ -278,8 +278,21 @@ async function submitPendingOrders() {
       if (res.ok) {
         store.delete(order.id);
       } else {
-        // Permanent failure (4xx) — drop it; the customer saw the error
-        if (res.status >= 400 && res.status < 500) store.delete(order.id);
+        // 4xx — the server rejected the queued order permanently. The
+        // customer was OFFLINE when this was queued, so they never saw the
+        // error inline; surface it as a notification before dropping the
+        // record (it would otherwise fail forever on every sync retry).
+        if (res.status >= 400 && res.status < 500) {
+          try {
+            const data = await res.json();
+            await self.registration.showNotification('تعذّر إرسال الطلب', {
+              body: data?.error || 'رفض الخادم الطلب المحفوظ — حاول مرة أخرى من القائمة',
+              tag: 'order-queue-rejected',
+              renotify: true,
+            });
+          } catch (e) {}
+          store.delete(order.id);
+        }
       }
     } catch {
       // still offline — leave in queue, sync will retry

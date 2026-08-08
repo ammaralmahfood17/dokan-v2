@@ -14,13 +14,13 @@ async function requireMembership(projectId: string) {
 
   const { data: membership } = await supabase
     .from('staff_members')
-    .select('project_id')
+    .select('project_id, role')
     .eq('user_id', user.id)
     .eq('project_id', projectId)
     .maybeSingle();
 
   if (!membership) return { error: NextResponse.json({ error: 'غير مصرح' }, { status: 403 }) };
-  return { supabase, user };
+  return { supabase, user, role: membership.role as 'owner' | 'manager' | 'staff' };
 }
 
 /**
@@ -41,7 +41,10 @@ export async function POST(request: NextRequest) {
     // Clear expired codes for this project, then generate a fresh one
     await supabase.from('telegram_link_codes').delete().lt('expires_at', new Date().toISOString());
 
-    const code = randomBytes(4).toString('hex').toUpperCase();
+    // Entropy fix (audit MEDIUM): 8 random bytes → 16 hex chars. The old
+    // 4-byte (8-char) code was brute-forceable at webhook rate and would
+    // let an attacker subscribe to another store's alerts.
+    const code = randomBytes(8).toString('hex').toUpperCase();
     const { error } = await supabase.from('telegram_link_codes').insert({
       project_id: body.projectId,
       code,
@@ -78,7 +81,13 @@ export async function DELETE(request: NextRequest) {
 
     const auth = await requireMembership(body.projectId);
     if ('error' in auth) return auth.error;
-    const { supabase } = auth;
+    const { supabase, role } = auth;
+
+    // Role gate (audit LOW fix): unlinking the Telegram alerts channel is a
+    // store-level decision — owner or manager only, not a cashier.
+    if (role !== 'owner' && role !== 'manager') {
+      return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+    }
 
     const { error } = await supabase
       .from('telegram_links')

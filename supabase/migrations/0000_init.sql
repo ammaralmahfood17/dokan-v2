@@ -17,7 +17,7 @@
 --   has been synced to record only this baseline (see migration-history-sync).
 --
 -- WHAT'S INCLUDED
---   - public schema: 20 tables, enums, sequences, indexes (58),
+--   - public schema: 18 tables, enums, sequences, indexes (58),
 --     11 functions, 45 RLS policies, triggers, grants (82)
 --   - handle_new_user_safety() trigger on auth.users (added manually below —
 --     it lives outside the public schema so pg_dump --schema=public omits it)

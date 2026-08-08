@@ -5,6 +5,37 @@ import { money, currencyDecimals } from '@/lib/utils';
 
 type AdminClient = SupabaseClient<Database>;
 
+/** Acceptable idempotency-key charset: uuid (crypto.randomUUID) + URL-safe
+ *  separators. Keeps the key index tiny and unabusable. */
+const IDEMPOTENCY_KEY_RE = /^[A-Za-z0-9._:-]{8,128}$/;
+
+export function isIdempotencyKeyValid(value: unknown): value is string {
+  return typeof value === 'string' && IDEMPOTENCY_KEY_RE.test(value);
+}
+
+/** Look up an order created with the same idempotency key (the unique
+ *  (project_id, key) index guarantees at most one). Used for the route-level
+ *  pre-check and as the race fallback after a 23505. */
+export async function findExistingOrderByKey(
+  supabase: AdminClient,
+  projectId: string,
+  idempotencyKey: string
+): Promise<{ id: string; status: string; totalAmount: number; orderNumber: number } | null> {
+  const { data } = await supabase
+    .from('orders')
+    .select('id, status, total_amount, order_number')
+    .eq('project_id', projectId)
+    .eq('idempotency_key', idempotencyKey)
+    .maybeSingle();
+  if (!data) return null;
+  return {
+    id: data.id as string,
+    status: data.status as string,
+    totalAmount: Number(data.total_amount),
+    orderNumber: Number(data.order_number),
+  };
+}
+
 export type ValidatedOrderLine = {
   product_id: string;
   product_name: string;
@@ -19,7 +50,14 @@ export type CreateOrderResult =
       ok: true;
       order: { id: string; status: string; totalAmount: number; orderNumber: number };
     }
-  | { ok: false; error: string; status: number };
+  | {
+      ok: false;
+      error: string;
+      status: number;
+      /** true when the insert hit the idempotency unique index — the route
+       *  should re-select the existing row instead of failing the request. */
+      duplicateKey?: boolean;
+    };
 
 /**
  * Shared server-side order creation:
@@ -43,9 +81,13 @@ export async function createSecureOrder(
      * membership guard can verify the caller. Omit for the anonymous
      * public-order path (route-level validation applies there). */
     callerUserId?: string;
+    /** Client-supplied idempotency key (uuid or similar, 8-128 chars).
+     * Stored on the row + unique per project, so a network retry can never
+     * double-create an order (audit MEDIUM fix). */
+    idempotencyKey?: string | null;
   }
 ): Promise<CreateOrderResult> {
-  const { projectId, currency, tableId, type, items, notes, callerUserId } = params;
+  const { projectId, currency, tableId, type, items, notes, callerUserId, idempotencyKey } = params;
   // Server-side rounding per the project's currency (BHD=3, SAR/AED/QAR=2…)
   const decimals = currencyDecimals(currency ?? 'BHD');
 
@@ -177,7 +219,9 @@ export async function createSecureOrder(
       quantity,
       unit_price: unitPrice,
       addons: addonDetails,
-      notes: item.notes?.trim() || null,
+      // Use the type-guarded variable — item.notes may be a number/object
+      // (audit MEDIUM fix: item.notes?.trim() would throw a TypeError → 500).
+      notes: itemNotes || null,
     });
   }
 
@@ -206,6 +250,7 @@ export async function createSecureOrder(
       p_notes: orderNotes.trim() || undefined,
       p_order_number: numData,
       p_caller_user_id: callerUserId,
+      p_idempotency_key: idempotencyKey?.trim() || null,
       p_items: validated.map((line) => ({
         product_id: line.product_id,
         product_name: line.product_name,
@@ -219,7 +264,14 @@ export async function createSecureOrder(
 
   if (createErr || !created) {
     console.error('Order create error:', createErr);
-    return { ok: false, error: 'فشل إنشاء الطلب', status: 500 };
+    // Concurrent duplicate (same idempotency key raced past the route-level
+    // pre-check) hits the unique index inside this RPC.
+    return {
+      ok: false,
+      error: 'فشل إنشاء الطلب',
+      status: 500,
+      duplicateKey: (createErr as { code?: string } | null)?.code === '23505',
+    };
   }
 
   const createdOrder = created as {

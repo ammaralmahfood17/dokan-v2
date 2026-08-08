@@ -83,9 +83,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    // Consume the code, then link the chat to the project
-    await admin.from('telegram_link_codes').delete().eq('code', code);
-
+    // Consume order fix (audit LOW): the code was deleted BEFORE the link
+    // was created — a failed upsert burned the code and left the user
+    // locked out (had to wait 15 min / generate a new one). Burn it only
+    // AFTER the link row exists.
     const chatId = String(chat.id);
     const kind = chat.type === 'group' || chat.type === 'supergroup' ? 'group' : 'user';
     const label = chat.title || chat.first_name || null;
@@ -116,6 +117,9 @@ export async function POST(request: NextRequest) {
       await replyToChat(chatId, '❌ صار خطأ بالربط — حاول مرة ثانية.');
       return NextResponse.json({ ok: true });
     }
+
+    // Link created — now burn the one-time code (moved after success).
+    await admin.from('telegram_link_codes').delete().eq('code', code);
 
     await replyToChat(
       chatId,
