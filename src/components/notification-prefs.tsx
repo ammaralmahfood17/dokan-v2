@@ -31,29 +31,10 @@ export function NotificationPrefs({ projectId }: { projectId: string }) {
   }, [projectId]);
 
   useEffect(() => {
-    let cancelled = false;
-
     (async () => {
-      try {
-        const res = await fetch(
-          `/api/staff/notification-prefs?projectId=${encodeURIComponent(projectId)}`
-        );
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!cancelled) {
-          setNotifyPush(data.notify_push);
-          setNotifyTelegram(data.notify_telegram);
-        }
-      } catch {
-        // Leave toggles hidden (null) — network hiccup, user can retry by
-        // reopening settings.
-      }
+      await load();
     })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [projectId]);
+  }, [load]);
 
   const save = useCallback(
     async (push: boolean, tg: boolean) => {

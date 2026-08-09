@@ -94,13 +94,21 @@ export function useKitchenAudio() {
     xhr.send();
   }, [getAudioCtx]);
 
-  const playChime = useCallback(() => {
+  const playChime = useCallback(async () => {
     try {
       const ctx = getAudioCtx();
       if (!ctx) return;
 
-      if (ctx.state === 'suspended') {
-        ctx.resume().catch(() => {});
+      // iOS: an AudioContext created on mount is 'suspended' until the first
+      // user gesture, and scheduling source.start() on a suspended context is
+      // silently dropped — the FIRST alert of the day would be silent. Await
+      // the resume (it resolves on the next gesture) before playing.
+      if (ctx.state !== 'running') {
+        try {
+          await ctx.resume();
+        } catch {
+          return;
+        }
       }
 
       // If we have the decoded buffer, play it
@@ -118,7 +126,9 @@ export function useKitchenAudio() {
       // If still loading, queue for retry — via playChimeRef to avoid
       // self-referencing the const inside its own initializer (TDZ lint).
       if (loadingChimeRef.current) {
-        chimeQueueRef.current.push(() => playChimeRef.current());
+        chimeQueueRef.current.push(() => {
+          void playChimeRef.current();
+        });
         return;
       }
 

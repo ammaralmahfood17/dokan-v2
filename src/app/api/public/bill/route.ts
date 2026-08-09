@@ -52,11 +52,20 @@ export async function POST(request: NextRequest) {
 
     const supabase = createAdminClient();
 
+    // HARD subscription cutoff — same as /api/public/order: gate on
+    // is_project_publicly_available (exact expiry check) so an expired store
+    // can't keep receiving bill requests until the next cron is_active flip.
+    const { data: isAvailable } = await supabase.rpc('is_project_publicly_available', {
+      p_slug: projectSlug,
+    });
+    if (!isAvailable) {
+      return NextResponse.json({ error: 'المتجر غير متاح' }, { status: 404 });
+    }
+
     const { data: project } = await supabase
       .from('projects')
       .select('id')
       .eq('slug', projectSlug)
-      .eq('is_active', true)
       .single();
 
     if (!project) {

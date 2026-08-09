@@ -17,32 +17,39 @@ export function Sheet({
   const sheetRef = useRef<HTMLDivElement>(null);
   const startY = useRef(0);
   const currentY = useRef(0);
+  // Latest-close ref so the keydown handler + mount effect stay stable and
+  // never tear down on parent re-renders (e.g. typing in the cart notes,
+  // which re-renders MenuClient on every keystroke and would otherwise
+  // re-lock body scroll + steal focus — killing the mobile keyboard).
+  // Updated in an effect (not during render) to satisfy react-hooks/refs.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   // Focus trap
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { onClose(); return; }
-      if (e.key !== 'Tab') return;
-      const el = sheetRef.current;
-      if (!el) return;
-      const focusable = el.querySelectorAll<HTMLElement>(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-      );
-      if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last?.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first?.focus();
-      }
-    },
-    [onClose]
-  );
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape') { onCloseRef.current(); return; }
+    if (e.key !== 'Tab') return;
+    const el = sheetRef.current;
+    if (!el) return;
+    const focusable = el.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last?.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first?.focus();
+    }
+  }, []);
 
-  // Scroll lock + keyboard listener + focus management
+  // Scroll lock + keyboard listener + focus management — runs once per mount
+  // (the sheet is only rendered while open), not on every parent render.
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown);
     const scrollY = window.scrollY;

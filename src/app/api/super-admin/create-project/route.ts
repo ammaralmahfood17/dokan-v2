@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import * as Sentry from '@sentry/nextjs';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { logSuperAdminAction } from '@/lib/super-admin';
+import { logSuperAdminAction, listAllUsers } from '@/lib/super-admin';
 import { generateSlug, isReservedSlug } from '@/lib/utils';
 
 /**
@@ -39,8 +39,8 @@ export async function POST(request: NextRequest) {
     const admin = createAdminClient();
 
     // Owner must exist — no silent user creation from this surface.
-    const { data: users } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-    const owner = users.users.find((u) => u.email?.toLowerCase() === ownerEmail);
+    const users = await listAllUsers(admin);
+    const owner = users.find((u) => u.email?.toLowerCase() === ownerEmail);
     if (!owner) {
       return NextResponse.json(
         { error: 'لا يوجد مستخدم بهذا الإيميل — أنشئه عبر التسجيل العادي أولًا' },

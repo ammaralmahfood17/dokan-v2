@@ -30,7 +30,10 @@ export function PullToRefresh({
     const elNonNull = el; // narrowed for TypeScript closure
 
     function onTouchStart(e: TouchEvent) {
-      if (elNonNull.scrollTop <= 0) {
+      // Only arm the pull when the page itself is at the top. The wrapper
+      // div is never a scroller (the document scrolls), so checking its
+      // scrollTop would always be 0 and fire mid-scroll refreshes.
+      if (window.scrollY <= 0) {
         startY.current = e.touches[0].clientY;
         pulling.current = true;
         setIndicator({ pulling: true, distance: 0 });

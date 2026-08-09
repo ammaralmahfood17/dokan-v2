@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { requireSuperAdmin } from '@/lib/super-admin';
+import { requireSuperAdmin, listAllUsers } from '@/lib/super-admin';
 import type { Json } from '@/lib/database.types';
 
 /**
@@ -42,8 +42,8 @@ export default async function SuperAdminAuditPage({
   // Resolve actor email → user id (filters come in as emails).
   let actorUserId: string | null = null;
   if (sp.actor) {
-    const { data: users } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-    actorUserId = users.users.find((u) => u.email === sp.actor)?.id ?? null;
+    const users = await listAllUsers(admin);
+    actorUserId = users.find((u) => u.email === sp.actor)?.id ?? null;
   }
 
   let q = admin
@@ -54,14 +54,17 @@ export default async function SuperAdminAuditPage({
 
   if (actorUserId) q = q.eq('actor_user_id', actorUserId);
   if (sp.action) q = q.eq('action', sp.action);
-  if (sp.from) q = q.gte('created_at', new Date(sp.from).toISOString());
-  if (sp.to) q = q.lte('created_at', new Date(`${sp.to}T23:59:59`).toISOString());
+  // Date bounds interpreted in Asia/Bahrain (+03:00), not server-local UTC —
+  // a UTC parse would drop the first 3h of the selected day and pull 3h of
+  // the next one. Inputs are YYYY-MM-DD.
+  if (sp.from) q = q.gte('created_at', new Date(`${sp.from}T00:00:00+03:00`).toISOString());
+  if (sp.to) q = q.lt('created_at', new Date(`${sp.to}T23:59:59+03:00`).toISOString());
 
   const { data: logs } = await q;
 
   // Actor emails + target project names for display.
-  const { data: users } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-  const emailById = new Map(users.users.map((u) => [u.id, u.email ?? '']));
+  const users = await listAllUsers(admin);
+  const emailById = new Map(users.map((u) => [u.id, u.email ?? '']));
   const projectIds = [...new Set((logs ?? []).map((l) => l.target_project_id as string | null).filter(Boolean))];
   const { data: projects } =
     projectIds.length > 0

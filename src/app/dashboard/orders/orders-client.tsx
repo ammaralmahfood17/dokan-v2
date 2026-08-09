@@ -75,21 +75,34 @@ export function OrdersClient({
 
   const isToday = dateKey === toDateKey(new Date());
   const mountedRef = useRef(false);
+  // Day total is a dedicated aggregate — computing it from the fetched page
+  // understated sales on busy days once the page exceeded 50 orders.
+  const [dayTotal, setDayTotal] = useState(0);
 
   const refresh = useCallback(
     async (key?: string, append = false) => {
       const target = key ?? dateKey;
       const { start, end } = dayRange(target);
       const supabase = createClient();
-      const { data } = await supabase
-        .from('orders')
-        .select('*, tables(number, slug), order_items(*)')
-        .eq('project_id', projectId)
-        .is('service_type', null) // null = real order (not waiter/bill)
-        .gte('created_at', start.toISOString())
-        .lt('created_at', end.toISOString())
-        .order('created_at', { ascending: false })
-        .range(0, 49);
+      const [{ data }, { data: dayTotals }] = await Promise.all([
+        supabase
+          .from('orders')
+          .select('*, tables(number, slug), order_items(*)')
+          .eq('project_id', projectId)
+          .is('service_type', null) // null = real order (not waiter/bill)
+          .gte('created_at', start.toISOString())
+          .lt('created_at', end.toISOString())
+          .order('created_at', { ascending: false })
+          .range(0, 49),
+        supabase
+          .from('orders')
+          .select('total_amount')
+          .eq('project_id', projectId)
+          .is('service_type', null)
+          .not('status', 'eq', 'cancelled')
+          .gte('created_at', start.toISOString())
+          .lt('created_at', end.toISOString()),
+      ]);
       if (data) {
         setOrders((prev) => {
           // When appending, merge by id (realtime may have added rows).
@@ -101,6 +114,12 @@ export function OrdersClient({
         // Fewer than 50 rows → no more pages for this day.
         setHasMore(data.length === 50);
       }
+      setDayTotal(
+        (dayTotals ?? []).reduce(
+          (s, o: { total_amount: number }) => s + Number(o.total_amount),
+          0
+        )
+      );
     },
     [projectId, dateKey]
   );
@@ -244,16 +263,7 @@ export function OrdersClient({
     return sorted;
   }, [orders, filter, deferredQuery, sortBy]);
 
-  // مجموع مبيعات اليوم (غير الملغاة) — يعرض في الرأس
-  const dayTotal = useMemo(
-    () =>
-      orders
-        .filter((o) => o.status !== 'cancelled')
-        .reduce((s, o) => s + Number(o.total_amount), 0),
-    [orders]
-  );
-
-  // عدادات حية لكل حالة — معلومة حقيقية من البيانات المعروضة
+  // عدادات حية لكل حالة — معلومة حقيقة من البيانات المعروضة
   const counts = useMemo(() => {
     const c: Record<OrderStatus | 'all', number> = {
       all: orders.length,

@@ -66,13 +66,33 @@ export default async function SuperAdminAnalyticsPage({
 
   const admin = createAdminClient();
 
+  // Paged loops — a plain .limit(5000) would silently undercount once the
+  // platform exceeds 1000 orders (PostgREST caps at db-max-rows ~1000) and
+  // PostgREST pages everything below the aggregate. Same pattern as the
+  // tenant dashboard analytics page.
+  const PAGE = 1000;
+  const collectOrders = async () => {
+    const all: unknown[] = [];
+    let from = 0;
+    for (;;) {
+      const { data, error } = await admin
+        .from('orders')
+        .select('id, project_id, status, total_amount, created_at')
+        .is('service_type', null) // real orders only — waiter/bill are zero-amount signals
+        .order('created_at', { ascending: false })
+        .range(from, from + PAGE - 1);
+      if (error) return { data: null, error };
+      if (!data || data.length === 0) break;
+      all.push(...(data as unknown[]));
+      if (data.length < PAGE) break;
+      from += PAGE;
+    }
+    return { data: all, error: null };
+  };
+
   const [{ data: projects }, { data: orders }] = await Promise.all([
-    admin.from('projects').select('id, name, slug, is_active').order('created_at', { ascending: false }).limit(1000),
-    admin
-      .from('orders')
-      .select('id, project_id, status, total_amount, created_at')
-      .is('service_type', null) // real orders only — waiter/bill are zero-amount signals
-      .limit(5000),
+    admin.from('projects').select('id, name, slug, is_active').order('created_at', { ascending: false }),
+    collectOrders(),
   ]);
 
   const projRows = (projects ?? []) as unknown as ProjectRow[];
@@ -90,7 +110,14 @@ export default async function SuperAdminAnalyticsPage({
 
   const sumBetween = (rows: OrderRow[], start: string, end: string) =>
     rows
-      .filter((o) => o.status !== 'cancelled' && o.created_at >= start && o.created_at < end)
+      .filter((o) => {
+        // Compare epochs, not strings: PostgREST returns timestamptz as
+        // "+00:00" while toISOString() returns ".000Z" — a byte compare drops
+        // orders landing exactly on the boundary instant.
+        if (o.status === 'cancelled') return false;
+        const t = new Date(o.created_at).getTime();
+        return t >= new Date(start).getTime() && t < new Date(end).getTime();
+      })
       .reduce((s, o) => s + Number(o.total_amount), 0);
 
   const revenueToday = sumBetween(completedOrders, today.start, today.end);
@@ -101,7 +128,12 @@ export default async function SuperAdminAnalyticsPage({
   const trendDays: { label: string; revenue: number; orders: number }[] = [];
   for (let i = 13; i >= 0; i--) {
     const b = bahrainBounds(i, i + 1);
-    const dayOrders = completedOrders.filter((o) => o.created_at >= b.start && o.created_at < b.end);
+    const sMs = new Date(b.start).getTime();
+    const eMs = new Date(b.end).getTime();
+    const dayOrders = completedOrders.filter((o) => {
+      const t = new Date(o.created_at).getTime();
+      return t >= sMs && t < eMs;
+    });
     const label = new Intl.DateTimeFormat('ar', {
       numberingSystem: 'latn',
       timeZone: 'Asia/Bahrain',

@@ -31,18 +31,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
     }
 
-    const body = (await request.json()) as { orderId?: string };
+    const body = (await request.json()) as { orderId?: string; projectId?: string };
     const { orderId } = body;
 
     if (!orderId) {
       return NextResponse.json({ error: 'بيانات غير صالحة' }, { status: 400 });
     }
 
-    // Verify user has access to a project (is staff)
-    const { data: membership } = await userClient
+    // DETERMINISTIC project resolution — same as /api/pos/order: bind to the
+    // client-supplied projectId when present so a multi-store staff member
+    // can't cancel an order in the wrong project; fall back to created_at ASC
+    // (getCurrentProject's order) for legacy callers.
+    let membershipQuery = userClient
       .from('staff_members')
       .select('project_id')
-      .eq('user_id', user.id)
+      .eq('user_id', user.id);
+    if (body.projectId) {
+      membershipQuery = membershipQuery.eq('project_id', body.projectId);
+    }
+    const { data: membership } = await membershipQuery
+      .order('created_at', { ascending: true })
       .limit(1)
       .maybeSingle();
 

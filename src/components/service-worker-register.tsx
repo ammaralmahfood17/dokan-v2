@@ -16,6 +16,11 @@ export function ServiceWorkerRegister() {
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
 
+    // First install also fires controllerchange (the fresh SW takes control
+    // via skipWaiting) — that's not an update, it's the very first install,
+    // so no "update available" toast on a brand-new visitor.
+    const alreadyControlled = Boolean(navigator.serviceWorker.controller);
+
     const showUpdateToast = () => {
       toast('🔄 تحديث متوفر', {
         description: 'نسخة جديدة من دكان جاهزة — أعد تحميل الصفحة للاستخدام',
@@ -27,14 +32,20 @@ export function ServiceWorkerRegister() {
     };
 
     // New SW took control (skipWaiting fired) — prompt, don't auto-reload.
-    navigator.serviceWorker.addEventListener('controllerchange', showUpdateToast);
+    // Only listen once a controller already existed (i.e. this is a real
+    // upgrade, not the first-ever install).
+    if (alreadyControlled) {
+      navigator.serviceWorker.addEventListener('controllerchange', showUpdateToast);
+    }
 
     navigator.serviceWorker
       .register('/sw.js')
       .catch(() => {}); // silent — PWA is progressive enhancement
 
     return () => {
-      navigator.serviceWorker.removeEventListener('controllerchange', showUpdateToast);
+      if (alreadyControlled) {
+        navigator.serviceWorker.removeEventListener('controllerchange', showUpdateToast);
+      }
     };
   }, []);
 

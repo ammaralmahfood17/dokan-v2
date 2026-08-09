@@ -39,6 +39,11 @@ export default async function DashboardPage() {
   const today = new Date(Date.parse(`${dayFmt.format(new Date())}T00:00:00+03:00`));
   const yesterday = new Date(today.getTime() - 86_400_000);
   const tomorrow = new Date(today.getTime() + 86_400_000);
+  // Yesterday's KPI window is the SAME elapsed time as today-so-far
+  // (midnight→now vs midnight→now−24h). Comparing a partial today against a
+  // full yesterday makes the delta read ~−50% every morning.
+  const nowMs = new Date().getTime();
+  const yesterdaySameWindow = new Date(nowMs - 86_400_000);
 
   const [
     { count: todayOrders },
@@ -63,7 +68,7 @@ export default async function DashboardPage() {
       .eq('project_id', ctx.project.id)
       .is('service_type', null)
       .gte('created_at', yesterday.toISOString())
-      .lt('created_at', today.toISOString()),
+      .lt('created_at', yesterdaySameWindow.toISOString()),
     supabase
       .from('orders')
       .select('id, status, total_amount, type, created_at, order_number, table_id, tables(number)')
@@ -92,7 +97,7 @@ export default async function DashboardPage() {
       .is('service_type', null)
       .not('status', 'eq', 'cancelled')
       .gte('created_at', yesterday.toISOString())
-      .lt('created_at', today.toISOString()),
+      .lt('created_at', yesterdaySameWindow.toISOString()),
     supabase
       .from('tables')
       .select('id')

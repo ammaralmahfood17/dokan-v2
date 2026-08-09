@@ -30,6 +30,10 @@ export function PosClient({
 }) {
   const [type, setType] = useState<OrderType>('walkin');
   const [lines, setLines] = useState<PosLine[]>([]);
+  // Mirror of `lines` for use inside idempotent callbacks (repeatLastOrder
+  // must see the CURRENT cart without being recreated on every change).
+  const linesRef = useRef<PosLine[]>([]);
+  linesRef.current = lines;
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [picker, setPicker] = useState<ProductWithAddons | null>(null);
@@ -151,14 +155,19 @@ export function PosClient({
     qty = 1,
     silent = false
   ) {
+    // Only recognise addons that still exist AND are available — a stale id
+    // from a restored order would otherwise be priced as nothing yet still be
+    // rejected by the server's addon validation (killing the whole order).
+    const validAddons = (p.product_addons || []).filter(
+      (a) => a.is_available !== false && addonIds.includes(a.id)
+    );
     const addonTotal = money(
-      (p.product_addons || [])
-        .filter((a) => addonIds.includes(a.id))
-        .reduce((s, a) => s + Number(a.price), 0),
+      validAddons.reduce((s, a) => s + Number(a.price), 0),
       currencyDecimals(currency)
     );
+    const cleanedIds = validAddons.map((a) => a.id);
     const unitPrice = money(Number(p.price) + addonTotal, currencyDecimals(currency));
-    const key = `${p.id}:${[...addonIds].sort().join(',')}`;
+    const key = `${p.id}:${[...cleanedIds].sort().join(',')}`;
     setLines((prev) => {
       const existing = prev.find((l) => l.key === key);
       if (existing) {
@@ -174,7 +183,7 @@ export function PosClient({
           productName: p.name,
           unitPrice,
           quantity: qty,
-          addonIds,
+          addonIds: cleanedIds,
           addonLabels,
         },
       ];
@@ -200,6 +209,13 @@ export function PosClient({
 
   const repeatLastOrder = useCallback(async () => {
     if (repeatLoading) return;
+    // Only restore into an empty cart — addLine() merges, so repeating onto
+    // a running order would silently stack the previous round and submit
+    // doubles.
+    if (linesRef.current.length > 0) {
+      toast.error('السلة فيها أصناف — امسح السلة أولاً');
+      return;
+    }
     setRepeatLoading(true);
     try {
       const supabase = createClient();
@@ -225,8 +241,14 @@ export function PosClient({
       for (const it of items) {
         const p = products.find((x) => x.id === it.product_id);
         if (!p || !p.is_available) continue;
-        const addonIds = (it.addons ?? []).map((a) => a.id);
-        const labels = (it.addons ?? []).map((a) => a.name);
+        // Drop addons that have since been disabled/deleted — addLine only
+        // prices addons it recognises, but a stale addon id would still ride
+        // into the cart and make the server reject the whole order.
+        const availableAddons = (p.product_addons ?? []).filter((a) => a.is_available);
+        const addonIds = (it.addons ?? [])
+          .map((a) => a.id)
+          .filter((id) => availableAddons.some((a) => a.id === id));
+        const labels = availableAddons.filter((a) => addonIds.includes(a.id)).map((a) => a.name);
         addLine(p, addonIds, labels, it.quantity, true);
         added += 1;
       }
@@ -247,7 +269,9 @@ export function PosClient({
     setLines((prev) =>
       prev
         .map((l) =>
-          l.key === key ? { ...l, quantity: l.quantity + delta } : l
+          // Server caps quantity at 99 — keep the client in sync so a
+          // tap-happy cashier never builds a cart that bounces on submit.
+          l.key === key ? { ...l, quantity: Math.min(99, l.quantity + delta) } : l
         )
         .filter((l) => l.quantity > 0)
     );
@@ -255,7 +279,9 @@ export function PosClient({
 
   function setQty(key: string, qty: number) {
     setLines((prev) =>
-      prev.map((l) => (l.key === key ? { ...l, quantity: qty } : l))
+      prev.map((l) =>
+        l.key === key ? { ...l, quantity: Math.min(99, Math.max(1, qty)) } : l
+      )
     );
   }
 
@@ -273,6 +299,7 @@ export function PosClient({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type,
+          projectId,
           notes: notes.trim() || undefined,
           idempotencyKey,
           items: lines.map((l) => ({

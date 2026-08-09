@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react';
 import { Minus, Plus, Trash2 } from 'lucide-react';
 import { formatMoney } from '@/lib/utils';
 import type { PosLine } from './types';
@@ -25,6 +26,20 @@ export function CartLineItem({
   onRemove: () => void;
   onSetQuantity?: (qty: number) => void;
 }) {
+  // Editable qty: keep a local draft so clearing the field ("" → commit on
+  // blur) is possible. A fully controlled input snaps straight back to the
+  // previous value the moment the cashier empties it, making typos like
+  // "51" over "5" unavoidable. Server rejects qty > 99 — cap here to match.
+  const [draft, setDraft] = useState<string | null>(null);
+  const draftRef = useRef<HTMLInputElement>(null);
+
+  function commitDraft() {
+    const raw = draftRef.current?.value ?? '';
+    const n = Number(raw);
+    if (Number.isInteger(n) && n >= 1 && n <= 99) onSetQuantity?.(Math.floor(n));
+    setDraft(null);
+  }
+
   return (
     <li data-pos-line className="flex items-start gap-3 py-3">
       {thumbnail ? (
@@ -69,14 +84,19 @@ export function CartLineItem({
             </button>
             {onSetQuantity ? (
               <input
+                ref={draftRef}
                 type="number"
                 inputMode="numeric"
                 min={1}
-                max={999}
-                value={line.quantity}
-                onChange={(e) => {
-                  const n = Number(e.target.value);
-                  if (Number.isFinite(n) && n >= 1 && n <= 999) onSetQuantity(Math.floor(n));
+                max={99}
+                value={draft ?? line.quantity}
+                onFocus={() => setDraft(String(line.quantity))}
+                onChange={(e) => setDraft(e.target.value)}
+                onBlur={commitDraft}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.currentTarget.blur();
+                  }
                 }}
                 aria-label={`كمية ${line.productName}`}
                 className="w-12 border-0 bg-transparent text-center text-sm font-bold tabular-nums text-[var(--color-text)] outline-none"

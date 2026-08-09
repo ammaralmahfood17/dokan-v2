@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { createClient as createSupabaseClient, type User } from '@supabase/supabase-js';
 import type { Json } from '@/lib/database.types';
 
 /**
@@ -44,6 +44,24 @@ export async function requireSuperAdmin(): Promise<string> {
   const adminUserId = await getSuperAdminUserId();
   if (!adminUserId) redirect('/login');
   return adminUserId;
+}
+
+/** Fetch ALL auth users, paged (admin client returns at most ~1000 per
+ *  page). A single page:1/perPage:1000 call silently truncates ownership
+ *  lookup beyond 1000 users — create-project, subscriptions and audit all
+ *  resolve owner/actor emails by scanning this list. */
+export async function listAllUsers(
+  admin: ReturnType<typeof createAdminClient>
+): Promise<User[]> {
+  const all: User[] = [];
+  let page = 1;
+  for (;;) {
+    const { data } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+    all.push(...data.users);
+    if (data.users.length < 1000) break;
+    page += 1;
+  }
+  return all;
 }
 
 /** Write an audit entry (service_role — bypasses RLS on the log table). */

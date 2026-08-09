@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
       items?: PublicOrderItemInput[];
       notes?: string;
       idempotencyKey?: string;
+      projectId?: string;
     };
 
     const type: OrderType =
@@ -60,10 +61,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'بيانات غير صالحة' }, { status: 400 });
     }
 
-    const { data: membership } = await userClient
+    // DETERMINISTIC project resolution. The client always knows the store it
+    // is ringing up (projectId) — bind the membership to it so a multi-store
+    // staff member's order can never land on a different project. When no
+    // projectId is given (legacy callers/tests), fall back to created_at ASC
+    // like getCurrentProject() so the primary store wins.
+    let membershipQuery = userClient
       .from('staff_members')
       .select('project_id, projects(currency)')
-      .eq('user_id', user.id)
+      .eq('user_id', user.id);
+    if (body.projectId) {
+      membershipQuery = membershipQuery.eq('project_id', body.projectId);
+    }
+    const { data: membership } = await membershipQuery
+      .order('created_at', { ascending: true })
       .limit(1)
       .maybeSingle();
 

@@ -141,7 +141,19 @@ export function KitchenClient({
   // filter incoming order_items events client-side against this set — other
   // tenants' item changes are dropped without a fetch.
   const knownOrderIdsRef = useRef<Set<string>>(new Set());
+  // Id of the deferred poll scheduled when the realtime channel errors —
+  // cleared on unmount so it can't run against a dead component.
+  const recoverTickRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [soundOn, setSoundOn] = useState(true);
+  // Mirror for use inside stable callbacks — notifyNewOrder must not change
+  // identity when the 🔊 toggle flips, or the realtime channel (whose effect
+  // depends on it) would tear down and resubscribe on every sound toggle,
+  // dropping insert/update events in the gap. Updated in an effect (not
+  // during render) to satisfy react-hooks/refs.
+  const soundOnRef = useRef(soundOn);
+  useEffect(() => {
+    soundOnRef.current = soundOn;
+  }, [soundOn]);
   const [newOrderCount, setNewOrderCount] = useState(0);
   const [time, setTime] = useState(() =>
     new Date().toLocaleTimeString('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit' })
@@ -185,15 +197,15 @@ export function KitchenClient({
 
   // Notification helper
   const notifyNewOrder = useCallback((orderNum: number) => {
-    if (soundOn) {
-      playChime();
+    if (soundOnRef.current) {
+      void playChime();
       try { navigator.vibrate?.(200); } catch {}
     }
     toast.message('🔔 طلب جديد', {
       description: `#${orderNum}`,
     });
     setNewOrderCount((c) => c + 1);
-  }, [soundOn, playChime]);
+  }, [playChime]);
 
   // Full refresh fallback
   const fullRefresh = useCallback(async () => {
@@ -274,15 +286,26 @@ export function KitchenClient({
 
   // Realtime item updates from another screen — refetch that order so the
   // board stays in sync even when the change came from elsewhere.
+  // Debounced per-order: advancing a ticket via advance_order_status fires one
+  // order_items UPDATE PER ITEM, which would otherwise trigger N+1 parallel
+  // refetches for the same order (and jank the board on slow links).
+  const refetchPendingRef = useRef<Set<string>>(new Set());
+  const refetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const refetchOrder = useCallback(
-    async (orderId: string) => {
-      const fresh = await fetchSingleOrder(orderId);
-      if (!fresh) return;
-      setOrders((prev) => {
-        const exists = prev.some((o) => o.id === orderId);
-        if (!exists) return prev;
-        return prev.map((o) => (o.id === orderId ? fresh : o));
-      });
+    (orderId: string) => {
+      refetchPendingRef.current.add(orderId);
+      if (refetchTimerRef.current) return;
+      refetchTimerRef.current = setTimeout(async () => {
+        refetchTimerRef.current = null;
+        const ids = [...refetchPendingRef.current];
+        refetchPendingRef.current.clear();
+        const fresh = await Promise.all(ids.map((id) => fetchSingleOrder(id)));
+        setOrders((prev) => {
+          const byId = new Map(fresh.filter(Boolean).map((o) => [o?.id, o]));
+          if (byId.size === 0) return prev;
+          return prev.map((o) => byId.get(o.id) ?? o);
+        });
+      }, 250);
     },
     [fetchSingleOrder]
   );
@@ -291,6 +314,16 @@ export function KitchenClient({
   useEffect(() => {
     knownOrderIdsRef.current = new Set(orders.map((o) => o.id));
   }, [orders]);
+
+  // Clear the coalescing debounce timer on unmount.
+  useEffect(
+    () => () => {
+      if (refetchTimerRef.current) clearTimeout(refetchTimerRef.current);
+      refetchTimerRef.current = null;
+      refetchPendingRef.current.clear();
+    },
+    []
+  );
 
   // Realtime
   useEffect(() => {
@@ -365,9 +398,10 @@ export function KitchenClient({
       .subscribe((status) => {
         // Realtime died? Trigger an immediate poll refresh instead of
         // waiting for the 30s fallback — the next poll re-checks everything
-        // and the channel reconnects on its own.
+        // and the channel reconnects on its own. Store the id so an unmount
+        // during the timeout can't fire fullRefresh on a dead component.
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          setTimeout(() => void fullRefresh(), 0);
+          recoverTickRef.current = setTimeout(() => void fullRefresh(), 0);
         }
       });
 
@@ -375,6 +409,7 @@ export function KitchenClient({
     const interval = setInterval(() => void fullRefresh(), 30000);
 
     return () => {
+      if (recoverTickRef.current) clearTimeout(recoverTickRef.current);
       void supabase.removeChannel(channel);
       clearInterval(interval);
     };
@@ -628,7 +663,7 @@ export function KitchenClient({
             onClick={(e) => {
               e.stopPropagation();
               if (!soundOn) setSoundOn(true);
-              playChime();
+              void playChime();
               toast.success('🔔 صوت التنبيه', { description: 'صوت الإشعار يعمل ✅' });
             }}
             title="اختبار الصوت"

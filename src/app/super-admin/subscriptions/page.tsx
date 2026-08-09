@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { requireSuperAdmin } from '@/lib/super-admin';
+import { requireSuperAdmin, listAllUsers } from '@/lib/super-admin';
 import { ImpersonateButton } from '@/components/impersonate-button';
 import { CreateProjectForm, ProjectRowActions } from '@/components/project-admin-actions';
 import type { Json } from '@/lib/database.types';
@@ -87,8 +87,8 @@ export default async function SuperAdminSubscriptionsPage({
       )
       .eq('role', 'owner');
     const userIds = [...new Set((owners ?? []).map((o) => o.user_id as string))];
-    const { data: users } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-    const emailById = new Map(users.users.map((u) => [u.id, u.email ?? '']));
+    const users = await listAllUsers(admin);
+    const emailById = new Map(users.map((u) => [u.id, u.email ?? '']));
     for (const o of owners ?? []) {
       if (!ownerByProject.has(o.project_id as string)) {
         ownerByProject.set(o.project_id as string, {
