@@ -1,15 +1,20 @@
 import { cn } from '@/lib/utils';
+import { Skeleton as ShadcnSkeleton } from '@/components/shadcn/skeleton';
 
 /**
- * Skeleton component for loading states.
+ * Skeleton component for loading states — thin compatibility layer over
+ * shadcn/ui Skeleton (Phase 1b), keeping the Dokan shimmer identity.
  * Usage:
  *   <Skeleton className="h-4 w-40" />   // text line
  *   <Skeleton className="h-10 w-10 rounded-full" />  // avatar
  *   <Skeleton className="h-40 w-full rounded-xl" />   // card
  */
-export function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+export function Skeleton({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div
+    <ShadcnSkeleton
       className={cn(
         'skeleton-shimmer rounded-md bg-[var(--color-border)]',
         className

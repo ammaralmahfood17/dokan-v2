@@ -5,11 +5,10 @@ import Image from 'next/image';
 import { Plus, Pencil, Trash2, X, ImageIcon, Check, Search } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { formatMoney, money, currencyDecimals } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/shadcn/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Modal } from '@/components/ui/modal';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
-import { Toggle } from '@/components/ui/toggle';
 import type { Category, Product, ProductAddon } from '@/lib/types';
 import type { Database } from '@/lib/database.types';
 import { useRouter } from 'next/navigation';
@@ -674,8 +673,8 @@ export function ProductsClient({
             </p>
             <div className="flex gap-2">
               <Button
-                variant="danger"
-                block
+                variant="destructive"
+                className="w-full"
                 disabled={bulkBusy}
                 onClick={bulkDelete}
               >

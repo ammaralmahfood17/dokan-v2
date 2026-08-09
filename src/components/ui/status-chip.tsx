@@ -1,6 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/shadcn/badge';
 import { ORDER_STATUS_LABELS, type OrderStatus } from '@/lib/types';
 
 /**
@@ -16,6 +17,9 @@ import { ORDER_STATUS_LABELS, type OrderStatus } from '@/lib/types';
  *   delivered → muted/sunken (تم التسليم)
  *   cancelled → danger (ملغي)
  *
+ * Built on shadcn/ui Badge (Phase 1b migration) with the Dokan tone map —
+ * the domain layer (status → label/color) stays in one place.
+ *
  * KDS tickets intentionally do NOT use this chip — they render their own
  * status-driven border + urgent timer (تذاكر المطبخ). They only import the
  * LABELS, keeping the two surfaces' color semantics distinct.
@@ -27,9 +31,6 @@ export function StatusChip({
   status: string;
   className?: string;
 }) {
-  const base =
-    'inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap';
-
   const tones: Record<string, string> = {
     pending: 'bg-[var(--color-warn-tint)] text-[var(--color-warn)]',
     preparing: 'bg-[var(--color-info-tint)] text-[var(--color-info)]',
@@ -39,8 +40,15 @@ export function StatusChip({
   };
 
   return (
-    <span className={cn(base, tones[status] ?? tones.cancelled, className)}>
+    <Badge
+      variant="outline"
+      className={cn(
+        'rounded-full border-0 px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap',
+        tones[status] ?? tones.cancelled,
+        className
+      )}
+    >
       {ORDER_STATUS_LABELS[status as OrderStatus] ?? 'ملغي'}
-    </span>
+    </Badge>
   );
 }

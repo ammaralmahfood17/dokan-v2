@@ -4,7 +4,7 @@
 // Category create / edit / delete-confirm modals. Presentational: parent owns
 // the open-state + handlers, this renders the three dialogs.
 import { Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/shadcn/button';
 import { Modal } from '@/components/ui/modal';
 import type { Category } from '@/lib/types';
 
@@ -68,7 +68,7 @@ export function CategoryManager({
               {catError && <p className="error-text">{catError}</p>}
             </div>
             <div className="flex gap-2">
-              <Button type="submit" block disabled={loading || !catName.trim()}>
+              <Button type="submit" className="w-full" disabled={loading || !catName.trim()}>
                 {loading ? 'جاري…' : 'إنشاء'}
               </Button>
               <Button type="button" variant="secondary" onClick={onCloseCreate}>
@@ -94,7 +94,7 @@ export function CategoryManager({
               />
             </div>
             <div className="flex gap-2">
-              <Button type="submit" block disabled={loading || !editCatName.trim()}>
+              <Button type="submit" className="w-full" disabled={loading || !editCatName.trim()}>
                 {loading ? 'جاري…' : 'حفظ'}
               </Button>
               <Button type="button" variant="secondary" onClick={onCloseEdit}>
@@ -116,7 +116,7 @@ export function CategoryManager({
               هل أنت متأكد؟ المنتجات المرتبطة بهذا التصنيف ستبقى بدون تصنيف.
             </p>
             <div className="flex gap-2">
-              <Button variant="danger" block disabled={loading} onClick={deleteCategory}>
+              <Button variant="destructive" className="w-full" disabled={loading} onClick={deleteCategory}>
                 {loading ? 'جاري…' : 'نعم، احذف'}
               </Button>
               <Button variant="secondary" onClick={onCloseDelete}>

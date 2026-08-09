@@ -8,7 +8,7 @@ import {
   menuPath,
   tableSlugFromNumber,
 } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/shadcn/button';
 import { Modal } from '@/components/ui/modal';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import type { Table } from '@/lib/types';
@@ -354,7 +354,7 @@ export function TablesClient({
               </p>
             </div>
             <div className="flex gap-2">
-              <Button type="submit" block disabled={loading}>
+              <Button type="submit" className="w-full" disabled={loading}>
                 إنشاء + توليد QR
               </Button>
               <Button type="button" variant="secondary" onClick={() => setShowTable(false)}>
@@ -379,7 +379,7 @@ export function TablesClient({
               {qrPreview.url}
             </p>
             <div className="mt-4 flex gap-2">
-              <Button block onClick={() => copyUrl(qrPreview.url)}>
+              <Button className="w-full" onClick={() => copyUrl(qrPreview.url)}>
                 <Copy className="h-4 w-4" />
                 نسخ الرابط
               </Button>
@@ -407,7 +407,7 @@ export function TablesClient({
               لا يمكن الحذف إذا كان عليها طلبات نشطة (قيد التحضير أو جاهزة).
             </p>
             <div className="flex gap-2">
-              <Button variant="danger" block disabled={loading} onClick={() => deleteTable(confirmDelete)}>
+              <Button variant="destructive" className="w-full" disabled={loading} onClick={() => deleteTable(confirmDelete)}>
                 {loading ? 'جاري…' : 'نعم، احذف'}
               </Button>
               <Button variant="secondary" onClick={() => setConfirmDelete(null)}>

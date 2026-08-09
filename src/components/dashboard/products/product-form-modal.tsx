@@ -7,9 +7,9 @@ import { useCallback, useRef, useState, type FormEvent } from 'react';
 import { Plus, Trash2, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { formatMoney, money, currencyDecimals } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/shadcn/button';
 import { Modal } from '@/components/ui/modal';
-import { Toggle } from '@/components/ui/toggle';
+import { Switch } from '@/components/shadcn/switch';
 import type { Category, Product, ProductAddon } from '@/lib/types';
 import type { Database } from '@/lib/database.types';
 import { toast } from 'sonner';
@@ -528,10 +528,10 @@ export function ProductFormModal({
 
         {/* ======== AVAILABLE TOGGLE ======== */}
         <div className="flex items-center gap-3">
-          <Toggle
+          <Switch
             id="product-available"
             checked={isAvailable}
-            onChange={setIsAvailable}
+            onCheckedChange={setIsAvailable}
             aria-label="المنتج متاح للطلب"
           />
           <label htmlFor="product-available" className="cursor-pointer text-sm font-semibold">
@@ -541,7 +541,7 @@ export function ProductFormModal({
 
         {/* ======== BUTTONS ======== */}
         <div className="flex gap-2">
-          <Button type="submit" block disabled={loading}>
+          <Button type="submit" className="w-full" disabled={loading}>
             {loading
               ? 'جاري الحفظ…'
               : editing
@@ -551,7 +551,7 @@ export function ProductFormModal({
           {editing && (
             <Button
               type="button"
-              variant="danger"
+              variant="destructive"
               onClick={() => onRequestDelete(editing)}
             >
               <Trash2 className="h-4 w-4" />

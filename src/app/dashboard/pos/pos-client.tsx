@@ -5,7 +5,7 @@ import { Search, ShoppingBag, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { formatMoney, money, currencyDecimals } from '@/lib/utils';
 import type { OrderType, Product, ProductAddon } from '@/lib/types';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/shadcn/button';
 import { CartPanel } from '@/components/pos/cart-panel';
 import { ProductCard } from '@/components/pos/product-card';
 import type { PosLine } from '@/components/pos/types';
@@ -590,7 +590,7 @@ export function PosClient({
                 ))}
             </ul>
             <div className="flex gap-2">
-              <Button block onClick={confirmAddons}>
+              <Button className="w-full" onClick={confirmAddons}>
                 إضافة للسلة
               </Button>
               <Button variant="secondary" onClick={() => setPicker(null)}>

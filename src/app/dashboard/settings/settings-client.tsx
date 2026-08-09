@@ -3,8 +3,8 @@
 import { FormEvent, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { CURRENCIES, DEFAULT_PRIMARY_COLOR, type Project } from '@/lib/types';
-import { Button } from '@/components/ui/button';
-import { Toggle } from '@/components/ui/toggle';
+import { Button } from '@/components/shadcn/button';
+import { Switch } from '@/components/shadcn/switch';
 import { PushNotificationManager } from '@/components/push-notification-manager';
 import { TelegramManager } from '@/components/telegram-manager';
 import { NotificationPrefs } from '@/components/notification-prefs';
@@ -132,7 +132,7 @@ function SubscriptionCard({
             </p>
             <div className="flex gap-2">
               <Button
-                block
+                className="w-full"
                 disabled={renewing}
                 onClick={renew}
               >
@@ -309,11 +309,11 @@ export function SettingsClient({
           <label htmlFor="store-active" className="text-sm font-semibold">
             المتجر نشط (القائمة العامة متاحة)
           </label>
-          <Toggle
+          <Switch
             id="store-active"
             checked={isActive}
             disabled={!isOwner}
-            onChange={(v) => {
+            onCheckedChange={(v) => {
               if (!isOwner) return;
               if (!v) {
                 setConfirmDeactivate(true);
@@ -355,8 +355,8 @@ export function SettingsClient({
             </p>
             <div className="flex gap-2">
               <Button
-                variant="danger"
-                block
+                variant="destructive"
+                className="w-full"
                 onClick={() => {
                   setIsActive(false);
                   setConfirmDeactivate(false);
