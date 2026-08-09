@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { FormEvent, useState } from 'react';
 import { Mail, ArrowLeft, CheckCircle2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/shadcn/button';
 
 export default function ResetPasswordPage() {
   const [email, setEmail] = useState('');
@@ -84,7 +84,7 @@ export default function ResetPasswordPage() {
                 placeholder="name@example.com"
               />
             </div>
-            <Button type="submit" block disabled={loading || !email.trim()}>
+<Button className="w-full">
               {loading ? 'جاري الإرسال…' : 'إرسال رابط إعادة التعيين'}
             </Button>
             <div className="text-center">

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Send, Loader2, Link2, Trash2, RefreshCw, CheckCircle2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/shadcn/button';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 

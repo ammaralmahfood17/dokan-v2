@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { BellRing, Loader2, Send } from 'lucide-react';
-import { Toggle } from '@/components/ui/toggle';
+import { Switch } from '@/components/shadcn/switch';
 import { toast } from 'sonner';
 
 /**
@@ -88,11 +88,11 @@ export function NotificationPrefs({ projectId }: { projectId: string }) {
               </p>
             </div>
           </div>
-          <Toggle
+          <Switch
             checked={ready ? notifyPush : false}
             disabled={!ready || saving}
             aria-label="إشعارات المتصفح"
-            onChange={(v) => {
+            onCheckedChange={(v) => {
               setNotifyPush(v);
               save(v, notifyTelegram ?? true);
             }}
@@ -109,11 +109,11 @@ export function NotificationPrefs({ projectId }: { projectId: string }) {
               </p>
             </div>
           </div>
-          <Toggle
+          <Switch
             checked={ready ? notifyTelegram : false}
             disabled={!ready || saving}
             aria-label="إشعارات تيليجرام"
-            onChange={(v) => {
+            onCheckedChange={(v) => {
               setNotifyTelegram(v);
               save(notifyPush ?? true, v);
             }}

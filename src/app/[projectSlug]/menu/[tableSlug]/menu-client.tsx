@@ -12,7 +12,7 @@ import type {
   Project,
   Table,
 } from '@/lib/types';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/shadcn/button';
 import { toast } from 'sonner';
 // D2: extracted sections — bottom sheet + product row now live in
 // src/components/menu/ (menu-client stays the orchestrator).
@@ -664,7 +664,7 @@ export function MenuClient({
             />
             <p className="hint">{itemNotes.length}/200</p>
           </div>
-          <Button block onClick={confirmAdd} style={{ background: "var(--color-primary)" }}>
+          <Button className="w-full" onClick={confirmAdd} style={{ background: "var(--color-primary)" }}>
             أضف إلى السلة
           </Button>
         </Sheet>

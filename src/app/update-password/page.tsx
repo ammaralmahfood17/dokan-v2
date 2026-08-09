@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/shadcn/button';
 import { Lock, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 
@@ -170,7 +170,7 @@ export default function UpdatePasswordPage() {
             />
           </div>
 
-          <Button type="submit" block disabled={loading || password.length < 6 || password !== confirm}>
+<Button className="w-full">
             {loading ? 'جاري الحفظ…' : 'حفظ كلمة المرور الجديدة'}
           </Button>
 

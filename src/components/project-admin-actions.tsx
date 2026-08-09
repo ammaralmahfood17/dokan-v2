@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { Modal } from '@/components/ui/modal';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/shadcn/button';
 
 /**
  * Phase D — project create / archive / hard-delete for super admins.
@@ -200,7 +200,7 @@ export function ProjectRowActions({
               />
             </label>
             <div className="flex gap-2">
-              <Button variant="danger" block disabled={busy || !reason.trim()} onClick={archive}>
+<Button className="w-full">
                 {busy ? 'جاري…' : 'تأكيد الأرشفة'}
               </Button>
               <Button variant="secondary" onClick={() => setArchiveOpen(false)}>
@@ -244,8 +244,8 @@ export function ProjectRowActions({
             </label>
             <div className="flex gap-2">
               <Button
-                variant="danger"
-                block
+                variant="destructive"
+                className="w-full"
                 disabled={busy || confirmName.trim() !== projectName || !reason.trim()}
                 onClick={hardDelete}
               >

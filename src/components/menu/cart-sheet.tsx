@@ -5,7 +5,7 @@
 import { Minus, Plus } from 'lucide-react';
 import { formatMoney } from '@/lib/utils';
 import type { CartLine } from '@/lib/types';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/shadcn/button';
 import { Sheet } from '@/components/menu/sheet';
 
 export function CartSheet({
@@ -100,11 +100,10 @@ export function CartSheet({
       </div>
 
       <Button
-        block
+        className="w-full min-h-[48px]"
         disabled={submitting || !lines.length}
         onClick={onPlaceOrder}
         style={{ background: 'var(--color-primary)' }}
-        className="min-h-[48px]"
       >
         {submitting ? (
           <span className="flex items-center gap-2">
@@ -125,7 +124,7 @@ export function CartSheet({
           <p className="mb-2 text-[12.5px] font-semibold text-[var(--color-danger)]">
             {orderError}
           </p>
-          <Button block size="sm" variant="danger" disabled={submitting} onClick={onRetry}>
+          <Button className="w-full" size="sm" variant="destructive" disabled={submitting} onClick={onRetry}>
             إعادة المحاولة
           </Button>
         </div>

@@ -4,7 +4,7 @@
 // Full-screen calm confirmation + waiter/bill service actions.
 import { Bell, Check, FileText } from 'lucide-react';
 import { formatMoney } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/shadcn/button';
 
 export function OrderSuccessState({
   orderNumber,
