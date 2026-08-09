@@ -4,7 +4,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/shadcn/button';
+import { Input } from '@/components/shadcn/input';
+import { Card } from '@/components/shadcn/card';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -80,14 +82,14 @@ export default function RegisterPage() {
           </p>
         </div>
 
-        <form onSubmit={onSubmit} className="card card-body space-y-1">
+        <Card className="space-y-1 px-6">
+        <form onSubmit={onSubmit} className="space-y-1">
           <div className="field">
             <label className="label" htmlFor="fullName">
               الاسم
             </label>
-            <input
+            <Input
               id="fullName"
-              className="input"
               required
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
@@ -97,9 +99,8 @@ export default function RegisterPage() {
             <label className="label" htmlFor="email">
               البريد الإلكتروني
             </label>
-            <input
+            <Input
               id="email"
-              className={`input ${emailErr ? 'input-error' : ''}`}
               type="email"
               autoComplete="email"
               required
@@ -107,6 +108,7 @@ export default function RegisterPage() {
               onChange={(e) => setEmail(e.target.value)}
               onBlur={() => setTouched((t) => ({ ...t, email: true }))}
               dir="ltr"
+              aria-invalid={!!emailErr}
             />
             {emailErr && <p className="error-text">{emailErr}</p>}
           </div>
@@ -114,9 +116,8 @@ export default function RegisterPage() {
             <label className="label" htmlFor="password">
               كلمة المرور
             </label>
-            <input
+            <Input
               id="password"
-              className={`input ${passErr ? 'input-error' : ''}`}
               type="password"
               autoComplete="new-password"
               required
@@ -125,15 +126,17 @@ export default function RegisterPage() {
               onChange={(e) => setPassword(e.target.value)}
               onBlur={() => setTouched((t) => ({ ...t, password: true }))}
               dir="ltr"
+              aria-invalid={!!passErr}
             />
             {passErr && <p className="error-text">{passErr}</p>}
             {!passErr && <p className="hint">6 أحرف على الأقل</p>}
           </div>
           {error && <p className="error-text mb-3">{error}</p>}
-          <Button type="submit" block disabled={loading || !!emailErr || !!passErr}>
+          <Button type="submit" className="w-full" disabled={loading || !!emailErr || !!passErr}>
             {loading ? 'جاري الإنشاء…' : 'إنشاء الحساب'}
           </Button>
         </form>
+      </Card>
 
         <p className="mt-4 text-center text-sm text-[var(--color-text-secondary)]">
           لديك حساب؟{' '}

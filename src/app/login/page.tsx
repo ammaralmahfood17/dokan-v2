@@ -4,7 +4,9 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FormEvent, Suspense, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/shadcn/button';
+import { Input } from '@/components/shadcn/input';
+import { Card, CardContent } from '@/components/shadcn/card';
 import { Eye, EyeOff } from 'lucide-react';
 
 function RegisteredNotice() {
@@ -77,71 +79,72 @@ function LoginForm() {
   const blur = (field: 'email' | 'password') => () => setTouched((t) => ({ ...t, [field]: true }));
 
   return (
-    <form onSubmit={onSubmit} className="card card-body space-y-1">
-      <div className="field">
-        <label className="label" htmlFor="email">البريد الإلكتروني</label>
-        <input
-          id="email"
-          className={`input ${emailErr ? 'input-error' : ''}`}
-          type="email"
-          autoComplete="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          onBlur={blur('email')}
-          dir="ltr"
-          aria-invalid={!!emailErr}
-          aria-describedby={emailErr ? 'email-error' : undefined}
-        />
-        {emailErr && (
-          <p id="email-error" className="error-text" role="alert">
-            {emailErr}
-          </p>
-        )}
-      </div>
-      <div className="field">
-        <label className="label" htmlFor="password">كلمة المرور</label>
-        <div className="relative">
-          <input
-            id="password"
-            className={`input pe-10 ${passErr ? 'input-error' : ''}`}
-            type={showPass ? 'text' : 'password'}
-            autoComplete="current-password"
+    <Card className="space-y-1 px-6">
+      <form onSubmit={onSubmit} className="space-y-1">
+        <div className="field">
+          <label className="label" htmlFor="email">البريد الإلكتروني</label>
+          <Input
+            id="email"
+            type="email"
+            autoComplete="email"
             required
-            minLength={6}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            onBlur={blur('password')}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            onBlur={blur('email')}
             dir="ltr"
-            aria-invalid={!!passErr}
-            aria-describedby={passErr ? 'password-error' : undefined}
+            aria-invalid={!!emailErr}
+            aria-describedby={emailErr ? 'email-error' : undefined}
           />
-          <button
-            type="button"
-            onClick={() => setShowPass((v) => !v)}
-            aria-label={showPass ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
-            aria-pressed={showPass}
-            className="absolute end-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]"
-          >
-            {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          </button>
+          {emailErr && (
+            <p id="email-error" className="error-text" role="alert">
+              {emailErr}
+            </p>
+          )}
         </div>
-        {passErr && (
-          <p id="password-error" className="error-text" role="alert">
-            {passErr}
-          </p>
-        )}
-      </div>
-      {error && <p className="error-text mb-3">{error}</p>}
-      <Button type="submit" block disabled={loading || !!emailErr || !!passErr}>
-        {loading ? 'جاري الدخول…' : 'دخول'}
-      </Button>
-      <div className="mt-3 text-center">
-        <Link href="/reset-password" className="text-xs font-semibold text-[var(--color-primary)] hover:underline">
-          نسيت كلمة المرور؟
-        </Link>
-      </div>
-    </form>
+        <div className="field">
+          <label className="label" htmlFor="password">كلمة المرور</label>
+          <div className="relative">
+            <Input
+              id="password"
+              className="pe-10"
+              type={showPass ? 'text' : 'password'}
+              autoComplete="current-password"
+              required
+              minLength={6}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onBlur={blur('password')}
+              dir="ltr"
+              aria-invalid={!!passErr}
+              aria-describedby={passErr ? 'password-error' : undefined}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPass((v) => !v)}
+              aria-label={showPass ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+              aria-pressed={showPass}
+              className="absolute end-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]"
+            >
+              {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+          {passErr && (
+            <p id="password-error" className="error-text" role="alert">
+              {passErr}
+            </p>
+          )}
+        </div>
+        {error && <p className="error-text mb-3">{error}</p>}
+        <Button type="submit" className="w-full" disabled={loading || !!emailErr || !!passErr}>
+          {loading ? 'جاري الدخول…' : 'دخول'}
+        </Button>
+        <div className="mt-3 text-center">
+          <Link href="/reset-password" className="text-xs font-semibold text-[var(--color-primary)] hover:underline">
+            نسيت كلمة المرور؟
+          </Link>
+        </div>
+      </form>
+    </Card>
   );
 }
 

@@ -4,7 +4,8 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { generateSlug } from '@/lib/utils';
 import { CURRENCIES, DEFAULT_PRIMARY_COLOR } from '@/lib/types';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/shadcn/button';
+import { Input } from '@/components/shadcn/input';
 import { createClient } from '@/lib/supabase/client';
 import { Store, Globe, Palette, Check } from 'lucide-react';
 
@@ -155,9 +156,8 @@ export default function OnboardingPage() {
               </div>
               <div className="field">
                 <label className="label" htmlFor="name">اسم المتجر</label>
-                <input
+                <Input
                   id="name"
-                  className="input"
                   required
                   minLength={2}
                   maxLength={80}
@@ -217,7 +217,7 @@ export default function OnboardingPage() {
               )}
               <Button
                 type="button"
-                block
+                className="w-full"
                 disabled={name.trim().length < 2}
                 onClick={() => setStep(2)}
               >
@@ -244,9 +244,8 @@ export default function OnboardingPage() {
                 <label className="label" htmlFor="slug-step2">معرّف الرابط (slug)</label>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-[var(--color-text-muted)] shrink-0">/menu/</span>
-                  <input
+                  <Input
                     id="slug-step2"
-                    className="input"
                     required
                     dir="ltr"
                     maxLength={60}
@@ -284,8 +283,8 @@ export default function OnboardingPage() {
                     onChange={(e) => setPrimaryColor(e.target.value)}
                     className="h-10 w-12 cursor-pointer rounded border border-[var(--color-border)]"
                   />
-                  <input
-                    className="input flex-1"
+                  <Input
+                    className="flex-1"
                     dir="ltr"
                     value={primaryColor}
                     onChange={(e) => setPrimaryColor(e.target.value)}
@@ -306,7 +305,7 @@ export default function OnboardingPage() {
                 </Button>
                 <Button
                   type="button"
-                  block
+                  className="w-full"
                   disabled={!effectiveSlug.trim()}
                   onClick={() => setStep(3)}
                 >
@@ -352,7 +351,7 @@ export default function OnboardingPage() {
                 </Button>
                 <Button
                   type="submit"
-                  block
+                  className="w-full"
                   disabled={loading}
                 >
                   {loading ? 'جاري الإنشاء…' : 'أنشئ متجرك الآن'}
