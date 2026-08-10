@@ -156,7 +156,7 @@ export function KitchenClient({
   }, [soundOn]);
   const [newOrderCount, setNewOrderCount] = useState(0);
   const [time, setTime] = useState(() =>
-    new Date().toLocaleTimeString('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit' })
+    new Date().toLocaleTimeString('ar-BH-u-nu-latn', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bahrain' })
   );
   const [now, setNow] = useState(() => Date.now());
   const [tab, setTab] = useState<'all' | 'dinein' | 'drivethru' | 'walkin'>('all');
@@ -167,7 +167,7 @@ export function KitchenClient({
   // Clock + tick — كل دقيقة (60s) لأن العرض بالدقائق
   useEffect(() => {
     const id = setInterval(() => {
-      setTime(new Date().toLocaleTimeString('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit' }));
+      setTime(new Date().toLocaleTimeString('ar-BH-u-nu-latn', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bahrain' }));
       setNow(Date.now());
     }, 60000);
     return () => clearInterval(id);
@@ -272,14 +272,18 @@ export function KitchenClient({
   // Fetch single order
   const fetchSingleOrder = useCallback(
     async (orderId: string) => {
-      const supabase = createClient();
-      const { data } = await supabase
-        .from('orders')
-        .select('*, tables(number), order_items(*)')
-        .eq('id', orderId)
-        .eq('project_id', projectId)
-        .single();
-      return data as OrderRow | null;
+      try {
+        const supabase = createClient();
+        const { data } = await supabase
+          .from('orders')
+          .select('*, tables(number), order_items(*)')
+          .eq('id', orderId)
+          .eq('project_id', projectId)
+          .single();
+        return data as OrderRow | null;
+      } catch {
+        return null;
+      }
     },
     [projectId]
   );
@@ -299,12 +303,16 @@ export function KitchenClient({
         refetchTimerRef.current = null;
         const ids = [...refetchPendingRef.current];
         refetchPendingRef.current.clear();
-        const fresh = await Promise.all(ids.map((id) => fetchSingleOrder(id)));
-        setOrders((prev) => {
-          const byId = new Map(fresh.filter(Boolean).map((o) => [o?.id, o]));
-          if (byId.size === 0) return prev;
-          return prev.map((o) => byId.get(o.id) ?? o);
-        });
+        try {
+          const fresh = await Promise.all(ids.map((id) => fetchSingleOrder(id)));
+          setOrders((prev) => {
+            const byId = new Map(fresh.filter(Boolean).map((o) => [o?.id, o]));
+            if (byId.size === 0) return prev;
+            return prev.map((o) => byId.get(o.id) ?? o);
+          });
+        } catch {
+          // Silently fail — next poll or realtime event will recover.
+        }
       }, 250);
     },
     [fetchSingleOrder]
@@ -526,41 +534,46 @@ export function KitchenClient({
     const pendingOrders = orders.filter((o) => o.status === 'pending');
     if (!pendingOrders.length) return;
     const supabase = createClient();
-    const results = await Promise.all(
-      pendingOrders.map(async (o) => {
-        const { data, error } = await supabase.rpc('advance_order_status', {
-          p_order_id: o.id,
-          p_expected_status: 'pending',
-          p_new_status: 'preparing',
-        });
-        return { orderId: o.id, orderNumber: o.order_number, data, error };
-      })
-    );
-    const failed = results.filter((r) => r.error);
-    const staleCount = failed.filter((r) => r.error?.message.includes('STALE_STATUS')).length;
-    const otherCount = failed.length - staleCount;
-    if (staleCount > 0) {
-      toast.error(`تغيّرت حالة ${staleCount} من الطلبات على جهاز آخر`, {
-        description: 'لم يتم تشغيلها — جارٍ تحديث الشاشة…',
-      });
-    }
-    if (otherCount > 0) {
-      toast.error(`فشل تشغيل ${otherCount} من الطلبات`);
-    }
-    if (failed.length > 0) {
-      await fullRefresh();
-    } else {
-      setOrders((prev) =>
-        prev.map((o) =>
-          o.status === 'pending'
-            ? {
-                ...o,
-                status: 'preparing',
-                order_items: (o.order_items ?? []).map((it) => ({ ...it, status: 'preparing' })),
-              }
-            : o
-        )
+    try {
+      const results = await Promise.all(
+        pendingOrders.map(async (o) => {
+          const { data, error } = await supabase.rpc('advance_order_status', {
+            p_order_id: o.id,
+            p_expected_status: 'pending',
+            p_new_status: 'preparing',
+          });
+          return { orderId: o.id, orderNumber: o.order_number, data, error };
+        })
       );
+      const failed = results.filter((r) => r.error);
+      const staleCount = failed.filter((r) => r.error?.message.includes('STALE_STATUS')).length;
+      const otherCount = failed.length - staleCount;
+      if (staleCount > 0) {
+        toast.error(`تغيّرت حالة ${staleCount} من الطلبات على جهاز آخر`, {
+          description: 'لم يتم تشغيلها — جارٍ تحديث الشاشة…',
+        });
+      }
+      if (otherCount > 0) {
+        toast.error(`فشل تشغيل ${otherCount} من الطلبات`);
+      }
+      if (failed.length > 0) {
+        await fullRefresh();
+      } else {
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.status === 'pending'
+              ? {
+                  ...o,
+                  status: 'preparing',
+                  order_items: (o.order_items ?? []).map((it) => ({ ...it, status: 'preparing' })),
+                }
+              : o
+          )
+        );
+      }
+    } catch {
+      toast.error('فشل الاتصال — جارٍ تحديث الشاشة…');
+      await fullRefresh();
     }
   }, [orders, fullRefresh]);
 

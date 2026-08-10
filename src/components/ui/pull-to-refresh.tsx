@@ -23,6 +23,16 @@ export function PullToRefresh({
   });
   const [refreshing, setRefreshing] = useState(false);
 
+  // onRefresh is typically a fresh inline function on every parent render
+  // (e.g. () => void refresh()). Depending on it directly in the effect
+  // below would tear down and re-add 3 touch listeners on every render —
+  // keep the latest callback in a ref instead so the effect only depends
+  // on `disabled`.
+  const onRefreshRef = useRef(onRefresh);
+  useEffect(() => {
+    onRefreshRef.current = onRefresh;
+  }, [onRefresh]);
+
   useEffect(() => {
     const el = containerRef.current;
     if (!el || disabled) return;
@@ -49,7 +59,7 @@ export function PullToRefresh({
         pulling.current = false;
         setRefreshing(true);
         setIndicator({ pulling: false, distance: 0 });
-        Promise.resolve(onRefresh()).finally(() => setRefreshing(false));
+        Promise.resolve(onRefreshRef.current()).finally(() => setRefreshing(false));
       }
     }
 
@@ -67,7 +77,7 @@ export function PullToRefresh({
       elNonNull.removeEventListener('touchmove', onTouchMove);
       elNonNull.removeEventListener('touchend', onTouchEnd);
     };
-  }, [onRefresh, disabled]);
+  }, [disabled]);
 
   const show = indicator.pulling || refreshing;
 

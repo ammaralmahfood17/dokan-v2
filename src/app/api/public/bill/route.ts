@@ -84,20 +84,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'الطاولة غير موجودة' }, { status: 404 });
     }
 
-    // Anti-spam: block if same table already has an open bill request (5 min)
-    const since = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-    const { data: recent } = await supabase
-      .from('orders')
-      .select('id')
-      .eq('project_id', project.id)
-      .eq('table_id', table.id)
-      .eq('status', 'pending')
-      .eq('service_type', 'bill')
-      .gte('created_at', since)
-      .limit(1)
-      .maybeSingle();
-
-    if (recent) {
+    // Anti-spam: block if same table already has an open bill request (5 min).
+    // Race fix: a plain read-then-insert here lets two near-simultaneous
+    // requests both pass the check and both insert. rateLimit() uses an
+    // atomic counter (DB RPC / KV increment), so use it as the dedup guard
+    // instead of a read-then-write on `orders`.
+    const dedupResult = await rateLimit(`bill-dedup:${project.id}:${table.id}`, {
+      limit: 1,
+      windowMs: 5 * 60 * 1000,
+      keyPrefix: 'public-bill-dedup',
+    });
+    if (!dedupResult.allowed) {
       return NextResponse.json(
         { error: 'تم إرسال طلب فاتورة مؤخراً' },
         { status: 429 }

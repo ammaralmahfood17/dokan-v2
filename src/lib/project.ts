@@ -109,7 +109,8 @@ export async function buildChecklist(projectId: string): Promise<ChecklistItem[]
     supabase
       .from('orders')
       .select('*', { count: 'exact', head: true })
-      .eq('project_id', projectId),
+      .eq('project_id', projectId)
+      .is('service_type', null),
   ]);
 
   const hasBranding = Boolean(

@@ -137,6 +137,16 @@ export async function POST(request: NextRequest) {
 
     if (projectErr || !project) {
       console.error('Project create error:', projectErr);
+      // Race fix: two concurrent onboarding requests can both pass the
+      // slug-availability read above and then collide on the DB's unique
+      // projects.slug constraint. Surface a retryable 409 instead of a
+      // generic 500 in that case.
+      if ((projectErr as { code?: string } | null)?.code === '23505') {
+        return NextResponse.json(
+          { error: 'المعرّف (slug) أصبح غير متاح — حاول مرة أخرى' },
+          { status: 409 }
+        );
+      }
       return NextResponse.json(
         { error: 'فشل إنشاء المشروع' },
         { status: 500 }

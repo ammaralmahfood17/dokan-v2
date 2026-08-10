@@ -169,8 +169,7 @@ export default function UpdatePasswordPage() {
               dir="ltr"
             />
           </div>
-
-<Button className="w-full">
+          <Button className="w-full" disabled={loading}>
             {loading ? 'جاري الحفظ…' : 'حفظ كلمة المرور الجديدة'}
           </Button>
 

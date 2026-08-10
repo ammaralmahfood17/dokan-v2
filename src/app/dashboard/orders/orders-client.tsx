@@ -84,42 +84,46 @@ export function OrdersClient({
       const target = key ?? dateKey;
       const { start, end } = dayRange(target);
       const supabase = createClient();
-      const [{ data }, { data: dayTotals }] = await Promise.all([
-        supabase
-          .from('orders')
-          .select('*, tables(number, slug), order_items(*)')
-          .eq('project_id', projectId)
-          .is('service_type', null) // null = real order (not waiter/bill)
-          .gte('created_at', start.toISOString())
-          .lt('created_at', end.toISOString())
-          .order('created_at', { ascending: false })
-          .range(0, 49),
-        supabase
-          .from('orders')
-          .select('total_amount')
-          .eq('project_id', projectId)
-          .is('service_type', null)
-          .not('status', 'eq', 'cancelled')
-          .gte('created_at', start.toISOString())
-          .lt('created_at', end.toISOString()),
-      ]);
-      if (data) {
-        setOrders((prev) => {
-          // When appending, merge by id (realtime may have added rows).
-          if (!append) return data as unknown as OrderRow[];
-          const byId = new Map(prev.map((o) => [o.id, o]));
-          for (const o of data as unknown as OrderRow[]) byId.set(o.id, o);
-          return [...byId.values()];
-        });
-        // Fewer than 50 rows → no more pages for this day.
-        setHasMore(data.length === 50);
+      try {
+        const [{ data }, { data: dayTotals }] = await Promise.all([
+          supabase
+            .from('orders')
+            .select('*, tables(number, slug), order_items(*)')
+            .eq('project_id', projectId)
+            .is('service_type', null) // null = real order (not waiter/bill)
+            .gte('created_at', start.toISOString())
+            .lt('created_at', end.toISOString())
+            .order('created_at', { ascending: false })
+            .range(0, 49),
+          supabase
+            .from('orders')
+            .select('total_amount')
+            .eq('project_id', projectId)
+            .is('service_type', null)
+            .not('status', 'eq', 'cancelled')
+            .gte('created_at', start.toISOString())
+            .lt('created_at', end.toISOString()),
+        ]);
+        if (data) {
+          setOrders((prev) => {
+            // When appending, merge by id (realtime may have added rows).
+            if (!append) return data as unknown as OrderRow[];
+            const byId = new Map(prev.map((o) => [o.id, o]));
+            for (const o of data as unknown as OrderRow[]) byId.set(o.id, o);
+            return [...byId.values()];
+          });
+          // Fewer than 50 rows → no more pages for this day.
+          setHasMore(data.length === 50);
+        }
+        setDayTotal(
+          (dayTotals ?? []).reduce(
+            (s, o: { total_amount: number }) => s + Number(o.total_amount),
+            0
+          )
+        );
+      } catch {
+        // Silently fail — user can retry via PullToRefresh.
       }
-      setDayTotal(
-        (dayTotals ?? []).reduce(
-          (s, o: { total_amount: number }) => s + Number(o.total_amount),
-          0
-        )
-      );
     },
     [projectId, dateKey]
   );
@@ -127,24 +131,29 @@ export function OrdersClient({
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore) return;
     setLoadingMore(true);
-    const { start, end } = dayRange(dateKey);
-    const supabase = createClient();
-    const { data } = await supabase
-      .from('orders')
-      .select('*, tables(number, slug), order_items(*)')
-      .eq('project_id', projectId)
-      .is('service_type', null)
-      .gte('created_at', start.toISOString())
-      .lt('created_at', end.toISOString())
-      .order('created_at', { ascending: false })
-      .range(orders.length, orders.length + 49);
-    if (data) {
-      const byId = new Map(orders.map((o) => [o.id, o]));
-      for (const o of data as unknown as OrderRow[]) byId.set(o.id, o);
-      setOrders([...byId.values()]);
-      setHasMore(data.length === 50);
+    try {
+      const { start, end } = dayRange(dateKey);
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('orders')
+        .select('*, tables(number, slug), order_items(*)')
+        .eq('project_id', projectId)
+        .is('service_type', null)
+        .gte('created_at', start.toISOString())
+        .lt('created_at', end.toISOString())
+        .order('created_at', { ascending: false })
+        .range(orders.length, orders.length + 49);
+      if (data) {
+        const byId = new Map(orders.map((o) => [o.id, o]));
+        for (const o of data as unknown as OrderRow[]) byId.set(o.id, o);
+        setOrders([...byId.values()]);
+        setHasMore(data.length === 50);
+      }
+    } catch {
+      // Silently fail — user can retry via PullToRefresh.
+    } finally {
+      setLoadingMore(false);
     }
-    setLoadingMore(false);
   }, [loadingMore, hasMore, dateKey, orders, projectId]);
 
   // SSR (Vercel = UTC) يجلب نطاقًا مختلفًا عن نطاق المتصفح المحلي (Asia/Bahrain) —
@@ -431,7 +440,7 @@ export function OrdersClient({
                     {order.tables
                       ? `طاولة ${order.tables.number}`
                       : 'بدون طاولة'}{' '}
-                    · {new Date(order.created_at).toLocaleString('ar-BH-u-nu-latn')}
+                    · {new Date(order.created_at).toLocaleString('ar-BH-u-nu-latn', { timeZone: 'Asia/Bahrain' })}
                   </p>
                 </div>
                 <p className="text-sm font-bold tabular-nums">

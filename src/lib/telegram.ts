@@ -25,6 +25,10 @@ async function callTelegram(method: string, body: Record<string, unknown>) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
+    if (!res.ok) {
+      console.error(`Telegram API ${method} failed: ${res.status} ${res.statusText}`);
+      return null;
+    }
     return res.json() as Promise<{ ok: boolean; description?: string }>;
   } catch {
     return null;

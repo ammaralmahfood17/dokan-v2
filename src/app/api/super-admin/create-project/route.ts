@@ -71,6 +71,12 @@ export async function POST(request: NextRequest) {
       .single();
     if (projErr || !project) {
       Sentry.captureException(projErr);
+      // Race fix: a concurrent request can grab the same slug between the
+      // availability read above and this insert; the DB's unique
+      // projects.slug constraint catches it — surface a retryable 409.
+      if ((projErr as { code?: string } | null)?.code === '23505') {
+        return NextResponse.json({ error: 'المعرّف أصبح غير متاح — حاول مرة أخرى' }, { status: 409 });
+      }
       return NextResponse.json({ error: 'فشل إنشاء المشروع' }, { status: 500 });
     }
 

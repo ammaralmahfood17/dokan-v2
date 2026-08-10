@@ -245,7 +245,7 @@ export default async function SuperAdminAnalyticsPage({
 
       {/* Per-project table */}
       <div className="card overflow-x-auto">
-        <table className="w-full min-w-[680px] text-right text-sm">
+        <table className="w-full min-w-[680px] text-start text-sm">
           <thead>
             <tr className="border-b border-[var(--color-border)] text-xs text-[var(--color-text-secondary)]">
               <th className="px-3 py-2.5 font-semibold">المتجر</th>

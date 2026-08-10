@@ -133,44 +133,52 @@ export function ProductsClient({
   const [confirmDelete, setConfirmDelete] = useState<ProductWithAddons | null>(null);
 
   async function deleteProduct(id: string) {
-    const supabase = createClient();
-    const product = products.find((p) => p.id === id);
-    const { error } = await supabase.from('products').delete().eq('id', id).eq('project_id', projectId);
-    if (error) {
+    try {
+      const supabase = createClient();
+      const product = products.find((p) => p.id === id);
+      const { error } = await supabase.from('products').delete().eq('id', id).eq('project_id', projectId);
+      if (error) {
+        toast.error('فشل الحذف');
+        return;
+      }
+      setProducts((prev) => prev.filter((p) => p.id !== id));
+      toast.success('تم حذف المنتج');
+      removeProductImage(product?.image_url);
+      revalidateMenuCache(projectId);
+    } catch {
       toast.error('فشل الحذف');
-      return;
     }
-    setProducts((prev) => prev.filter((p) => p.id !== id));
-    toast.success('تم حذف المنتج');
-    removeProductImage(product?.image_url);
-    revalidateMenuCache(projectId);
   }
 
   async function deleteAddon(productId: string, addonId: string) {
-    const supabase = createClient();
-    // Verify the product belongs to this project before touching its addons
-    const { data: owned } = await supabase
-      .from('products')
-      .select('id')
-      .eq('id', productId)
-      .eq('project_id', projectId)
-      .maybeSingle();
-    if (!owned) {
-      toast.error('لا يمكن حذف هذه الإضافة');
-      return;
-    }
-    const { error } = await supabase.from('product_addons').delete().eq('product_id', productId).eq('id', addonId);
-    if (error) {
+    try {
+      const supabase = createClient();
+      // Verify the product belongs to this project before touching its addons
+      const { data: owned } = await supabase
+        .from('products')
+        .select('id')
+        .eq('id', productId)
+        .eq('project_id', projectId)
+        .maybeSingle();
+      if (!owned) {
+        toast.error('لا يمكن حذف هذه الإضافة');
+        return;
+      }
+      const { error } = await supabase.from('product_addons').delete().eq('product_id', productId).eq('id', addonId);
+      if (error) {
+        toast.error('فشل الحذف');
+        return;
+      }
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === productId
+            ? { ...p, product_addons: p.product_addons.filter((a) => a.id !== addonId) }
+            : p
+        )
+      );
+    } catch {
       toast.error('فشل الحذف');
-      return;
     }
-    setProducts((prev) =>
-      prev.map((p) =>
-        p.id === productId
-          ? { ...p, product_addons: p.product_addons.filter((a) => a.id !== addonId) }
-          : p
-      )
-    );
   }
 
   const [bulkMode, setBulkMode] = useState(false);
@@ -230,6 +238,8 @@ export function ProductsClient({
       toast.success(available ? 'تم تفعيل المنتجات' : 'تم إيقاف المنتجات');
       exitBulk();
       revalidateMenuCache(projectId);
+    } catch {
+      toast.error('فشل التحديث');
     } finally {
       setBulkBusy(false);
     }
@@ -254,6 +264,8 @@ export function ProductsClient({
       toast.success('تم حذف المنتجات');
       exitBulk();
       revalidateMenuCache(projectId);
+    } catch {
+      toast.error('فشل الحذف');
     } finally {
       setBulkBusy(false);
     }
@@ -282,11 +294,13 @@ export function ProductsClient({
         toast.error('فشل إنشاء التصنيف');
         return;
       }
-    setCategories((prev) => [...prev, data as Category]);
-    setCatName('');
-    setShowCategoryForm(false);
-    toast.success('تم إنشاء التصنيف');
-    revalidateMenuCache(projectId);
+      setCategories((prev) => [...prev, data as Category]);
+      setCatName('');
+      setShowCategoryForm(false);
+      toast.success('تم إنشاء التصنيف');
+      revalidateMenuCache(projectId);
+    } catch {
+      toast.error('فشل إنشاء التصنيف');
     } finally {
       setLoading(false);
     }
@@ -308,6 +322,8 @@ export function ProductsClient({
       setEditingCat(null);
       toast.success('تم تحديث التصنيف');
       revalidateMenuCache(projectId);
+    } catch {
+      toast.error('فشل التحديث');
     } finally {
       setLoading(false);
     }
@@ -323,6 +339,8 @@ export function ProductsClient({
       setCategories((prev) => prev.filter((c) => c.id !== confirmDeleteCat.id));
       toast.success('تم حذف التصنيف');
       revalidateMenuCache(projectId);
+    } catch {
+      toast.error('فشل الحذف — تأكد من عدم وجود منتجات مرتبطة');
     } finally {
       setLoading(false);
     }

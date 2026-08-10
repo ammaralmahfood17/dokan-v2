@@ -200,7 +200,7 @@ export function ProjectRowActions({
               />
             </label>
             <div className="flex gap-2">
-<Button className="w-full">
+              <Button className="w-full" onClick={archive} disabled={busy || !reason.trim()}>
                 {busy ? 'جاري…' : 'تأكيد الأرشفة'}
               </Button>
               <Button variant="secondary" onClick={() => setArchiveOpen(false)}>

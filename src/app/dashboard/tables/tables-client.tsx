@@ -71,29 +71,33 @@ export function TablesClient({
     }
     const slug = rawSlug || tableSlugFromNumber(number);
     setLoading(true);
-    const supabase = createClient();
-
-    const { data, error } = await supabase
-      .from('tables')
-      .insert({
-        project_id: projectId,
-        number,
-        slug,
-        qrcode: generateQrToken(),
-        is_active: true,
-      })
-      .select('*')
-      .single();
-    setLoading(false);
-    if (error || !data) {
-      toast.error(error?.message?.includes('unique') ? 'المعرّف مستخدم' : 'فشل إنشاء الطاولة');
-      return;
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('tables')
+        .insert({
+          project_id: projectId,
+          number,
+          slug,
+          qrcode: generateQrToken(),
+          is_active: true,
+        })
+        .select('*')
+        .single();
+      if (error || !data) {
+        toast.error(error?.message?.includes('unique') ? 'المعرّف مستخدم' : 'فشل إنشاء الطاولة');
+        return;
+      }
+      setTables((prev) => [...prev, data as TableRow]);
+      setShowTable(false);
+      toast.success('تم إنشاء الطاولة مع QR');
+      await showQr(data as Table);
+      router.refresh();
+    } catch {
+      toast.error('فشل إنشاء الطاولة');
+    } finally {
+      setLoading(false);
     }
-    setTables((prev) => [...prev, data as TableRow]);
-    setShowTable(false);
-    toast.success('تم إنشاء الطاولة مع QR');
-    await showQr(data as Table);
-    router.refresh();
   }
 
   async function showQr(table: Table) {
@@ -188,28 +192,34 @@ export function TablesClient({
 
   async function deleteTable(table: Table) {
     setLoading(true);
-    const supabase = createClient();
-    // Guard: a table with ACTIVE orders (pending/preparing/ready) cannot be
-    // deleted — the kitchen/orders screens still reference it. Only
-    // delivered/cancelled (or zero) orders allow deletion.
-    const { count: activeOrders } = await supabase
-      .from('orders')
-      .select('id', { count: 'exact', head: true })
-      .eq('project_id', projectId)
-      .eq('table_id', table.id)
-      .in('status', ['pending', 'preparing', 'ready']);
-    if ((activeOrders ?? 0) > 0) {
+    try {
+      const supabase = createClient();
+      // Guard: a table with ACTIVE orders (pending/preparing/ready) cannot be
+      // deleted — the kitchen/orders screens still reference it. Only
+      // delivered/cancelled (or zero) orders allow deletion.
+      const { count: activeOrders } = await supabase
+        .from('orders')
+        .select('id', { count: 'exact', head: true })
+        .eq('project_id', projectId)
+        .eq('table_id', table.id)
+        .in('status', ['pending', 'preparing', 'ready']);
+      if ((activeOrders ?? 0) > 0) {
+        toast.error(`لا يمكن الحذف — ${activeOrders} طلب نشط على هذه الطاولة`);
+        return;
+      }
+      const { error } = await supabase.from('tables').delete().eq('id', table.id).eq('project_id', projectId);
+      if (error) {
+        toast.error('فشل حذف الطاولة');
+        return;
+      }
+      setTables((prev) => prev.filter((t) => t.id !== table.id));
+      toast.success('تم حذف الطاولة');
+    } catch {
+      toast.error('فشل حذف الطاولة');
+    } finally {
       setLoading(false);
       setConfirmDelete(null);
-      toast.error(`لا يمكن الحذف — ${activeOrders} طلب نشط على هذه الطاولة`);
-      return;
     }
-    const { error } = await supabase.from('tables').delete().eq('id', table.id).eq('project_id', projectId);
-    setLoading(false);
-    setConfirmDelete(null);
-    if (error) { toast.error('فشل حذف الطاولة'); return; }
-    setTables((prev) => prev.filter((t) => t.id !== table.id));
-    toast.success('تم حذف الطاولة');
   }
 
   return (

@@ -15,12 +15,16 @@ export async function GET(request: Request) {
       ? next
       : '/onboarding';
 
-  if (code) {
-    const supabase = await createClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) {
-      return NextResponse.redirect(`${origin}${safeNext}`);
+  try {
+    if (code) {
+      const supabase = await createClient();
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      if (!error) {
+        return NextResponse.redirect(`${origin}${safeNext}`);
+      }
     }
+  } catch (err) {
+    console.error('auth callback failed', err);
   }
 
   return NextResponse.redirect(`${origin}/login?error=auth`);

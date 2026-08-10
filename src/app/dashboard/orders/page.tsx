@@ -10,9 +10,16 @@ export default async function OrdersPage() {
 
   const supabase = await createClient();
 
-  // Filter: only real orders (not waiter/bill requests), today only
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // "Today" = Bahrain midnight (UTC+3). The server clock is UTC, so naive
+  // setHours(0,0,0,0) would drop orders between 00:00–03:00 Bahrain time.
+  const TZ = 'Asia/Bahrain';
+  const dayFmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  const today = new Date(Date.parse(`${dayFmt.format(new Date())}T00:00:00+03:00`));
 
   const { data: orders } = await supabase
     .from('orders')

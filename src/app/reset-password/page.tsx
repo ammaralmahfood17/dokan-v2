@@ -83,8 +83,7 @@ export default function ResetPasswordPage() {
                 dir="ltr"
                 placeholder="name@example.com"
               />
-            </div>
-<Button className="w-full">
+            </div>            <Button className="w-full" disabled={loading}>
               {loading ? 'جاري الإرسال…' : 'إرسال رابط إعادة التعيين'}
             </Button>
             <div className="text-center">
