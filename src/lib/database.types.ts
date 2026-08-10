@@ -738,6 +738,10 @@ export type Database = {
         Returns: boolean
       }
       is_project_owner: { Args: { p_project_id: string }; Returns: boolean }
+      is_project_owner_or_manager: {
+        Args: { p_project_id: string }
+        Returns: boolean
+      }
       is_project_publicly_available: {
         Args: { p_slug: string }
         Returns: boolean
@@ -760,6 +764,10 @@ export type Database = {
           p_window_ms: number
         }
         Returns: Json
+      }
+      sum_order_totals: {
+        Args: { p_end: string; p_project: string; p_start: string }
+        Returns: number
       }
       renew_subscription: {
         Args: {

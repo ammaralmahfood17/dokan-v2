@@ -49,11 +49,12 @@ export default function DashboardError({
   }, [copied]);
 
   function handleCopyLog() {
+    // Security: never copy raw error.message / stack to the clipboard — it
+    // can leak internal component names, file paths and Supabase internals.
     const textToCopy = `[دكان — سجل الخطأ]
 التصنيف: ${details.badgeText}
 الوقت: ${new Date().toISOString()}
-الرسالة: ${error.message}
-التفاصيل: ${error.stack || 'غير متوفرة'}`;
+المعرّف: ${error.digest || 'غير متوفر'}`;
 
     navigator.clipboard.writeText(textToCopy).then(() => {
       setCopied(true);
@@ -133,14 +134,12 @@ export default function DashboardError({
                   <span>{copied ? 'تم النسخ' : 'نسخ السجل'}</span>
                 </button>
               </div>
-              <p className="break-all font-semibold text-[var(--color-danger)]">
-                {error.message || 'لا توجد رسالة نصية للخطأ'}
+              {/* Security: raw error.message/stack is NOT shown to end users —
+                  internals (component names, file paths, Supabase details) go
+                  to the local error log (persistErrorLog) + Sentry only. */}
+              <p className="break-all text-[var(--color-text-secondary)]">
+                معرّف الخطأ: {error.digest || 'غير متوفر'} — سُجِّلت التفاصيل محليًا لفريق الدعم.
               </p>
-              {error.stack && (
-                <p className="max-h-36 overflow-y-auto whitespace-pre-wrap text-[10px] leading-tight text-[var(--color-text-muted)]">
-                  {error.stack}
-                </p>
-              )}
             </div>
           )}
         </div>

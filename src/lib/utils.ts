@@ -84,10 +84,15 @@ export function currencyDecimals(currency: string): number {
  * Returns 0 for non-finite. Always pass `decimals` for non-BHD currencies —
  * writing SAR/AED/QAR amounts at 3 decimals persists wrong prices.
  */
-export function money(value: number, decimals = 3): number {
+export function money(value: number, decimals: number): number {
   if (!Number.isFinite(value)) return 0;
   const factor = 10 ** decimals;
-  return Math.round((value + Number.EPSILON) * factor) / factor;
+  // Magnitude-scaled epsilon: `value + EPSILON` only fixes 1.005-class errors —
+  // 9.995 * 100 lands at 999.4999999999999, and + EPSILON (~2e-16) is far too
+  // small to lift it past .5. Scaling the epsilon to the scaled value fixes
+  // rounding at any magnitude while never over-correcting genuine .49… values.
+  const scaled = value * factor;
+  return Math.round(scaled + Number.EPSILON * Math.max(1, Math.abs(scaled))) / factor;
 }
 
 /** True when value is a valid finite money amount (>= 0) */

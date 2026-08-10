@@ -148,7 +148,9 @@ export async function createSecureOrder(
   }
 
   for (const item of items) {
-    const quantity = Number(item.quantity);
+    // Strict numeric type first: Number(true) === 1 would otherwise pass the
+    // isFinite/isInteger checks below (JSON booleans must not become quantity).
+    const quantity = typeof item.quantity === 'number' ? item.quantity : NaN;
     // Require a positive integer quantity (reject 1.5, NaN, etc.)
     if (
       !item.productId ||
@@ -210,6 +212,12 @@ export async function createSecureOrder(
     }
 
     const unitPrice = money(Number(product.price) + addonTotal, decimals);
+    // Audit: a negative price (bad data / DB drift) must fail cleanly with a
+    // 400 — a negative unit_price would otherwise hit the order_items CHECK
+    // constraint mid-transaction and surface as a 500.
+    if (unitPrice < 0) {
+      return { ok: false, error: 'سعر الصنف غير صالح', status: 400 };
+    }
     const lineTotal = money(unitPrice * quantity, decimals);
     totalAmount = money(totalAmount + lineTotal, decimals);
 

@@ -176,8 +176,8 @@
   body {
     margin: 0;
     font-family: var(--font-sans);
-    font-size: 0.875rem;      /* 14px — enterprise density */
-    line-height: 1.5;         /* 20px */
+    font-size: 0.9375rem; /* 15px — AGENTS.md Arabic readability standard */
+    line-height: 1.6;      /* 24px */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     font-variant-numeric: tabular-nums;

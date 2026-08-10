@@ -30,7 +30,9 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'ar_BH',
-    url: 'https://www.dokanstore.xyz',
+    // Canonical host comes from env (matches Vercel domain setting); the
+    // hardcoded value previously diverged from the live apex domain.
+    url: process.env.NEXT_PUBLIC_SITE_URL || 'https://www.dokanstore.xyz',
     siteName: 'دكان',
     title: 'دكان — منصة إدارة المطاعم',
     description: 'منصة سحابية لإدارة المطاعم والمقاهي في الخليج',
@@ -67,7 +69,9 @@ export const viewport: Viewport = {
   initialScale: 1,
   // FIX-R-001: تفعيل safe areas على iPhone مع notch (env(safe-area-inset-*))
   viewportFit: 'cover',
-  themeColor: '#F8FAFC',
+  // Aligned with manifest.ts theme_color (#4F46E5) — browser chrome and
+  // install prompt must not disagree.
+  themeColor: '#4F46E5',
 };
 
 export default function RootLayout({
@@ -93,10 +97,8 @@ export default function RootLayout({
         {/* iOS touch icons */}
         <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-maskable-512.png" />
         <link rel="apple-touch-startup-image" href="/splash/light-1242x2688.png" />
-        {/* Preload critical routes */}
-        <link rel="prefetch" href="/dashboard" as="document" />
-        <link rel="prefetch" href="/dashboard/kitchen" as="document" />
-        <link rel="prefetch" href="/dashboard/pos" as="document" />
+        {/* Preload auth route (public); dashboard prefetches removed — they
+            wasted bandwidth on guest visits and got edge-redirected anyway. */}
         <link rel="prefetch" href="/login" as="document" />
       </head>
       <body>

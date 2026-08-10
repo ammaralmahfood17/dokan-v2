@@ -17,6 +17,9 @@ export const config = {
     '/login',
     '/register',
     '/reset-password',
+    // /super-admin: edge bounce for guests (cheaper than rendering the
+    // layout guard); the per-request requireSuperAdmin() stays as backstop.
+    '/super-admin/:path*',
     // POS API: runs getSession() (local cookie read, ~1ms) so the route
     // handlers can trust getSession() instead of calling the Auth API
     // (getUser(), 200-800ms) per request. Security note: getSession does

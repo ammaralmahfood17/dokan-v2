@@ -131,9 +131,14 @@ export function ProductFormModal({
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
-    // Validate addon prices FIRST — abort on any invalid one (no silent drops)
+    // Validate addon prices FIRST — abort on any invalid one (no silent
+    // drops). An EMPTY price is a typo, not a free addon.
     for (const a of formAddons) {
       if (!a.name.trim()) continue;
+      if (typeof a.price !== 'string' || !a.price.trim()) {
+        toast.error(`سعر الإضافة «${a.name.trim()}» مطلوب`);
+        return;
+      }
       const addonPrice = Number(a.price);
       if (!Number.isFinite(addonPrice) || addonPrice < 0) {
         toast.error(`سعر الإضافة «${a.name.trim()}» غير صالح`);
@@ -509,6 +514,7 @@ export function ProductFormModal({
                   min="0"
                   dir="ltr"
                   inputMode="decimal"
+                  required
                   placeholder={`0.${'0'.repeat(currencyDecimals(currency))}`}
                   value={addon.price}
                   onChange={(e) => updateFormAddon(addon.key, 'price', e.target.value)}

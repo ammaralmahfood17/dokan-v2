@@ -50,8 +50,8 @@ toward caution over speed; for trivial tasks (typo fixes, one-liners) use judgme
   `await` it. NEVER import `@/lib/supabase/client` in a route handler.
 - Service role key: NEVER in browser code. Server-only.
 - Supabase migrations: one file per change, ordered. Before claiming a schema
-  object is absent, `grep -rn` ALL migrations — base schema lives in 0029,
-  hardening/constraints in 0030+.
+  object is absent, `grep -rn` ALL migrations — the squashed baseline lives in
+  0000_init.sql, hardening in 0001–0004.
 - RLS: any policy keying only on `auth.uid() = user_id` on a table with
   `project_id` needs a membership EXISTS clause (`staff_members`).
 

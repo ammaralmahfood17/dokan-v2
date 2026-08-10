@@ -19,16 +19,29 @@ export async function POST(request: NextRequest) {
       idempotencyKey?: string;
     };
 
-    const { projectSlug, tableSlug, items, notes } = body;
+    const { items, notes } = body;
+    let { projectSlug, tableSlug } = body;
 
     if (!projectSlug || !tableSlug || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: 'بيانات غير صالحة' }, { status: 400 });
     }
 
-    // Cap slug length — a 1MB slug would blow up the rate-limit key/query.
-    if (projectSlug.length > 100 || tableSlug.length > 100) {
+    // Cap slug length + normalize/validate like waiter/bill (^[a-z0-9-]+$):
+    // a 1MB or odd-cased slug would blow up the rate-limit key/query and
+    // case-mismatched slugs 404 silently.
+    const normSlug = (s: string): string => s.trim().toLowerCase();
+    if (
+      typeof projectSlug !== 'string' ||
+      typeof tableSlug !== 'string' ||
+      !/^[a-z0-9-]{1,100}$/.test(normSlug(projectSlug)) ||
+      !/^[a-z0-9-]{1,100}$/.test(normSlug(tableSlug))
+    ) {
       return NextResponse.json({ error: 'بيانات غير صالحة' }, { status: 400 });
     }
+    // Canonical (lowercased/trimmed) slugs for every downstream use —
+    // rate keys, RPC and queries must all see the same value.
+    projectSlug = normSlug(projectSlug);
+    tableSlug = normSlug(tableSlug);
 
     // Idempotency key (audit MEDIUM fix): a retry of the SAME order attempt
     // reuses the key, so a dropped response can never double-create the order.

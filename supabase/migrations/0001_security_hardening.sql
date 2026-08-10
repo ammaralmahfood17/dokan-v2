@@ -65,7 +65,7 @@ declare
   v_item jsonb;
   v_caller uuid;
 begin
-  -- Tenant guard — see 0010 header comment. Anonymous public path passes
+  -- Tenant guard — see create_order_transactional in 0000_init.sql. Anonymous public path passes
   -- NULL caller (route-level validation applies); authenticated POS passes
   -- the staff id so the RPC itself enforces membership.
   v_caller := coalesce(auth.uid(), p_caller_user_id);

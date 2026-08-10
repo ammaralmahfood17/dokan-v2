@@ -48,6 +48,7 @@ const TAB_LABELS: Record<string, string> = {
 /* ========== Audio System (FIX-C-002: extracted hook) ========== */
 import { useKitchenAudio } from '@/components/dashboard/kitchen/use-kitchen-audio';
 // FIX-C-002: بطاقة الطلب مستخرجة
+import { Modal } from '@/components/ui/modal';
 import { KitchenTicket } from '@/components/dashboard/kitchen/kitchen-ticket';
 
 /* ========== Page title flashing (ref-based, tied to component) ========== */
@@ -144,6 +145,10 @@ export function KitchenClient({
   // Id of the deferred poll scheduled when the realtime channel errors —
   // cleared on unmount so it can't run against a dead component.
   const recoverTickRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Cancel confirmation modal target (audit HIGH-2: cancel path existed
+  // server-side only — add the UI, confirmed via Modal not window.confirm).
+  const [cancelTarget, setCancelTarget] = useState<{ id: string; number: number } | null>(null);
   const [soundOn, setSoundOn] = useState(true);
   // Mirror for use inside stable callbacks — notifyNewOrder must not change
   // identity when the 🔊 toggle flips, or the realtime channel (whose effect
@@ -404,22 +409,32 @@ export function KitchenClient({
         }
       )
       .subscribe((status) => {
-        // Realtime died? Trigger an immediate poll refresh instead of
-        // waiting for the 30s fallback — the next poll re-checks everything
-        // and the channel reconnects on its own. Store the id so an unmount
-        // during the timeout can't fire fullRefresh on a dead component.
+        // Realtime healthy — no fallback polling needed at all.
+        if (status === 'SUBSCRIBED') {
+          if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+          }
+          return;
+        }
+        // Realtime died? Trigger an immediate poll refresh (the channel
+        // reconnects on its own) and keep a 30s fallback poll running only
+        // until it recovers (audit LOW: the poll was always-on before).
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
           recoverTickRef.current = setTimeout(() => void fullRefresh(), 0);
+          if (!pollIntervalRef.current) {
+            pollIntervalRef.current = setInterval(() => void fullRefresh(), 30000);
+          }
         }
       });
 
-    // Fallback polling every 30s
-    const interval = setInterval(() => void fullRefresh(), 30000);
-
     return () => {
       if (recoverTickRef.current) clearTimeout(recoverTickRef.current);
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
       void supabase.removeChannel(channel);
-      clearInterval(interval);
     };
   }, [projectId, fullRefresh, fetchSingleOrder, notifyNewOrder, refetchOrder]);
 
@@ -499,6 +514,39 @@ export function KitchenClient({
       setOrders((prev) => prev.filter((o) => o.id !== orderId));
     },
     [orders, fullRefresh]
+  );
+
+  // Cancel an order (audit HIGH-2) — POST to the server route; the server
+  // re-verifies ownership AND status inside the UPDATE (TOCTOU-safe), so a
+  // stale board can't cancel an already-delivered order.
+  const cancelOrder = useCallback(
+    async (orderId: string) => {
+      setCancelTarget(null);
+      try {
+        const res = await fetch('/api/pos/cancel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId, projectId }),
+        });
+        const body = (await res.json()) as { error?: string };
+        if (res.status === 409) {
+          toast.error(body.error ?? 'تعذر الإلغاء', {
+            description: 'تغيرت حالة الطلب — جارٍ تحديث الشاشة…',
+          });
+          await fullRefresh();
+          return;
+        }
+        if (!res.ok) {
+          toast.error(body.error ?? 'فشل إلغاء الطلب');
+          return;
+        }
+        toast.success('تم إلغاء الطلب');
+        await fullRefresh();
+      } catch {
+        toast.error('فشل الاتصال — حاول مجددًا');
+      }
+    },
+    [projectId, fullRefresh]
   );
 
   // Build tickets — one per order, identical lines merged inside.
@@ -709,9 +757,37 @@ export function KitchenClient({
             onStart={() => advanceOrder(t.order.id, 'preparing', 'preparing')}
             onReady={() => advanceOrder(t.order.id, 'ready', 'ready')}
             onDeliver={() => deliverOrder(t.order.id)}
+            onCancel={() => setCancelTarget({ id: t.order.id, number: t.order.order_number })}
           />
         ))}
       </main>
+
+      {/* Cancel confirmation (Modal — window.confirm silently fails on iOS PWA) */}
+      {cancelTarget && (
+        <Modal title="إلغاء الطلب" onClose={() => setCancelTarget(null)}>
+          <p className="text-sm text-[var(--color-text-secondary)]">
+            هل أنت متأكد من إلغاء الطلب{' '}
+            <strong className="text-[var(--color-text)]">#{String(cancelTarget.number).padStart(3, '0')}</strong>؟
+          </p>
+          <div className="mt-5 flex gap-2">
+            <button
+              type="button"
+              autoFocus
+              onClick={() => void cancelOrder(cancelTarget.id)}
+              className="min-h-[44px] flex-1 rounded-[var(--radius-md)] bg-[var(--color-danger)] px-4 text-sm font-bold text-white transition-colors hover:opacity-90"
+            >
+              نعم، إلغاء
+            </button>
+            <button
+              type="button"
+              onClick={() => setCancelTarget(null)}
+              className="min-h-[44px] flex-1 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-transparent px-4 text-sm font-bold text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-sunken)]"
+            >
+              تراجع
+            </button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

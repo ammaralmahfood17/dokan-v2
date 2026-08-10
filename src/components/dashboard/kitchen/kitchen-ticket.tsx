@@ -38,6 +38,7 @@ export function KitchenTicket({
   onStart,
   onReady,
   onDeliver,
+  onCancel,
 }: {
   ticket: KitchenTicketData;
   now: number;
@@ -45,6 +46,7 @@ export function KitchenTicket({
   onStart: () => void;
   onReady: () => void;
   onDeliver: () => void;
+  onCancel: () => void;
 }) {
   const { order, lines, totalQty } = ticket;
   const status = order.status as OrderStatus;
@@ -159,43 +161,56 @@ export function KitchenTicket({
         )}
       </ul>
 
-      {/* Actions — one primary per stage; ghost "تأخير" only while cooking */}
+      {/* Actions — one primary per stage; ghost "تأخير" only while cooking.
+          Cancel is available on every cancellable stage (pending/preparing/ready)
+          — the server re-checks status inside the UPDATE (TOCTOU-safe). */}
       <div className="flex gap-2">
         {status === 'pending' && (
-          <button
-            type="button"
-            onClick={onStart}
-            className="min-h-[44px] flex-1 rounded-[var(--radius-sm)] bg-[var(--color-primary)] px-4 text-[13px] font-bold text-white transition-colors hover:bg-[var(--color-primary-hover)]"
-          >
-            بدء التحضير
-          </button>
-        )}
-        {status === 'preparing' && (
           <>
             <button
               type="button"
-              onClick={onReady}
+              onClick={onStart}
               className="min-h-[44px] flex-1 rounded-[var(--radius-sm)] bg-[var(--color-primary)] px-4 text-[13px] font-bold text-white transition-colors hover:bg-[var(--color-primary-hover)]"
             >
-              جاهز للتسليم
+              بدء التحضير
             </button>
             <button
               type="button"
-              onClick={() => toast.message('⏱ تأخير', { description: `#${order.order_number} — سنذكّرك لاحقًا` })}
-              className="min-h-[44px] min-w-[96px] rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-transparent px-4 text-[13px] font-bold text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-text-secondary)] hover:text-[var(--color-text)]"
+              onClick={onCancel}
+              className="min-h-[44px] min-w-[96px] rounded-[var(--radius-sm)] border border-[var(--color-danger-tint)] bg-transparent px-4 text-[13px] font-bold text-[var(--color-danger)] transition-colors hover:bg-[var(--color-danger-tint)]"
             >
-              تأخير
+              إلغاء
             </button>
           </>
         )}
-        {status === 'ready' && (
-          <button
-            type="button"
-            onClick={onDeliver}
-            className="min-h-[44px] flex-1 rounded-[var(--radius-sm)] bg-[var(--color-primary)] px-4 text-[13px] font-bold text-white transition-colors hover:bg-[var(--color-primary-hover)]"
-          >
-            تم التسليم
-          </button>
+        {(status === 'preparing' || status === 'ready') && (
+          <>
+            {status === 'preparing' && (
+              <button
+                type="button"
+                onClick={onReady}
+                className="min-h-[44px] flex-1 rounded-[var(--radius-sm)] bg-[var(--color-primary)] px-4 text-[13px] font-bold text-white transition-colors hover:bg-[var(--color-primary-hover)]"
+              >
+                جاهز للتسليم
+              </button>
+            )}
+            {status === 'ready' && (
+              <button
+                type="button"
+                onClick={onDeliver}
+                className="min-h-[44px] flex-1 rounded-[var(--radius-sm)] bg-[var(--color-primary)] px-4 text-[13px] font-bold text-white transition-colors hover:bg-[var(--color-primary-hover)]"
+              >
+                تم التسليم
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onCancel}
+              className="min-h-[44px] min-w-[96px] rounded-[var(--radius-sm)] border border-[var(--color-danger-tint)] bg-transparent px-4 text-[13px] font-bold text-[var(--color-danger)] transition-colors hover:bg-[var(--color-danger-tint)]"
+            >
+              إلغاء
+            </button>
+          </>
         )}
       </div>
     </article>

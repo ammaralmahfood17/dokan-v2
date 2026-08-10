@@ -14,6 +14,8 @@ import {
 } from '@/lib/types';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
+import { Modal } from '@/components/ui/modal';
+import { toast } from 'sonner';
 
 const FILTERS: { value: OrderStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'الكل' },
@@ -78,6 +80,8 @@ export function OrdersClient({
   // Day total is a dedicated aggregate — computing it from the fetched page
   // understated sales on busy days once the page exceeded 50 orders.
   const [dayTotal, setDayTotal] = useState(0);
+  // Cancel confirmation target (audit HIGH-2: cancel UI missing client-side).
+  const [cancelTarget, setCancelTarget] = useState<{ id: string; number: number } | null>(null);
 
   const refresh = useCallback(
     async (key?: string, append = false) => {
@@ -85,7 +89,7 @@ export function OrdersClient({
       const { start, end } = dayRange(target);
       const supabase = createClient();
       try {
-        const [{ data }, { data: dayTotals }] = await Promise.all([
+        const [{ data }, { data: dayTotal }] = await Promise.all([
           supabase
             .from('orders')
             .select('*, tables(number, slug), order_items(*)')
@@ -95,14 +99,14 @@ export function OrdersClient({
             .lt('created_at', end.toISOString())
             .order('created_at', { ascending: false })
             .range(0, 49),
-          supabase
-            .from('orders')
-            .select('total_amount')
-            .eq('project_id', projectId)
-            .is('service_type', null)
-            .not('status', 'eq', 'cancelled')
-            .gte('created_at', start.toISOString())
-            .lt('created_at', end.toISOString()),
+          // Bounded aggregate (audit MEDIUM): the old query fetched EVERY
+          // total_amount row of the day to sum client-side — unbounded on
+          // busy days, and it raced the 143KB payload cap. Server-side SUM.
+          supabase.rpc('sum_order_totals', {
+            p_project: projectId,
+            p_start: start.toISOString(),
+            p_end: end.toISOString(),
+          }),
         ]);
         if (data) {
           setOrders((prev) => {
@@ -115,17 +119,44 @@ export function OrdersClient({
           // Fewer than 50 rows → no more pages for this day.
           setHasMore(data.length === 50);
         }
-        setDayTotal(
-          (dayTotals ?? []).reduce(
-            (s, o: { total_amount: number }) => s + Number(o.total_amount),
-            0
-          )
-        );
+        setDayTotal(Number(dayTotal ?? 0));
       } catch {
         // Silently fail — user can retry via PullToRefresh.
       }
     },
     [projectId, dateKey]
+  );
+
+  // Cancel an order (audit HIGH-2) — server re-verifies ownership + status
+  // inside the UPDATE; 409 = status changed meanwhile (don't claim success).
+  const cancelOrder = useCallback(
+    async (orderId: string) => {
+      setCancelTarget(null);
+      try {
+        const res = await fetch('/api/pos/cancel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId, projectId }),
+        });
+        const body = (await res.json()) as { error?: string };
+        if (res.status === 409) {
+          toast.error(body.error ?? 'تعذر الإلغاء', {
+            description: 'تغيرت حالة الطلب — جارٍ تحديث الشاشة…',
+          });
+          await refresh();
+          return;
+        }
+        if (!res.ok) {
+          toast.error(body.error ?? 'فشل إلغاء الطلب');
+          return;
+        }
+        toast.success('تم إلغاء الطلب');
+        await refresh();
+      } catch {
+        toast.error('فشل الاتصال — حاول مجددًا');
+      }
+    },
+    [projectId, refresh]
   );
 
   const loadMore = useCallback(async () => {
@@ -522,6 +553,21 @@ export function OrdersClient({
                   {order.notes}
                 </p>
               )}
+              {/* Cancel — only while the order is still cancellable server-side
+                  (pending/preparing/ready); delivered/cancelled hide it. */}
+              {['pending', 'preparing', 'ready'].includes(order.status) && (
+                <div className="border-t border-[var(--color-border)] px-4 py-2.5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCancelTarget({ id: order.id, number: order.order_number })
+                    }
+                    className="min-h-[44px] w-full rounded-[var(--radius-md)] border border-[var(--color-danger-tint)] bg-transparent px-4 text-[13px] font-bold text-[var(--color-danger)] transition-colors hover:bg-[var(--color-danger-tint)]"
+                  >
+                    إلغاء الطلب
+                  </button>
+                </div>
+              )}
             </article>
           ))}
         </div>
@@ -540,6 +586,36 @@ export function OrdersClient({
         </div>
       )}
       </PullToRefresh>
+
+      {/* Cancel confirmation (Modal — window.confirm silently fails on iOS PWA) */}
+      {cancelTarget && (
+        <Modal title="إلغاء الطلب" onClose={() => setCancelTarget(null)}>
+          <p className="text-sm text-[var(--color-text-secondary)]">
+            هل أنت متأكد من إلغاء الطلب{' '}
+            <strong className="text-[var(--color-text)]" dir="ltr">
+              order-{cancelTarget.number}
+            </strong>
+            ؟
+          </p>
+          <div className="mt-5 flex gap-2">
+            <button
+              type="button"
+              autoFocus
+              onClick={() => void cancelOrder(cancelTarget.id)}
+              className="min-h-[44px] flex-1 rounded-[var(--radius-md)] bg-[var(--color-danger)] px-4 text-sm font-bold text-white transition-colors hover:opacity-90"
+            >
+              نعم، إلغاء
+            </button>
+            <button
+              type="button"
+              onClick={() => setCancelTarget(null)}
+              className="min-h-[44px] flex-1 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-transparent px-4 text-sm font-bold text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-sunken)]"
+            >
+              تراجع
+            </button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

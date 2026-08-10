@@ -25,8 +25,13 @@ export async function POST(request: NextRequest) {
     if (!isAdmin) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
 
     const body = (await request.json()) as { targetUserId?: string; projectId?: string };
-    if (!body.targetUserId || typeof body.targetUserId !== 'string') {
-      return NextResponse.json({ error: 'targetUserId مطلوب' }, { status: 400 });
+    if (
+      typeof body.targetUserId !== 'string' ||
+      !/^[0-9a-f-]{36}$/i.test(body.targetUserId) ||
+      typeof body.projectId !== 'string' ||
+      !/^[0-9a-f-]{36}$/i.test(body.projectId)
+    ) {
+      return NextResponse.json({ error: 'بيانات ناقصة أو غير صالحة' }, { status: 400 });
     }
 
     // Capture the admin's CURRENT session BEFORE swapping (restore on end).

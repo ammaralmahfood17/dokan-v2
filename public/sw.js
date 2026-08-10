@@ -1,7 +1,9 @@
 // Dokan Service Worker — Precache build assets + RSC caching + Push + Offline-first
 // M6: single source of truth for cache versioning — bump CACHE_VERSION on every
 // SW change so old caches are evicted by activate() (matched by prefix).
-const CACHE_VERSION = 'v8';
+// v9: stop caching authenticated /api/* + auth'd RSC payloads (sensitive data
+// on device); old caches purged on activate.
+const CACHE_VERSION = 'v9';
 const CACHE_SHELL = `dokan-shell-${CACHE_VERSION}`;
 const CACHE_IMAGES = `dokan-images-${CACHE_VERSION}`;
 const CACHE_STATIC = `dokan-static-${CACHE_VERSION}`;
@@ -14,7 +16,6 @@ const MAX_CACHE_ENTRIES = 120;
 const SHELL_ASSETS = [
   '/',
   '/offline.html',
-  '/manifest.webmanifest',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/icons/icon-maskable-512.png',
@@ -138,9 +139,14 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // API routes: network-first (fresh data), fall back to cache if available
+  // API routes: network-first ONLY for public endpoints. Authenticated API
+  // responses (pos/admin/staff/super-admin/telegram) are NEVER cached —
+  // order/staff data must not persist in Cache Storage on the device.
   if (url.pathname.startsWith('/api/')) {
-    event.respondWith(networkFirst(event.request, CACHE_PAGES));
+    if (url.pathname.startsWith('/api/public/')) {
+      event.respondWith(networkFirst(event.request, CACHE_PAGES));
+    }
+    // everything else under /api/: default network handling, no cache write
     return;
   }
 
@@ -156,9 +162,15 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 4. RSC payloads (?_rsc=...) — network-first so client navigations work offline
+  // 4. RSC payloads (?_rsc=...) — network-first so client navigations work
+  //    offline; but NEVER cache RSC for authenticated, tenant-scoped
+  //    surfaces (dashboard/pos/kitchen/orders/super-admin carry customer
+  //    and order data that must not persist in Cache Storage).
   if (url.searchParams.has('_rsc')) {
-    event.respondWith(networkFirst(event.request, CACHE_PAGES));
+    const protectedPrefixes = ['/dashboard', '/super-admin', '/onboarding'];
+    if (!protectedPrefixes.some((p) => url.pathname.startsWith(p))) {
+      event.respondWith(networkFirst(event.request, CACHE_PAGES));
+    }
     return;
   }
 

@@ -48,7 +48,8 @@ export async function updateSession(request: NextRequest) {
 
   const isProtected =
     path.startsWith('/dashboard') ||
-    path.startsWith('/onboarding');
+    path.startsWith('/onboarding') ||
+    path.startsWith('/super-admin');
   // NOTE: /update-password is deliberately NOT in isProtected. The recovery
   // flow lands there with the session in the URL FRAGMENT (#access_token=),
   // which only the browser client can parse AFTER the HTML loads. If the

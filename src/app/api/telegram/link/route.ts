@@ -30,7 +30,7 @@ async function requireMembership(projectId: string) {
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as { projectId?: string };
-    if (!body.projectId) {
+    if (typeof body.projectId !== 'string' || !/^[0-9a-f-]{36}$/i.test(body.projectId)) {
       return NextResponse.json({ error: 'بيانات ناقصة' }, { status: 400 });
     }
 
@@ -38,8 +38,13 @@ export async function POST(request: NextRequest) {
     if ('error' in auth) return auth.error;
     const { supabase } = auth;
 
-    // Clear expired codes for this project, then generate a fresh one
-    await supabase.from('telegram_link_codes').delete().lt('expires_at', new Date().toISOString());
+    // Clear expired codes for THIS project (audit LOW: previously unscoped —
+    // relied on RLS alone), then generate a fresh one
+    await supabase
+      .from('telegram_link_codes')
+      .delete()
+      .eq('project_id', body.projectId)
+      .lt('expires_at', new Date().toISOString());
 
     // Entropy fix (audit MEDIUM): 8 random bytes → 16 hex chars. The old
     // 4-byte (8-char) code was brute-forceable at webhook rate and would
@@ -75,7 +80,12 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const body = (await request.json()) as { projectId?: string; chatId?: string };
-    if (!body.projectId || !body.chatId) {
+    if (
+      typeof body.projectId !== 'string' ||
+      !/^[0-9a-f-]{36}$/i.test(body.projectId) ||
+      typeof body.chatId !== 'string' ||
+      body.chatId.length > 64
+    ) {
       return NextResponse.json({ error: 'بيانات ناقصة' }, { status: 400 });
     }
 

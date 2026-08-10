@@ -32,6 +32,9 @@ export async function POST(request: NextRequest) {
     if (!name || name.length < 2) {
       return NextResponse.json({ error: 'اسم المتجر مطلوب (حرفان على الأقل)' }, { status: 400 });
     }
+    if (name.length > 80) {
+      return NextResponse.json({ error: 'اسم المتجر أطول من اللازم (80 حرفًا كحد أقصى)' }, { status: 400 });
+    }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ownerEmail)) {
       return NextResponse.json({ error: 'إيميل المالك غير صالح' }, { status: 400 });
     }
@@ -48,8 +51,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Slug: reuse the app's own generation + reserved checks.
-    let slug = (body.slug?.trim() || generateSlug(name)).toLowerCase();
+    // Slug: reuse the app's own generation + reserved checks. A client-provided
+    // slug is normalized exactly like onboarding (lowercase, charset, ≤40) —
+    // previously an arbitrary-length/malformed value hit the unique index.
+    let slug =
+      typeof body.slug === 'string' && body.slug.trim()
+        ? body.slug.trim().toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').replace(/-{2,}/g, '-').slice(0, 40)
+        : generateSlug(name);
+    if (!slug || !/^[a-z0-9-]{1,40}$/.test(slug)) {
+      return NextResponse.json({ error: 'المعرّف غير صالح (أحرف لاتينية وأرقام وشرطات فقط)' }, { status: 400 });
+    }
     if (isReservedSlug(slug)) {
       return NextResponse.json({ error: 'المعرّف محجوز' }, { status: 409 });
     }

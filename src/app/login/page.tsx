@@ -22,7 +22,13 @@ function RegisteredNotice() {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const nextParam = searchParams.get('next');
+  const rawNext = searchParams.get('next');
+  // Open-redirect guard (same rule as auth/callback): only same-origin
+  // relative paths survive; http://evil, //evil and backslash variants → null
+  const nextParam =
+    rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//') && !rawNext.includes('\\')
+      ? rawNext
+      : null;
 
   const [showPass, setShowPass] = useState(false); // FIX-S-007
   const [email, setEmail] = useState('');

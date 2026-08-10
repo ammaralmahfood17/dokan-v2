@@ -32,11 +32,14 @@ export async function POST(request: NextRequest) {
     }
 
     const body = (await request.json()) as { orderId?: string; projectId?: string };
-    const { orderId } = body;
+        const { orderId } = body;
 
-    if (!orderId) {
-      return NextResponse.json({ error: 'بيانات غير صالحة' }, { status: 400 });
-    }
+        if (typeof orderId !== 'string' || !/^[0-9a-f-]{36}$/i.test(orderId)) {
+          return NextResponse.json({ error: 'بيانات غير صالحة' }, { status: 400 });
+        }
+        if (body.projectId !== undefined && (typeof body.projectId !== 'string' || !/^[0-9a-f-]{36}$/i.test(body.projectId))) {
+          return NextResponse.json({ error: 'بيانات غير صالحة' }, { status: 400 });
+        }
 
     // DETERMINISTIC project resolution — same as /api/pos/order: bind to the
     // client-supplied projectId when present so a multi-store staff member

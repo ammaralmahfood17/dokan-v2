@@ -12,8 +12,10 @@
       align-items: center;
       justify-content: center;
       min-height: 100vh;
-      background: var(--color-bg);
-      color: var(--color-text);
+      /* Hardcoded tokens — the app's Tailwind CSS isn't loaded on the
+         static offline page, so var(--color-*) would be undefined here. */
+      background: #f8fafc;
+      color: #0f172a;
       text-align: center;
       padding: 24px;
       direction: rtl;

@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
-async function db() {
-  return await createClient();
-}
-
 /**
  * POST /api/push/subscribe
  * Save a push subscription for the current user + project
@@ -22,7 +18,17 @@ export async function POST(request: NextRequest) {
       subscription: { endpoint: string; keys: { p256dh: string; auth: string } };
     };
 
-    if (!body.projectId || !body.subscription?.endpoint) {
+    if (
+      typeof body.projectId !== 'string' ||
+      !/^[0-9a-f-]{36}$/i.test(body.projectId) ||
+      typeof body.subscription?.endpoint !== 'string' ||
+      body.subscription.endpoint.length > 500 ||
+      !/^https:\/\//.test(body.subscription.endpoint) ||
+      typeof body.subscription?.keys?.p256dh !== 'string' ||
+      body.subscription.keys.p256dh.length > 200 ||
+      typeof body.subscription?.keys?.auth !== 'string' ||
+      body.subscription.keys.auth.length > 200
+    ) {
       return NextResponse.json({ error: 'بيانات ناقصة' }, { status: 400 });
     }
 
@@ -39,7 +45,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
     }
 
-    const { error } = await (await db())
+    const { error } = await supabase
       .from('push_subscriptions')
       .insert({
         project_id: body.projectId,

@@ -33,9 +33,11 @@ cp .env.example .env.local
 # SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SITE_URL
 
 npm install
-npx supabase db push   # applies supabase/migrations/0001_dokan_schema.sql
+npx supabase db push   # applies supabase/migrations/0000_init.sql
 npm run dev
 ```
+
+Note: `.env.example` is committed (no secrets) — copy it and fill real values.
 
 ## Definition of Done path
 
@@ -70,7 +72,7 @@ src/lib/
   types.ts  database.types.ts  utils.ts  order-pricing.ts  project.ts
   supabase/ client | server | admin | middleware
 
-supabase/migrations/0001_dokan_schema.sql
+supabase/migrations/0000_init.sql
 ```
 
 ## Design tokens
@@ -91,8 +93,10 @@ supabase/migrations/0001_dokan_schema.sql
   subscription enforcement (manual cash), super-admin dashboard (audit log,
   analytics, impersonation, project create/archive/delete)
 - Migrations applied via `npx supabase db push` (project:
-  `smhleaeujwfebefjuwoe`) — latest is 0017; NOT squashed yet
-- E2E: Playwright against production — `npx playwright test` (7 specs,
-  incl. money path, POS, tenant isolation, subscription, super-admin)
+  `smhleaeujwfebefjuwoe`) — baseline `0000_init.sql` + follow-ups
+  (`0001`–`0003`); squashed 2026-08-06 (was 21 files, pre-squash latest 0017)
+- E2E: Playwright against production — `npx playwright test` (13 specs,
+  incl. money path, POS, tenant isolation, subscription, super-admin,
+  race-guard, cancellation TOCTOU, endpoint guards)
 - Deployment: `git push origin master` → GitHub → Vercel. No manual steps.
 

@@ -12,8 +12,10 @@ export async function POST(request: Request) {
     try { parsed = JSON.parse(body); } catch { /* ignore malformed */ }
 
     if (parsed?.name && typeof parsed.value === 'number') {
+      // JSON-serialize the attacker-controlled fields (CRLF-safe): a raw
+      // interpolated `name`/`path` could inject fake lines into Vercel logs.
       console.log(
-        `web-vitals ${parsed.name} ${parsed.value}ms path=${parsed.path ?? '/'}`
+        `web-vitals ${JSON.stringify(parsed.name)} ${parsed.value}ms path=${JSON.stringify(parsed.path ?? '/')}`
       );
     }
   } catch {

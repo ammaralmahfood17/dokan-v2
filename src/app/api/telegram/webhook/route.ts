@@ -4,6 +4,14 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { replyToChat } from '@/lib/telegram';
 import { rateLimit, createRateLimitResponse } from '@/lib/rate-limit';
 import { getClientIp } from '@/lib/ip';
+import { createHash, timingSafeEqual } from 'crypto';
+
+/** Timing-safe comparison of the webhook secret (avoids length/timing leaks). */
+function secretsEqual(a: string, b: string): boolean {
+  const ha = createHash('sha256').update(a).digest();
+  const hb = createHash('sha256').update(b).digest();
+  return timingSafeEqual(ha, hb);
+}
 
 /**
  * POST /api/telegram/webhook
@@ -22,7 +30,8 @@ export async function POST(request: NextRequest) {
     console.error('[Telegram Webhook] TELEGRAM_WEBHOOK_SECRET not set — refusing updates');
     return NextResponse.json({ error: 'not configured' }, { status: 503 });
   }
-  if (request.headers.get('x-telegram-bot-api-secret-token') !== secret) {
+  const presented = request.headers.get('x-telegram-bot-api-secret-token');
+  if (!presented || !secretsEqual(presented, secret)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
@@ -53,8 +62,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: res.error }, { status: res.status });
     }
 
-    // Expect "/start <CODE>" (Telegram may send "/start@botname <CODE>")
-    const match = text.match(/^\/start(?:@\w+)?\s*([A-Za-z0-9]{6,12})$/);
+    // Expect "/start <CODE>". Codes are 16 hex chars (randomBytes(8).hex,
+    // uppercased) — accept 6–16 (short legacy codes still work).
+    const match = text.match(/^\/start(?:@\w+)?\s*([A-Za-z0-9]{6,16})$/);
     if (!match) {
       await replyToChat(String(chat.id), 'أرسل رمز الربط من لوحة تحكم دكان: /start <الرمز>');
       return NextResponse.json({ ok: true });

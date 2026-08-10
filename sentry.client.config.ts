@@ -8,8 +8,8 @@ if (process.env.SENTRY_DSN) {
   Sentry.init({
     dsn: process.env.SENTRY_DSN,
     tracesSampleRate: 0.1,
-    replaysSessionSampleRate: 0,
-    replaysOnErrorSampleRate: 0.1,
+    // No session replay: POS/orders/kitchen render customer names, phones
+    // and order contents — DOM snapshots on error would capture PII.
     environment: process.env.VERCEL_ENV || 'development',
   });
 }

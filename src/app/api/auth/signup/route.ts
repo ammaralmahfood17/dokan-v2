@@ -76,9 +76,12 @@ export async function POST(request: Request) {
     const { data: createData, error: createError } = await admin.auth.admin.createUser({
       email: cleanEmail,
       password: String(password),
-      email_confirm: true, // confirmation is disabled in this project
+      email_confirm: true, // API signups bypass the (enabled) email-confirmation gate
       user_metadata: {
-        full_name: String(fullName?.trim?.() || ''),
+        // Length-capped name (audit MEDIUM): unbounded input previously
+        // persisted into user_metadata via the service-role client.
+        full_name:
+          typeof fullName === 'string' ? fullName.trim().slice(0, 100) : '',
         from_api: 'true',       // safety trigger skips users from the main API
       },
     });

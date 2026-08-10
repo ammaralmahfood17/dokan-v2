@@ -23,6 +23,8 @@ yarn-error.log*
 # local env files
 .env*.local
 .env
+# but DO commit the reference file (no secrets)
+!.env.example
 
 # vercel
 .vercel
@@ -34,7 +36,6 @@ next-env.d.ts
 # supabase
 supabase/.branches
 supabase/.temp
-.env*
 
 # agent scaffolding (not project code)
 .claude/
