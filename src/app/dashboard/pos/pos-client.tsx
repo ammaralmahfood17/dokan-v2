@@ -345,6 +345,7 @@ export function PosClient({
     <div className="page md:max-w-[1440px]">
       <div className="page-header">
         <div>
+          <div className="page-kicker"><span>العمليات · Point of Sale</span></div>
           <h1>نقطة البيع</h1>
         </div>
       </div>

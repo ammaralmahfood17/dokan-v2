@@ -227,6 +227,7 @@ export function TablesClient({
       <PullToRefresh onRefresh={refresh}>
       <div className="page-header">
         <div>
+          <div className="page-kicker"><span>العمليات · QR Ordering</span></div>
           <h1>الطاولات و QR</h1>
           <p>الطاولات وروابط القوائم العامة</p>
         </div>

@@ -215,6 +215,7 @@ export function SettingsClient({
     <div className="page">
       <div className="page-header">
         <div>
+          <div className="page-kicker"><span>الإدارة · Settings</span></div>
           <h1>الإعدادات</h1>
           <p>اسم المتجر، العملة، الهوية، والإشعارات</p>
         </div>

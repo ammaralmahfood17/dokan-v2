@@ -91,6 +91,7 @@ export function AnalyticsClient({
     <div className="page">
       <div className="page-header print-hidden">
         <div>
+          <div className="page-kicker"><span>نظرة عامة · Analytics</span></div>
           <h1>الإحصائيات</h1>
           <p>أداء {projectName} — {RANGES.find((r) => r.value === range)?.label}</p>
         </div>

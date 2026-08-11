@@ -258,7 +258,7 @@ export async function createSecureOrder(
       p_notes: orderNotes.trim() || undefined,
       p_order_number: numData,
       p_caller_user_id: callerUserId,
-      p_idempotency_key: idempotencyKey?.trim() || null,
+      p_idempotency_key: idempotencyKey?.trim() || undefined,
       p_items: validated.map((line) => ({
         product_id: line.product_id,
         product_name: line.product_name,

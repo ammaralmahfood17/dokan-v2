@@ -27,24 +27,24 @@
 }
 
 @theme {
-  /* Brand — Indigo (used ONLY for action/focus/selection, never decoration) */
+  /* Brand — Indigo-600 (used ONLY for action/focus/selection, never decoration) */
   --color-primary: #4F46E5;
   --color-primary-hover: #4338CA;
   --color-primary-active: #3730A3;
   --color-primary-tint: #EEF2FF;
   --color-primary-tint-strong: #E0E7FF;
 
-  /* Neutral — cool slate */
-  --color-bg: #F8FAFC;
+  /* Neutral — warm stone (editorial: bg stone-50, borders stone-200) */
+  --color-bg: #FAFAF9;
   --color-surface: #FFFFFF;
-  --color-surface-sunken: #F1F5F9;
-  --color-border: #E2E8F0;
-  --color-border-strong: #CBD5E1;
+  --color-surface-sunken: #F5F5F4;
+  --color-border: #E7E5E4;
+  --color-border-strong: #D6D3D1;
   --color-text: #0F172A;
-  --color-text-secondary: #475569;
+  --color-text-secondary: #57534E;
   /* FIX-D-006: رفع تباين text-muted من 2.45:1 إلى 7.6:1 (WCAG AA Pass) */
-  --color-text-muted: #64748B; /* كان #94A3B8 */
-  --color-text-disabled: #CBD5E1;
+  --color-text-muted: #78716C; /* was #94A3B8 */
+  --color-text-disabled: #D6D3D1;
 
   /* Semantic — desaturated, no "game" colors */
   --color-success: #059669;
@@ -59,10 +59,15 @@
   --color-info: #0284C7;
   --color-info-tint: #F0F9FF;
 
-  /* Typography — Cairo ONLY (no secondary faces, no display face) */
-  --font-sans: var(--font-cairo), "Cairo", ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-cairo), "Cairo", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-cairo), "Cairo", ui-monospace, monospace;
+  /* Typography — Editorial pairing: Playfair (Latin display) → Cairo (Arabic
+     fallback + primary body). Inter first for Latin/numbers, Cairo for Arabic.
+     Serif display on headings gives the classic SaaS editorial voice while
+     Cairo bold keeps Arabic headings clean and readable (no Arabic serif is
+     universally available). */
+  --font-sans: var(--font-inter), "Inter", var(--font-cairo), "Cairo", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-playfair), "Playfair Display", var(--font-cairo), "Cairo", ui-serif, Georgia, serif;
+  --font-display: var(--font-serif);
+  --font-mono: var(--font-inter), var(--font-cairo), ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* Radius — small by intent; full-round reads "consumer" */
   --radius-xs: 4px;
@@ -86,9 +91,9 @@
 
   /* Shadow — border-first; shadow only for layering (dropdown/modal/popover) */
   --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow-md: 0 4px 6px rgba(15, 23, 42, 0.05), 0 2px 4px rgba(15, 23, 42, 0.04);
-  --shadow-lg: 0 10px 15px rgba(15, 23, 42, 0.06), 0 4px 6px rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.05), 0 1px 2px rgba(15, 23, 42, 0.03);
+  --shadow-md: 0 4px 6px rgba(15, 23, 42, 0.04), 0 2px 4px rgba(15, 23, 42, 0.03);
+  --shadow-lg: 0 10px 15px rgba(15, 23, 42, 0.05), 0 4px 6px rgba(15, 23, 42, 0.03);
   --shadow-focus: 0 0 0 3px rgba(79, 70, 229, 0.15);
 }
 
@@ -99,7 +104,7 @@
    No .dark block: v2 is light-only by design (DESIGN_SYSTEM.md §1).
    ========================================================================== */
 :root {
-  --background: #F8FAFC;
+  --background: #FAFAF9;
   --foreground: #0F172A;
   --card: #FFFFFF;
   --card-foreground: #0F172A;
@@ -107,16 +112,16 @@
   --popover-foreground: #0F172A;
   --primary: #4F46E5;
   --primary-foreground: #FFFFFF;
-  --secondary: #F1F5F9;
+  --secondary: #F5F5F4;
   --secondary-foreground: #0F172A;
-  --muted: #F1F5F9;
-  --muted-foreground: #64748B;
+  --muted: #F5F5F4;
+  --muted-foreground: #78716C;
   --accent: #EEF2FF;
   --accent-foreground: #4338CA;
   --destructive: #DC2626;
   --destructive-foreground: #FFFFFF;
-  --border: #E2E8F0;
-  --input: #CBD5E1;
+  --border: #E7E5E4;
+  --input: #D6D3D1;
   --ring: #4F46E5;
   --radius: 10px; /* v2 radius-lg; per-size tokens already defined above */
 }
@@ -185,13 +190,14 @@
     color: var(--color-text);
   }
 
-  /* Typography — Cairo only; -0.01em on display-size headings (spec §2.1) */
+  /* Typography — Editorial pairing; -0.01em allowed ONLY on Latin display
+     headings (serif), never applied to Arabic (falls to Cairo). */
   h1, h2, h3, h4, h5, h6 {
     margin: 0;
     font-weight: 700;
     font-family: var(--font-display);
   }
-  h1 { font-size: 1.5rem; }
+  h1 { font-size: 1.75rem; }
   h2 { font-size: 1.25rem; }
   h3 { font-size: 1.0625rem; }
   h4 { font-size: 0.9375rem; }
@@ -307,9 +313,9 @@
   transition: border-color 0.15s ease;
 }
 .card:hover { border-color: var(--color-border-strong); }
-.card-body { padding: 1.5rem; }
+.card-body { padding: 1.75rem; }
 .card-header {
-  padding: 1rem 1.5rem;
+  padding: 1.25rem 1.75rem;
   border-bottom: 1px solid var(--color-border);
   display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
 }
@@ -319,7 +325,7 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: 1.25rem;
+  padding: 1.5rem;
   transition: border-color 0.15s ease;
 }
 .stat-card:hover { border-color: var(--color-border-strong); }
@@ -354,15 +360,30 @@
    Page structure
    ========================================================================== */
 .page {
-  max-width: 1120px; margin: 0 auto;
-  padding: 1.5rem 1rem 4rem;
+  max-width: 1200px; margin: 0 auto;
+  padding: 2rem 2rem 5rem;
 }
 .page-header {
-  display: flex; flex-wrap: wrap; align-items: flex-start;
-  justify-content: space-between; gap: 0.75rem; margin-bottom: 1.5rem;
+  display: flex; flex-wrap: wrap; align-items: flex-end;
+  justify-content: space-between; gap: 1rem; margin-bottom: 2rem;
 }
-.page-header h1 { font-size: 1.375rem; font-weight: 800; }
-.page-header p { margin: 0.25rem 0 0; color: var(--color-text-secondary); font-size: 0.8125rem; }
+.page-header h1 {
+  font-size: 1.625rem; font-weight: 600;
+  letter-spacing: 0.005em; line-height: 1.15;
+}
+.page-header p { margin: 0.5rem 0 0; color: var(--color-text-secondary); font-size: 0.8125rem; max-width: 56ch; }
+
+/* Editorial kicker — small tracking label above the serif page title */
+.page-kicker {
+  display: flex; align-items: center; gap: 0.5rem;
+  font-size: 0.6875rem; font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--color-text-muted); margin-bottom: 0.75rem;
+}
+.page-kicker::before {
+  content: '';
+  width: 1.5rem; height: 1px; background: var(--color-primary);
+}
 
 /* ==========================================================================
    Empty state
@@ -510,12 +531,14 @@
    Responsive
    ========================================================================== */
 @media (max-width: 639px) {
-  .page { padding: 1.15rem 0.875rem 5.5rem; }
-  .page-header { margin-bottom: 1.15rem; }
-  .card-body { padding: 1rem; }
-  .card-header { padding: 0.875rem 1rem; }
+  .page { padding: 1.25rem 1rem 5.5rem; }
+  .page-header { margin-bottom: 1.5rem; }
+  .page-header h1 { font-size: 1.375rem; }
+  .card-body { padding: 1.125rem; }
+  .card-header { padding: 0.875rem 1.125rem; }
   .section-title { letter-spacing: 0.02em; }
   .btn-lg { min-height: 3rem; padding-inline: 1rem; }
+  .data-table th, .data-table td { padding-inline: 0.875rem; }
 }
 
 /* ==========================================================================
@@ -528,19 +551,21 @@
 }
 .data-table th {
   text-align: start;
-  font-size: 0.75rem; font-weight: 600; letter-spacing: 0.03em;
-  padding: 0.75rem 1rem;
-  color: var(--color-text-secondary);
+  font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 0.75rem 1.25rem;
+  color: var(--color-text-muted);
   background: var(--color-surface-sunken);
   border-bottom: 1px solid var(--color-border);
 }
 .data-table td {
-  padding: 0.75rem 1rem;
-  height: 44px;
+  padding: 0.875rem 1.25rem;
+  height: 48px;
   border-bottom: 1px solid var(--color-border);
   vertical-align: middle;
+  font-size: 0.8125rem;
 }
 .data-table tr:last-child td { border-bottom: none; }
+.data-table tbody tr { transition: background 0.1s linear; }
 .data-table tbody tr:hover { background: var(--color-surface-sunken); }
 
 /* ==========================================================================

@@ -68,12 +68,12 @@ export default async function DashboardLayout({
             <div className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-primary)] text-xs font-bold text-white shadow-sm">
               {ctx.project.name.slice(0, 1)}
             </div>
-            <span className="text-sm font-bold text-[var(--color-text)]">
+            <span className="text-sm font-semibold text-[var(--color-text)]">
               {ctx.project.name}
             </span>
           </div>
-          <span className="text-[11px] font-medium text-[var(--color-text-secondary)]">
-            دكان
+          <span className="font-serif text-[13px] italic text-[var(--color-text-muted)]">
+            dokan
           </span>
         </header>
 

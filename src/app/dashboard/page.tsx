@@ -17,6 +17,7 @@ import { HourlySalesChart } from '@/components/dashboard/hourly-sales-chart';
 import { RecentOrdersTable } from '@/components/dashboard/recent-orders-table';
 import { WeeklySalesChart } from '@/components/dashboard/weekly-sales-chart';
 import { TopProducts } from '@/components/dashboard/top-products';
+import { PageHeader } from '@/components/dashboard/page-header';
 
 export default async function DashboardPage() {
   const ctx = await getCurrentProject();
@@ -190,23 +191,19 @@ export default async function DashboardPage() {
 
   return (
     <div className="page">
-      {/* Topbar — greeting + today chip */}
-      <div className="mb-7 flex items-center justify-between gap-3">
-        <div>
-          <h1 className="font-display text-[22px] font-bold">
-            مرحبًا، {ctx.project.name} ☕
-          </h1>
-          <p className="mt-0.5 text-[12.5px] text-[var(--color-text-secondary)]">
-            {todayLabel}
-          </p>
-        </div>
-        <div
-          className="border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 font-mono text-[12.5px] tabular-nums text-[var(--color-text)]"
-          dir="ltr"
-        >
-          TODAY · {nowTime}
-        </div>
-      </div>
+      <PageHeader
+        kicker="لوحة التحكم · الرئيسية"
+        title={`مرحبًا، ${ctx.project.name}`}
+        description={todayLabel}
+        actions={
+          <div
+            className="border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 font-mono text-[12.5px] tabular-nums text-[var(--color-text)] shadow-sm"
+            dir="ltr"
+          >
+            TODAY · {nowTime}
+          </div>
+        }
+      />
 
       <KpiCards
         todaySales={todaySales}

@@ -28,6 +28,8 @@ export interface Project {
   logo_url: string | null;
   is_active: boolean;
   subscription_expires_at: string | null;
+  plan_code: string;
+  vat_rate: number;
   deleted_at: string | null;
   created_at: string;
 }
@@ -181,3 +183,147 @@ export const CURRENCIES: { value: Currency; label: string }[] = [
 ];
 
 export const DEFAULT_PRIMARY_COLOR = '#4F46E5';
+
+// ---------------------------------------------------------------------------
+// Billing / plans (0006_crm_erp_billing.sql)
+// ---------------------------------------------------------------------------
+
+export type PlanCode = 'free' | 'growth' | 'enterprise';
+
+export interface SubscriptionPlan {
+  id: string;
+  code: PlanCode;
+  name: string;
+  name_en: string | null;
+  price: number;
+  billing_interval: 'monthly' | 'yearly';
+  max_staff: number | null;
+  max_branches: number | null;
+  max_tables: number | null;
+  max_products: number | null;
+  features: string[];
+  is_active: boolean;
+}
+
+export const PLAN_LABELS: Record<PlanCode, { ar: string; en: string }> = {
+  free: { ar: 'مجاني', en: 'Free' },
+  growth: { ar: 'نمو', en: 'Growth' },
+  enterprise: { ar: 'مؤسسة', en: 'Enterprise' },
+};
+
+// ---------------------------------------------------------------------------
+// CRM (0006_crm_erp_billing.sql)
+// ---------------------------------------------------------------------------
+
+export interface Customer {
+  id: string;
+  project_id: string;
+  phone: string;
+  name: string | null;
+  name_en: string | null;
+  email: string | null;
+  loyalty_points: number;
+  total_spent: number;
+  visit_count: number;
+  last_visit_at: string | null;
+  is_opted_in: boolean;
+  notes: string | null;
+  created_at: string;
+}
+
+export type CampaignChannel = 'sms' | 'whatsapp' | 'email' | 'push';
+export type CampaignStatus = 'draft' | 'scheduled' | 'sending' | 'sent' | 'cancelled';
+
+export interface Campaign {
+  id: string;
+  project_id: string;
+  name: string;
+  channel: CampaignChannel;
+  message_ar: string;
+  message_en: string | null;
+  audience_filter: Record<string, unknown>;
+  status: CampaignStatus;
+  scheduled_at: string | null;
+  sent_count: number;
+  created_at: string;
+}
+
+export const CAMPAIGN_CHANNEL_LABELS: Record<CampaignChannel, string> = {
+  sms: 'رسائل SMS',
+  whatsapp: 'واتساب',
+  email: 'بريد إلكتروني',
+  push: 'إشعارات',
+};
+
+export const CAMPAIGN_STATUS_LABELS: Record<CampaignStatus, string> = {
+  draft: 'مسودة',
+  scheduled: 'مجدولة',
+  sending: 'قيد الإرسال',
+  sent: 'أُرسلت',
+  cancelled: 'ملغاة',
+};
+
+// ---------------------------------------------------------------------------
+// ERP / Back-office (0006_crm_erp_billing.sql)
+// ---------------------------------------------------------------------------
+
+export interface InventoryItem {
+  id: string;
+  project_id: string;
+  supplier_id: string | null;
+  name: string;
+  sku: string | null;
+  unit: string;
+  qty_on_hand: number;
+  reorder_level: number;
+  cost: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface Supplier {
+  id: string;
+  project_id: string;
+  name: string;
+  contact_name: string | null;
+  phone: string | null;
+  email: string | null;
+  notes: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export type PurchaseOrderStatus = 'draft' | 'ordered' | 'received' | 'cancelled';
+
+export interface PurchaseOrder {
+  id: string;
+  project_id: string;
+  supplier_id: string;
+  status: PurchaseOrderStatus;
+  total: number;
+  expected_at: string | null;
+  received_at: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface Expense {
+  id: string;
+  project_id: string;
+  category: string;
+  amount: number;
+  description: string | null;
+  occurred_on: string;
+  created_at: string;
+}
+
+export const EXPENSE_CATEGORIES = [
+  'مواد خام',
+  'إيجار',
+  'رواتب',
+  'كهرباء وماء',
+  'صيانة',
+  'تسويق',
+  'تراخيص',
+  'أخرى',
+];

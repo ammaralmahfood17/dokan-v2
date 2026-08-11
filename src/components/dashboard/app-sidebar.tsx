@@ -14,6 +14,9 @@ import {
   Settings,
   LogOut,
   Store,
+  Users,
+  Boxes,
+  Receipt,
   Menu,
   X,
 } from 'lucide-react';
@@ -25,35 +28,48 @@ type NavItem = {
   label: string;
   shortLabel: string;
   icon: React.ComponentType<{ className?: string }>;
+  section: 'overview' | 'operations' | 'manage';
 };
 
 const NAV_MAIN: NavItem[] = [
-  { href: '/dashboard', label: 'الرئيسية', shortLabel: 'الرئيسية', icon: LayoutDashboard },
-  { href: '/dashboard/analytics', label: 'الإحصائيات', shortLabel: 'إحصائيات', icon: BarChart3 },
-  { href: '/dashboard/products', label: 'المنتجات', shortLabel: 'منتجات', icon: Package },
-  { href: '/dashboard/orders', label: 'الطلبات', shortLabel: 'طلبات', icon: ClipboardList },
-  { href: '/dashboard/kitchen', label: 'شاشة المطبخ', shortLabel: 'مطبخ', icon: ChefHat },
-  { href: '/dashboard/pos', label: 'نقطة البيع', shortLabel: 'POS', icon: Monitor },
-  { href: '/dashboard/tables', label: 'الطاولات و QR', shortLabel: 'طاولات', icon: QrCode },
+  // نظرة عامة — Overview
+  { href: '/dashboard', label: 'الرئيسية', shortLabel: 'الرئيسية', icon: LayoutDashboard, section: 'overview' },
+  { href: '/dashboard/analytics', label: 'الإحصائيات', shortLabel: 'إحصائيات', icon: BarChart3, section: 'overview' },
+  // عمليات — Operations
+  { href: '/dashboard/orders', label: 'الطلبات', shortLabel: 'طلبات', icon: ClipboardList, section: 'operations' },
+  { href: '/dashboard/kitchen', label: 'شاشة المطبخ', shortLabel: 'مطبخ', icon: ChefHat, section: 'operations' },
+  { href: '/dashboard/pos', label: 'نقطة البيع', shortLabel: 'POS', icon: Monitor, section: 'operations' },
+  { href: '/dashboard/products', label: 'المنتجات', shortLabel: 'منتجات', icon: Package, section: 'operations' },
+  { href: '/dashboard/tables', label: 'الطاولات و QR', shortLabel: 'طاولات', icon: QrCode, section: 'operations' },
+  // إدارة — Manage
+  { href: '/dashboard/customers', label: 'العملاء', shortLabel: 'عملاء', icon: Users, section: 'manage' },
+  { href: '/dashboard/inventory', label: 'المخزون والموردون', shortLabel: 'مخزون', icon: Boxes, section: 'manage' },
+  { href: '/dashboard/billing', label: 'الاشتراك والفواتير', shortLabel: 'فواتير', icon: Receipt, section: 'manage' },
+  { href: '/dashboard/settings', label: 'الإعدادات', shortLabel: 'إعدادات', icon: Settings, section: 'manage' },
 ];
 
-const NAV_BOTTOM: NavItem[] = [
-  { href: '/dashboard/settings', label: 'الإعدادات', shortLabel: 'إعدادات', icon: Settings },
-];
+const SECTION_LABELS: Record<NavItem['section'], { label: string; en: string }> = {
+  overview: { label: 'نظرة عامة', en: 'Overview' },
+  operations: { label: 'العمليات', en: 'Operations' },
+  manage: { label: 'الإدارة', en: 'Manage' },
+};
 
-export function AppSidebar({
-  projectName,
-}: {
-  projectName: string;
-}) {
+export function AppSidebar({ projectName }: { projectName: string }) {
   const pathname = usePathname();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    try { router.prefetch('/dashboard/settings'); } catch {}
-    try { router.prefetch('/dashboard/tables'); } catch {}
-    try { router.prefetch('/dashboard/analytics'); } catch {}
+    for (const p of [
+      '/dashboard/settings',
+      '/dashboard/tables',
+      '/dashboard/analytics',
+      '/dashboard/customers',
+      '/dashboard/inventory',
+      '/dashboard/billing',
+    ]) {
+      try { router.prefetch(p); } catch {}
+    }
   }, [router]);
 
   async function logout() {
@@ -84,28 +100,49 @@ export function AppSidebar({
         onClick={() => setIsOpen(false)}
         aria-current={active ? 'page' : undefined}
         className={cn(
-          'group flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-[13px] font-semibold transition-all duration-200',
-          'lg:px-3 lg:py-2',
+          'group relative flex min-h-11 items-center gap-3 rounded-[10px] px-3 py-2 text-[13px] font-semibold transition-colors duration-150',
           active
-            ? 'bg-[var(--color-primary-tint)] text-[var(--color-primary)] shadow-sm'
+            ? 'bg-[var(--color-primary-tint)] text-[var(--color-primary)]'
             : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)]'
         )}
       >
-        <div className={cn(
-          'flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-md)] transition-all duration-200',
-          active
-            ? 'bg-[var(--color-primary-tint-strong)] text-[var(--color-primary)]'
-            : 'bg-transparent text-[var(--color-text-muted)] group-hover:text-[var(--color-text)]'
-        )}>
+        <div
+          className={cn(
+            'flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-md)] transition-colors duration-150',
+            active
+              ? 'bg-[var(--color-primary-tint-strong)] text-[var(--color-primary)]'
+              : 'bg-transparent text-[var(--color-text-muted)] group-hover:text-[var(--color-text)]'
+          )}
+        >
           <Icon className={cn('h-4 w-4', active ? 'text-[var(--color-primary)]' : '')} />
         </div>
         <span>{item.label}</span>
-        {active && (
-          <div className="ms-auto h-1.5 w-1.5 rounded-full bg-[var(--color-primary)]" />
-        )}
+        {active && <span className="ms-auto h-1.5 w-1.5 rounded-full bg-[var(--color-primary)]" />}
       </Link>
     );
   }
+
+  function navSection(items: NavItem[]) {
+    const label = SECTION_LABELS[items[0].section];
+    return (
+      <div key={items[0].section}>
+        <div className="mb-2 flex items-center gap-2 px-3">
+          <span className="h-px w-3 bg-[var(--color-primary)]" />
+          <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+            {label.label}
+          </span>
+          <span dir="ltr" className="text-[10.5px] font-medium lowercase text-[var(--color-text-disabled)]">
+            {label.en}
+          </span>
+        </div>
+        <div className="space-y-0.5">{items.map(navItem)}</div>
+      </div>
+    );
+  }
+
+  const sections = (['overview', 'operations', 'manage'] as const)
+    .map((s) => NAV_MAIN.filter((n) => n.section === s))
+    .filter((arr) => arr.length > 0);
 
   return (
     <>
@@ -114,7 +151,7 @@ export function AppSidebar({
         type="button"
         onClick={() => setIsOpen(true)}
         className={cn(
-          'fixed end-3 top-3 z-[var(--z-drawer)] flex h-9 w-9 items-center justify-center rounded-[10px] bg-[var(--color-surface)] shadow-md border border-[var(--color-border)] backdrop-blur-sm',
+          'fixed end-3 top-3 z-[var(--z-drawer)] flex h-9 w-9 items-center justify-center rounded-[10px] bg-[var(--color-surface)] shadow-md border border-[var(--color-border)]',
           'lg:hidden',
           isOpen && 'hidden'
         )}
@@ -126,38 +163,36 @@ export function AppSidebar({
       {/* Backdrop — mobile */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-[var(--z-drawer)] bg-black/50 backdrop-blur-sm lg:hidden animate-fade-in"
+          className="fixed inset-0 z-[var(--z-drawer)] bg-black/50 lg:hidden animate-fade-in"
           onClick={() => setIsOpen(false)}
         />
       )}
 
-      {/* Sidebar — z-drawer stays BELOW Modal/Sheet z-modal (300 < 500) so it never overlaps
-          a modal backdrop on mobile or intercepts its backdrop-click-to-close. */}
       <aside
         className={cn(
-          'fixed start-0 top-0 z-[var(--z-drawer)] flex h-dvh w-[270px] flex-col border-e border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl transition-transform duration-300',
+          'fixed start-0 top-0 z-[var(--z-drawer)] flex h-dvh w-[280px] flex-col border-e border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl transition-transform duration-300',
           isOpen ? 'translate-x-0' : 'translate-x-full',
-          'lg:static lg:z-auto lg:h-auto lg:w-56 lg:translate-x-0 lg:shadow-none lg:border-e',
+          'lg:static lg:z-auto lg:h-auto lg:w-60 lg:translate-x-0 lg:shadow-none',
           'print:hidden'
         )}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-[var(--color-border)] px-3 py-3 lg:px-4 lg:py-4">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-[var(--color-primary)] text-white shadow-sm">
-              <Store className="h-4 w-4" />
+        {/* Brand — serif wordmark */}
+        <div className="flex items-center justify-between border-b border-[var(--color-border)] px-5 py-5">
+          <Link href="/dashboard" onClick={() => setIsOpen(false)} className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-[var(--color-primary)] text-white shadow-sm">
+              <Store className="h-5 w-5" />
             </div>
-            <div className="min-w-0">
-              <div className="truncate text-sm font-bold text-[var(--color-text)]">
+            <div className="min-w-0 leading-tight">
+              <div className="truncate text-[15px] font-semibold tracking-wide text-[var(--color-text)]">
                 {projectName}
               </div>
-              <div className="flex items-center gap-1 text-[11px] text-[var(--color-text-muted)]">
-                <span>دكان</span>
-                <span className="h-1 w-1 rounded-full bg-[var(--color-text-muted)]" />
-                <span>المطعم</span>
+              <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-[var(--color-text-muted)]">
+                <span className="font-serif italic">dokan</span>
+                <span className="h-1 w-1 rounded-full bg-[var(--color-border-strong)]" />
+                <span>منصة المطاعم</span>
               </div>
             </div>
-          </div>
+          </Link>
           <button
             type="button"
             onClick={() => setIsOpen(false)}
@@ -169,19 +204,16 @@ export function AppSidebar({
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-0.5 overflow-y-auto p-2 lg:p-2">
-          {NAV_MAIN.map(navItem)}
+        <nav className="flex-1 overflow-y-auto px-3 py-5" aria-label="التنقل الرئيسي">
+          <div className="space-y-6">{sections.map(navSection)}</div>
         </nav>
 
-        {/* Bottom */}
-        <div className="border-t border-[var(--color-border)] p-2 space-y-0.5">
-          {NAV_BOTTOM.map(navItem)}
-
-          {/* Logout */}
+        {/* Bottom — logout */}
+        <div className="border-t border-[var(--color-border)] px-3 py-3">
           <button
             type="button"
             onClick={logout}
-            className="flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-[13px] font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-danger-tint)] hover:text-[var(--color-danger)] transition-all duration-200"
+            className="flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-[13px] font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-danger-tint)] hover:text-[var(--color-danger)] transition-colors duration-150"
           >
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-md)]">
               <LogOut className="h-4 w-4" />

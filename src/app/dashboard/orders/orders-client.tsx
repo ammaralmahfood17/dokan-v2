@@ -15,6 +15,7 @@ import {
 import { EmptyState } from '@/components/ui/empty-state';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { Modal } from '@/components/ui/modal';
+import { PageHeader } from '@/components/dashboard/page-header';
 import { toast } from 'sonner';
 
 const FILTERS: { value: OrderStatus | 'all'; label: string }[] = [
@@ -318,20 +319,21 @@ export function OrdersClient({
   }, [orders]);
 
   return (
-    <div className="page">
+      <div className="page">
       <PullToRefresh onRefresh={() => void refresh()}>
-      <div className="page-header">
-        <div>
-          <h1>الطلبات</h1>
-          <p>متابعة فقط · الحالة تتحدث من شاشة المطبخ</p>
-        </div>
-        <div className="flex flex-col items-end gap-1">
-          <p className="text-[11px] text-[var(--color-text-secondary)]">مبيعات اليوم</p>
-          <p className="font-mono text-lg font-bold tabular-nums text-[var(--color-text)]" dir="ltr">
-            {formatMoney(dayTotal, currency)}
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        kicker="العمليات · Orders"
+        title="الطلبات"
+        description="متابعة فقط · الحالة تتحدث من شاشة المطبخ"
+        actions={
+          <div className="flex flex-col items-end gap-1">
+            <p className="text-[11px] text-[var(--color-text-secondary)]">مبيعات اليوم</p>
+            <p className="font-mono text-lg font-bold tabular-nums text-[var(--color-text)]" dir="ltr">
+              {formatMoney(dayTotal, currency)}
+            </p>
+          </div>
+        }
+      />
 
       {realtimeOffline && (
         <div

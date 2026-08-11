@@ -354,6 +354,7 @@ export function ProductsClient({
       <PullToRefresh onRefresh={refresh}>
       <div className="page-header">
         <div>
+          <div className="page-kicker"><span>العمليات · Catalog</span></div>
           <h1>المنتجات</h1>
           <p>إدارة التصنيفات والمنتجات والإضافات</p>
         </div>

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Cairo } from 'next/font/google';
+import { Cairo, Inter, Playfair_Display } from 'next/font/google';
 import { Toaster } from 'sonner';
 import { ServiceWorkerRegister } from '@/components/service-worker-register';
 import { WebVitals } from '@/components/web-vitals';
@@ -7,12 +7,28 @@ import { WebVitals } from '@/components/web-vitals';
 import { InstallPrompt } from '@/components/ui/install-prompt';
 import './globals.css';
 
-// "دكان" — Enterprise identity v1.0
-// Cairo only (400/500/600/700/800) — واجهة + أرقام + عناوين بخط واحد
+// "دكان" — Editorial identity v2.0
+// Cairo: الواجهة العربية + الأرقام. Inter: latin/numbers. Playfair:
+// display serif for Latin headings. Arabic headings render in Cairo bold
+// (no universal Arabic serif) — Latin titles get the classic serif voice.
 const cairo = Cairo({
   subsets: ['arabic', 'latin'],
   weight: ['400', '500', '600', '700', '800'],
   variable: '--font-cairo',
+  display: 'swap',
+});
+
+const inter = Inter({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-inter',
+  display: 'swap',
+});
+
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  weight: ['500', '600', '700'],
+  variable: '--font-playfair',
   display: 'swap',
 });
 
@@ -84,7 +100,7 @@ export default function RootLayout({
       lang="ar"
       dir="rtl"
       suppressHydrationWarning
-      className={`${cairo.variable}`}
+      className={`${cairo.variable} ${inter.variable} ${playfair.variable}`}
     >
       <head>
         {/* Supabase: early connect */}
