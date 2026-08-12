@@ -47,9 +47,9 @@
   --color-text-disabled: #D6D3D1;
 
   /* Semantic — desaturated, no "game" colors */
-  --color-success: #059669;
+  --color-success: #047857; /* was #059669 (3.8:1) — WCAG 1.4.3 failed on 14px text */
   --color-success-tint: #ECFDF5;
-  --color-success-hover: #047857;
+  --color-success-hover: #065F46;
   --color-warn: #D97706;
   --color-warn-tint: #FFFBEB;
   --color-warn-hover: #B45309;
@@ -406,7 +406,9 @@
   transition: border-color 0.15s;
 }
 .checklist-item:hover { border-color: var(--color-primary-tint-strong); }
-.checklist-item.done { opacity: 0.7; }
+/* Done items: no opacity dim (fails WCAG 1.4.3); status is shown via the
+   muted label + line-through + filled dot instead. Muted passed the audit. */
+.checklist-item.done { opacity: 1; }
 .check-dot {
   width: 1.25rem; height: 1.25rem; border-radius: var(--radius-full);
   border: 2px solid var(--color-border);
@@ -539,6 +541,20 @@
   .section-title { letter-spacing: 0.02em; }
   .btn-lg { min-height: 3rem; padding-inline: 1rem; }
   .data-table th, .data-table td { padding-inline: 0.875rem; }
+}
+
+/* ==========================================================================
+   Mobile touch targets — WCAG 2.2 2.5.8 (44px min) on phones.
+   Inline-level anchors/links are unaffected (min-height is a no-op on inline
+   boxes), so this only bumps real controls. (AGENTS.md a11y checklist)
+   ========================================================================== */
+@media (max-width: 639px) {
+  input, select, textarea { min-height: 40px; }
+  button, [role="button"] { min-height: 44px; min-width: 44px; }
+  a { min-height: 44px; }
+  /* Shadcn Switch track is ≥24px (2.5.8 AA) — exempt so it doesn't become a
+     giant pill; its thumb/wrapper still provide adequate spacing. */
+  button[role="switch"] { min-height: 24px; }
 }
 
 /* ==========================================================================

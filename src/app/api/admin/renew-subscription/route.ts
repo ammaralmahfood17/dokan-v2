@@ -4,6 +4,9 @@ import { revalidateTag } from 'next/cache';
 import * as Sentry from '@sentry/nextjs';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { rateLimit, createRateLimitResponse } from '@/lib/rate-limit';
+
+const UUID_RE = /^[0-9a-f-]{36}$/i;
 
 /**
  * POST /api/admin/renew-subscription
@@ -26,8 +29,22 @@ export async function POST(request: NextRequest) {
     }
 
     const body = (await request.json()) as { projectId?: string; days?: number };
-    if (!body.projectId || typeof body.projectId !== 'string') {
+    if (!body.projectId || typeof body.projectId !== 'string' || !UUID_RE.test(body.projectId)) {
       return NextResponse.json({ error: 'projectId مطلوب' }, { status: 400 });
+    }
+
+    // Renewal is a paid business action and repeatable in a loop — cap per
+    // (user, project). The RPC also clamps p_days to ≤365 (see migration 0010).
+    const rl = await rateLimit(`${user.id}:${body.projectId}`, {
+      limit: 10,
+      windowMs: 3600 * 1000,
+      keyPrefix: 'renew-subscription',
+      projectId: body.projectId,
+      callerUserId: user.id,
+    });
+    if (!rl.allowed) {
+      const r = createRateLimitResponse(rl.resetIn);
+      return NextResponse.json({ error: r.error }, { status: r.status });
     }
 
     const days = typeof body.days === 'number' && body.days > 0 && body.days <= 365 ? Math.floor(body.days) : 30;

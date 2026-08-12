@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { getClientIp } from '@/lib/ip';
+import { rateLimit, createRateLimitResponse } from '@/lib/rate-limit';
 
 /**
  * Collects Core Web Vitals beacons (see src/components/web-vitals.tsx).
@@ -6,6 +8,18 @@ import { NextResponse } from 'next/server';
  * Visible in Vercel function logs: "web-vitals LCP 1842ms /dashboard"
  */
 export async function POST(request: Request) {
+  // Unauthenticated beacon endpoint — rate-limit per IP so it can't be used
+  // as a log-flood vector. Beacons are fire-and-forget; a 429 is harmless.
+  const rl = await rateLimit(getClientIp(request), {
+    limit: 120,
+    windowMs: 60 * 1000,
+    keyPrefix: 'vitals-ip',
+  });
+  if (!rl.allowed) {
+    const r = createRateLimitResponse(rl.resetIn);
+    return NextResponse.json({ ok: true }, { status: r.status });
+  }
+
   try {
     const body = await request.text();
     let parsed: Record<string, unknown> | null = null;

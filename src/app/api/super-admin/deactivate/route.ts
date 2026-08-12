@@ -14,7 +14,7 @@ import { logSuperAdminAction } from '@/lib/super-admin';
 export async function POST(request: NextRequest) {
   try {
     const projectId = request.nextUrl.searchParams.get('projectId');
-    if (!projectId) {
+    if (!projectId || !/^[0-9a-f-]{36}$/i.test(projectId)) {
       return NextResponse.json({ error: 'projectId مطلوب' }, { status: 400 });
     }
 

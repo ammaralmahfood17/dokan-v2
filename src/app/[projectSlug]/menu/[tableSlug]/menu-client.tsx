@@ -410,7 +410,7 @@ export function MenuClient({
               {project.name.slice(0, 1)}
             </div>
             <div className="min-w-0">
-              <h1 className="truncate font-display text-[17px] font-bold">{project.name}</h1>
+              <h1 className="truncate font-display text-[19px] font-bold">{project.name}</h1>
               <p className="text-[11px] text-[var(--color-text-secondary)]">
                 امسح واطلب من طاولتك
               </p>

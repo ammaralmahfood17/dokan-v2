@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { rateLimit, createRateLimitResponse } from '@/lib/rate-limit';
+
+const UUID_RE = /^[0-9a-f-]{36}$/i;
 
 /**
  * GET/PUT /api/staff/notification-prefs
@@ -25,7 +28,21 @@ export async function GET(request: NextRequest) {
   if ('error' in auth) return auth.error;
 
   const projectId = request.nextUrl.searchParams.get('projectId');
-  if (!projectId) return NextResponse.json({ error: 'بيانات ناقصة' }, { status: 400 });
+  if (!projectId || !UUID_RE.test(projectId)) {
+    return NextResponse.json({ error: 'بيانات ناقصة' }, { status: 400 });
+  }
+
+  const rl = await rateLimit(`${auth.user.id}:${projectId}`, {
+    limit: 120,
+    windowMs: 60 * 1000,
+    keyPrefix: 'notification-prefs-get',
+    projectId,
+    callerUserId: auth.user.id,
+  });
+  if (!rl.allowed) {
+    const r = createRateLimitResponse(rl.resetIn);
+    return NextResponse.json({ error: r.error }, { status: r.status });
+  }
 
   const { data, error } = await supabase
     .from('staff_members')
@@ -50,8 +67,20 @@ export async function PUT(request: NextRequest) {
     notifyPush?: boolean;
     notifyTelegram?: boolean;
   };
-  if (!body.projectId || typeof body.notifyPush !== 'boolean' || typeof body.notifyTelegram !== 'boolean') {
+  if (!body.projectId || !UUID_RE.test(body.projectId) || typeof body.notifyPush !== 'boolean' || typeof body.notifyTelegram !== 'boolean') {
     return NextResponse.json({ error: 'بيانات ناقصة' }, { status: 400 });
+  }
+
+  const rl = await rateLimit(`${auth.user.id}:${body.projectId}`, {
+    limit: 120,
+    windowMs: 60 * 1000,
+    keyPrefix: 'notification-prefs-put',
+    projectId: body.projectId,
+    callerUserId: auth.user.id,
+  });
+  if (!rl.allowed) {
+    const r = createRateLimitResponse(rl.resetIn);
+    return NextResponse.json({ error: r.error }, { status: r.status });
   }
 
   const { data: updated, error } = await supabase

@@ -156,6 +156,8 @@ export function AppSidebar({ projectName }: { projectName: string }) {
           isOpen && 'hidden'
         )}
         aria-label="فتح القائمة"
+        aria-expanded={isOpen}
+        aria-controls="app-drawer"
       >
         <Menu className="h-5 w-5 text-[var(--color-text)]" />
       </button>
@@ -169,6 +171,7 @@ export function AppSidebar({ projectName }: { projectName: string }) {
       )}
 
       <aside
+        id="app-drawer"
         className={cn(
           'fixed start-0 top-0 z-[var(--z-drawer)] flex h-dvh w-[280px] flex-col border-e border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl transition-transform duration-300',
           isOpen ? 'translate-x-0' : 'translate-x-full',

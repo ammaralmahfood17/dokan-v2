@@ -70,7 +70,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-[var(--color-bg)] px-4 py-10">
+    <main className="flex min-h-dvh items-center justify-center bg-[var(--color-bg)] px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-6 text-center">
           <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-primary)] text-white font-bold">
@@ -131,7 +131,7 @@ export default function RegisterPage() {
             {passErr && <p className="error-text">{passErr}</p>}
             {!passErr && <p className="hint">6 أحرف على الأقل</p>}
           </div>
-          {error && <p className="error-text mb-3">{error}</p>}
+          {error && <p className="error-text mb-3" role="alert">{error}</p>}
           <Button type="submit" className="w-full" disabled={loading || !!emailErr || !!passErr}>
             {loading ? 'جاري الإنشاء…' : 'إنشاء الحساب'}
           </Button>
@@ -145,6 +145,6 @@ export default function RegisterPage() {
           </Link>
         </p>
       </div>
-    </div>
+    </main>
   );
 }

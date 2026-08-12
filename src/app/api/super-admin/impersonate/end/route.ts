@@ -33,7 +33,7 @@ const IMPERSONATION_COOKIE = 'dokan-impersonation';
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as { sessionId?: string };
-    if (typeof body.sessionId !== 'string' || body.sessionId.length > 64) {
+    if (typeof body.sessionId !== 'string' || !/^[0-9a-f-]{36}$/i.test(body.sessionId)) {
       return NextResponse.json({ error: 'sessionId مطلوب' }, { status: 400 });
     }
     const sessionId = body.sessionId;

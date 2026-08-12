@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { rateLimit, createRateLimitResponse } from '@/lib/rate-limit';
 
 /**
  * POST /api/pos/cancel
@@ -62,6 +63,20 @@ export async function POST(request: NextRequest) {
 
     if (!membership) {
       return NextResponse.json({ error: 'لا يوجد مشروع' }, { status: 403 });
+    }
+
+    // Rate-limit cancellations per (staff, project) — cancellation is the one
+    // money-mutating staff action that previously had no limiter.
+    const rl = await rateLimit(`${user.id}:${membership.project_id}`, {
+      limit: 15,
+      windowMs: 60 * 1000,
+      keyPrefix: 'pos-cancel',
+      projectId: membership.project_id as string,
+      callerUserId: user.id,
+    });
+    if (!rl.allowed) {
+      const r = createRateLimitResponse(rl.resetIn);
+      return NextResponse.json({ error: r.error }, { status: r.status });
     }
 
     const supabase = createAdminClient();

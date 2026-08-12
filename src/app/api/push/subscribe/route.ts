@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { rateLimit, createRateLimitResponse } from '@/lib/rate-limit';
 
 /**
  * POST /api/push/subscribe
@@ -43,6 +44,20 @@ export async function POST(request: NextRequest) {
 
     if (!membership) {
       return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+    }
+
+    // Cap the number of stored subscriptions per user+project (abuse vector:
+    // an authenticated user can otherwise bulk-insert rows for their project).
+    const rl = await rateLimit(`${user.id}:${body.projectId}`, {
+      limit: 10,
+      windowMs: 60 * 1000,
+      keyPrefix: 'push-subscribe',
+      projectId: body.projectId,
+      callerUserId: user.id,
+    });
+    if (!rl.allowed) {
+      const r = createRateLimitResponse(rl.resetIn);
+      return NextResponse.json({ error: r.error }, { status: r.status });
     }
 
     const { error } = await supabase

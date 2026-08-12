@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       reason?: string;
     };
     const reason = (body.reason ?? '').trim();
-    if (!body.projectId) return NextResponse.json({ error: 'projectId مطلوب' }, { status: 400 });
+    if (!body.projectId || !/^[0-9a-f-]{36}$/i.test(body.projectId)) return NextResponse.json({ error: 'projectId مطلوب' }, { status: 400 });
     if (!reason) return NextResponse.json({ error: 'السبب مطلوب' }, { status: 400 });
 
     const admin = createAdminClient();
