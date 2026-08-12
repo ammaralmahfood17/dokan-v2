@@ -10,11 +10,21 @@
 DELETE FROM public.customers
   WHERE phone IS NULL OR phone !~ '^\+?[0-9]{8,15}$';
 
--- 2. Add CHECK constraint to customers table
+-- 2. Add CHECK constraint to customers table (idempotent — production already
+-- applied this once directly; re-running must not 42710)
 -- regex: ^\+?[0-9]{8,15}$
 -- Allows optional '+' prefix and 8 to 15 digits.
-ALTER TABLE public.customers
-  ADD CONSTRAINT phone_format_check CHECK (phone ~ '^\+?[0-9]{8,15}$');
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'phone_format_check'
+      AND conrelid = 'public.customers'::regclass
+  ) THEN
+    ALTER TABLE public.customers
+      ADD CONSTRAINT phone_format_check CHECK (phone ~ '^\+?[0-9]{8,15}$');
+  END IF;
+END $$;
 
 -- 3. Grant necessary permissions (just in case)
 GRANT ALL ON TABLE public.customers TO authenticated;
