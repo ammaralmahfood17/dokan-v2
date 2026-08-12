@@ -30,4 +30,5 @@ END $$;
 GRANT ALL ON TABLE public.customers TO authenticated;
 GRANT ALL ON TABLE public.customers TO service_role;
 
-COMMENT ON CONSTRAINT public.customers.phone_format_check IS 'Ensures phone numbers are in a valid international format (8-15 digits, optional + prefix).';
+COMMENT ON CONSTRAINT phone_format_check ON public.customers
+  IS 'Ensures phone numbers are in a valid international format (8-15 digits, optional + prefix).';
