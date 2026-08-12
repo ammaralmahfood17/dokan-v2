@@ -13,6 +13,10 @@ export function isIdempotencyKeyValid(value: unknown): value is string {
   return typeof value === 'string' && IDEMPOTENCY_KEY_RE.test(value);
 }
 
+function toJson<T>(value: T): Json {
+  return JSON.parse(JSON.stringify(value)) as Json;
+}
+
 /** Look up an order created with the same idempotency key (the unique
  *  (project_id, key) index guarantees at most one). Used for the route-level
  *  pre-check and as the race fallback after a 23505. */
@@ -54,8 +58,6 @@ export type CreateOrderResult =
       ok: false;
       error: string;
       status: number;
-      /** true when the insert hit the idempotency unique index — the route
-       *  should re-select the existing row instead of failing the request. */
       duplicateKey?: boolean;
     };
 
@@ -77,31 +79,27 @@ export async function createSecureOrder(
     type: OrderType;
     items: PublicOrderItemInput[];
     notes?: string | null;
-    /** Authenticated staff id — passed to the RPCs so the DB-side
-     * membership guard can verify the caller. Omit for the anonymous
-     * public-order path (route-level validation applies there). */
     callerUserId?: string;
-    /** Client-supplied idempotency key (uuid or similar, 8-128 chars).
-     * Stored on the row + unique per project, so a network retry can never
-     * double-create an order (audit MEDIUM fix). */
     idempotencyKey?: string | null;
   }
 ): Promise<CreateOrderResult> {
   const { projectId, currency, tableId, type, items, notes, callerUserId, idempotencyKey } = params;
+
+  // B7: Fail-fast UUID validation for projectId
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!UUID_RE.test(projectId)) {
+    return { ok: false, error: 'معرف المشروع غير صالح', status: 400 };
+  }
+
   // Server-side rounding per the project's currency (BHD=3, SAR/AED/QAR=2…)
   const decimals = currencyDecimals(currency ?? 'BHD');
-
   if (!items.length) {
     return { ok: false, error: 'السلة فارغة', status: 400 };
   }
-
   if (items.length > 50) {
     return { ok: false, error: 'عدد الأصناف كبير جداً', status: 400 };
   }
 
-  // Order-level notes share the menu's 500-char limit (item notes: 200).
-  // Guard the type first — a numeric/object notes value would throw inside
-  // .trim()/.length and surface as a 500 instead of a clean 400.
   const orderNotes = typeof notes === 'string' ? notes : '';
   if (orderNotes.length > 500) {
     return { ok: false, error: 'ملاحظات الطلب طويلة جداً (الحد 500 حرف)', status: 400 };
@@ -110,11 +108,6 @@ export async function createSecureOrder(
   const validated: ValidatedOrderLine[] = [];
   let totalAmount = 0;
 
-  // ── Bulk pre-fetch (latency fix) ─────────────────────────────────────
-  // The old per-item loop fired 2 sequential queries PER line (product
-  // fetch + addons fetch) — a 3-item order = 6 round-trips ≈ 1.5s of pure
-  // query time (each ~250ms Vercel→Supabase). Fetch ALL products and ALL
-  // addons in two parallel queries instead, then resolve lines in memory.
   const productIds = [...new Set(items.map((i) => String(i.productId).trim()))];
   const addonIds = [
     ...new Set(
@@ -139,7 +132,6 @@ export async function createSecureOrder(
       : Promise.resolve({ data: [] as never[] }),
   ]);
   const productsById = new Map((productsRes.data ?? []).map((p) => [p.id, p]));
-  // Group addons by product so each line can validate its own set.
   const addonsByProduct = new Map<string, NonNullable<typeof addonsRes.data>[number][]>();
   for (const a of addonsRes.data ?? []) {
     const list = addonsByProduct.get(a.product_id) ?? [];
@@ -148,10 +140,7 @@ export async function createSecureOrder(
   }
 
   for (const item of items) {
-    // Strict numeric type first: Number(true) === 1 would otherwise pass the
-    // isFinite/isInteger checks below (JSON booleans must not become quantity).
     const quantity = typeof item.quantity === 'number' ? item.quantity : NaN;
-    // Require a positive integer quantity (reject 1.5, NaN, etc.)
     if (
       !item.productId ||
       !Number.isFinite(quantity) ||
@@ -163,15 +152,11 @@ export async function createSecureOrder(
     if (quantity > 99) {
       return { ok: false, error: 'الكمية غير مسموحة', status: 400 };
     }
-
-    // Additional input hardening (Phase 1) — type-guard item notes too
     const itemNotes = typeof item.notes === 'string' ? item.notes : '';
     if (itemNotes.length > 200) {
       return { ok: false, error: 'ملاحظات الصنف طويلة جداً (الحد 200 حرف)', status: 400 };
     }
-
     const product = productsById.get(String(item.productId).trim());
-
     if (!product || !product.is_available) {
       return {
         ok: false,
@@ -179,19 +164,16 @@ export async function createSecureOrder(
         status: 400,
       };
     }
-
-    const addonIdsForLine = Array.isArray(item.addonIds) ? item.addonIds.map((a) => String(a).trim()) : [];
+    const addonIdsForLine = Array.isArray(item.addonIds)
+      ? [...new Set(item.addonIds.map((a) => String(a).trim()))]
+      : [];
     const addonDetails: OrderItemAddon[] = [];
     let addonTotal = 0;
-
     if (addonIdsForLine.length > 0) {
-      // Only addons belonging to THIS product, from the pre-fetched set.
       const productAddons = (addonsByProduct.get(product.id) ?? []).filter((a) =>
         addonIdsForLine.includes(a.id)
       );
       const found = productAddons;
-
-      // Reject if any requested addon is missing or wrong product
       if (found.length !== addonIdsForLine.length) {
         return {
           ok: false,
@@ -199,7 +181,6 @@ export async function createSecureOrder(
           status: 400,
         };
       }
-
       for (const addon of found) {
         const price = money(Number(addon.price), decimals);
         addonTotal = money(addonTotal + price, decimals);
@@ -210,43 +191,31 @@ export async function createSecureOrder(
         });
       }
     }
-
     const unitPrice = money(Number(product.price) + addonTotal, decimals);
-    // Audit: a negative price (bad data / DB drift) must fail cleanly with a
-    // 400 — a negative unit_price would otherwise hit the order_items CHECK
-    // constraint mid-transaction and surface as a 500.
     if (unitPrice < 0) {
       return { ok: false, error: 'سعر الصنف غير صالح', status: 400 };
     }
     const lineTotal = money(unitPrice * quantity, decimals);
     totalAmount = money(totalAmount + lineTotal, decimals);
-
     validated.push({
       product_id: product.id,
       product_name: product.name,
       quantity,
       unit_price: unitPrice,
       addons: addonDetails,
-      // Use the type-guarded variable — item.notes may be a number/object
-      // (audit MEDIUM fix: item.notes?.trim() would throw a TypeError → 500).
       notes: itemNotes || null,
     });
   }
 
-  // Get daily sequential order number (pass caller id for the DB-side guard)
   const { data: numData, error: numErr } = await supabase.rpc('next_order_number', {
     p_project_id: projectId,
     p_caller_user_id: callerUserId,
   });
-
   if (numErr || !numData) {
     console.error('Order number error:', numErr);
     return { ok: false, error: 'فشل إنشاء رقم الطلب', status: 500 };
   }
 
-  // One transactional RPC: order + order_items inserted atomically.
-  // (The previous two-step insert had a crash window that could leave an
-  // orphan order with no items — the manual delete rollback was best-effort.)
   const { data: created, error: createErr } = await supabase.rpc(
     'create_order_transactional',
     {
@@ -264,16 +233,13 @@ export async function createSecureOrder(
         product_name: line.product_name,
         quantity: line.quantity,
         unit_price: line.unit_price,
-        addons: line.addons as unknown as Json,
+        addons: toJson(line.addons),
         notes: line.notes,
       })),
     }
   );
-
   if (createErr || !created) {
     console.error('Order create error:', createErr);
-    // Concurrent duplicate (same idempotency key raced past the route-level
-    // pre-check) hits the unique index inside this RPC.
     return {
       ok: false,
       error: 'فشل إنشاء الطلب',
@@ -281,14 +247,12 @@ export async function createSecureOrder(
       duplicateKey: (createErr as { code?: string } | null)?.code === '23505',
     };
   }
-
   const createdOrder = created as {
     id: string;
     status: string;
     total_amount: number;
     order_number: number;
   };
-
   return {
     ok: true,
     order: {

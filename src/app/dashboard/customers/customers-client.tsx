@@ -19,6 +19,7 @@ import { Modal } from '@/components/ui/modal';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { PageHeader } from '@/components/dashboard/page-header';
+import { validatePhone } from '@/lib/phone-validation';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import {
@@ -93,6 +94,10 @@ export function CustomersClient({
     const phone = String(form.get('phone') ?? '').trim();
     if (!phone) {
       toast.error('رقم الهاتف مطلوب');
+      return;
+    }
+    if (!validatePhone(phone)) {
+      toast.error('رقم الهاتف غير صالح');
       return;
     }
     setSaving(true);

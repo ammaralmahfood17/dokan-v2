@@ -69,9 +69,16 @@ export async function updateSession(request: NextRequest) {
   // store owner → dashboard; dashboard/layout redirects no-store users to
   // onboarding, saving a DB call here).
   if (user && isAuthPage) {
-    const { data: isSuperAdmin } = await supabase.rpc('is_super_admin');
+    // ---- C8: Super Admin state stored in cookie for ux+perf ----
+    let isSuperAdmin = request.cookies.get('isSuperAdmin')?.value;
+    if (isSuperAdmin == null) {
+      // Make the RPC call just once then store in cookie for 10 minutes
+      const { data } = await supabase.rpc('is_super_admin');
+      isSuperAdmin = data ? '1' : '0';
+      response.cookies.set('isSuperAdmin', isSuperAdmin, { maxAge: 600, path: '/' });
+    }
     const url = request.nextUrl.clone();
-    url.pathname = isSuperAdmin ? '/super-admin/subscriptions' : '/dashboard';
+    url.pathname = isSuperAdmin === '1' ? '/super-admin/subscriptions' : '/dashboard';
     return NextResponse.redirect(url);
   }
 

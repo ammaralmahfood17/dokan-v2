@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'دكان',
     short_name: 'دكان',
     description: 'إدارة طلبات المطاعم والمقاهي',
-    start_url: '/dashboard',
+    start_url: '/',
     display: 'standalone',
     background_color: '#F8FAFC',
     theme_color: '#4F46E5',

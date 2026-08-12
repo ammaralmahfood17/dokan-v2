@@ -163,7 +163,14 @@ export default function LoginPage() {
           <h1 className="text-xl font-bold">تسجيل الدخول</h1>
           <p className="mt-1 text-sm text-[var(--color-text-secondary)]">مرحباً بك في دكان</p>
         </div>
-        <Suspense fallback={<div className="card card-body">جاري التحميل…</div>}>
+        <Suspense fallback={
+          <div className="space-y-4 animate-pulse">
+            <div className="h-10 w-full rounded-md bg-muted" />
+            <div className="h-10 w-full rounded-md bg-muted" />
+            <div className="h-10 w-full rounded-md bg-muted" />
+            <div className="h-12 w-full rounded-md bg-muted/60" />
+          </div>
+        }>
           <LoginForm />
           <RegisteredNotice />
         </Suspense>

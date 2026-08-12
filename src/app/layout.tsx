@@ -111,7 +111,7 @@ export default function RootLayout({
           </>
         )}
         {/* iOS touch icons */}
-        <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-maskable-512.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192.png" />
         <link rel="apple-touch-startup-image" href="/splash/light-1242x2688.png" />
         {/* Preload auth route (public); dashboard prefetches removed — they
             wasted bandwidth on guest visits and got edge-redirected anyway. */}

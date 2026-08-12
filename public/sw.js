@@ -174,13 +174,19 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 5. Navigation requests — network first with offline fallback
+  // 5. Menu-specific caching (C5): store public menu data in a dedicated cache
+  if (url.pathname.match(/^\/[^/]+\/menu\/[^/]+$/)) {
+    event.respondWith(networkFirst(event.request, 'menu-data-cache'));
+    return;
+  }
+
+  // 6. Navigation requests — network first with offline fallback
   if (event.request.mode === 'navigate') {
     event.respondWith(networkFirst(event.request, CACHE_SHELL));
     return;
   }
 
-  // 6. Everything else — stale-while-revalidate
+  // 7. Everything else — stale-while-revalidate
   event.respondWith(
     caches.match(event.request).then((cached) => {
       const fetchPromise = fetch(event.request).then((response) => {

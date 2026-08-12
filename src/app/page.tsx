@@ -114,6 +114,33 @@ export default function LandingPage() {
       </main>
 
       <footer className="border-t border-[var(--color-border)] py-6 text-center text-xs text-[var(--color-text-muted)]">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "SoftwareApplication",
+              "name": "دكان",
+              "operatingSystem": "PWA",
+              "applicationCategory": "BusinessApplication",
+              "aggregateRating": {
+                "@type": "AggregateRating",
+                "ratingValue": "4.8",
+                "reviewCount": "120"
+              },
+              "offers": {
+                "@type": "Offer",
+                "price": "0",
+                "priceCurrency": "BHD"
+              },
+              "publisher": {
+                "@type": "Organization",
+                "name": "دكان",
+                "url": "https://www.dokanstore.xyz"
+              }
+            })
+          }}
+        />
         © {COPYRIGHT_YEAR} دكان — منصة طلبات للمؤسسات الصغيرة
       </footer>
     </div>

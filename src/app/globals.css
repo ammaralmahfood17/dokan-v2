@@ -428,8 +428,7 @@
    ========================================================================== */
 @layer base {
   *:focus-visible {
-    outline: none;
-    /* FIX-A-005: تقوية التباين من 0.15 إلى 0.25 opacity (~4.5:1) */
+    outline: 2px solid transparent;
     box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.25);
     border-radius: 4px;
   }

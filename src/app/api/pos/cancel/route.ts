@@ -45,6 +45,9 @@ export async function POST(request: NextRequest) {
     // client-supplied projectId when present so a multi-store staff member
     // can't cancel an order in the wrong project; fall back to created_at ASC
     // (getCurrentProject's order) for legacy callers.
+    // FALLBACK: If projectId is omitted, we default to the user's oldest project.
+    // This supports legacy POS clients; modern clients should always send projectId.
+    // TODO: Make projectId required in a future API version.
     let membershipQuery = userClient
       .from('staff_members')
       .select('project_id')
