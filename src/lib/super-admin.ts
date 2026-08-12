@@ -219,14 +219,20 @@ export async function endImpersonation(sessionId: string): Promise<{
     targetUserId: row.target_user_id as string,
   };
 
-  await admin
+  const { error: endErr } = await admin
     .from('impersonation_sessions')
     .update({
       ended_at: new Date().toISOString(),
       super_admin_session: null,
       target_session: null,
     })
-    .eq('id', sessionId);
+    .eq('id', sessionId)
+    .select('ended_at')
+    .maybeSingle();
+
+  if (endErr) {
+    console.error('[endImpersonation] update failed:', endErr.message);
+  }
 
   return result;
 }

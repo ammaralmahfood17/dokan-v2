@@ -228,9 +228,15 @@ test('Phase C: impersonation — start, banner, audit, end (session restored)', 
   expect((startLogs ?? []).length).toBeGreaterThan(0);
 
   // 5. End impersonation via the API → returns the admin's stored session.
+  //    The end endpoint requires an authenticated caller bound to the
+  //    session: send the impersonated target's session + marker cookie
+  //    (the browser that started the impersonation would hold both).
+  const endCookieHeader =
+    `sb-${new URL(url).hostname.split('.')[0]}-auth-token=${JSON.stringify(data.targetSession)}; ` +
+    `dokan-impersonation=${data.sessionId}`;
   const endRes = await fetch(`https://dokanstore.xyz/api/super-admin/impersonate/end`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', Cookie: endCookieHeader },
     body: JSON.stringify({ sessionId: data.sessionId }),
   });
   const endData = await endRes.json();
