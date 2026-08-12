@@ -8,9 +8,12 @@ import {
   Users,
   Star,
   Send,
-  Pencil,
   Trash2,
   Phone,
+  History,
+  Check,
+  Ban,
+  Megaphone,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { formatMoney } from '@/lib/utils';
@@ -20,6 +23,13 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { validatePhone } from '@/lib/phone-validation';
+import type { Json } from '@/lib/database.types';
+import {
+  AudienceFilterSchema,
+  customerMatchesAudience,
+  describeAudience,
+  type AudienceFilter,
+} from '@/lib/campaign-schema';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import {
@@ -27,6 +37,7 @@ import {
   CAMPAIGN_STATUS_LABELS,
   type Campaign,
   type Customer,
+  type LoyaltyEvent,
 } from '@/lib/types';
 
 type LoyaltyKind = 'earn' | 'redeem' | 'adjust';
@@ -63,8 +74,29 @@ export function CustomersClient({
   const [campaignChannel, setCampaignChannel] = useState<'sms' | 'whatsapp' | 'email' | 'push'>('whatsapp');
   const [campaignMsg, setCampaignMsg] = useState('');
   const [campaignMinLoyalty, setCampaignMinLoyalty] = useState('');
-
+  const [campaignMinVisits, setCampaignMinVisits] = useState('');
+  const [campaignMinSpent, setCampaignMinSpent] = useState('');
+  const [campaignLastVisit, setCampaignLastVisit] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Loyalty history modal
+  const [historyCustomer, setHistoryCustomer] = useState<Customer | null>(null);
+  const [historyEvents, setHistoryEvents] = useState<LoyaltyEvent[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  /** Count of opted-in customers from the loaded list that match a filter. */
+  const audienceCount = (f: AudienceFilter) =>
+    customers.filter((c) => c.is_opted_in && customerMatchesAudience(c, f)).length;
+
+  const num = (s: string) => (s.trim() !== '' && Number.isFinite(Number(s)) ? Number(s) : undefined);
+
+  const draftAudience: AudienceFilter = {
+    minLoyalty: num(campaignMinLoyalty),
+    minVisits: num(campaignMinVisits),
+    minSpent: num(campaignMinSpent),
+    lastVisitWithinDays: num(campaignLastVisit),
+  };
+  const draftAudienceValid = AudienceFilterSchema.safeParse(draftAudience).success;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -151,24 +183,40 @@ export function CustomersClient({
     setSaving(false);
   }
 
+  async function openHistory(c: Customer) {
+    setHistoryCustomer(c);
+    setHistoryLoading(true);
+    const { data } = await supabase
+      .from('loyalty_events')
+      .select('*')
+      .eq('customer_id', c.id)
+      .order('created_at', { ascending: false })
+      .limit(100);
+    setHistoryEvents((data ?? []) as LoyaltyEvent[]);
+    setHistoryLoading(false);
+  }
+
   async function createCampaign(e: React.FormEvent) {
     e.preventDefault();
     if (!campaignName.trim() || !campaignMsg.trim()) {
       toast.error('أكمل اسم الحملة والرسالة');
       return;
     }
-    setSaving(true);
-    const audience: { minLoyalty?: number } = {};
-    if (campaignMinLoyalty && Number(campaignMinLoyalty) > 0) {
-      audience.minLoyalty = Number(campaignMinLoyalty);
+    const parsed = AudienceFilterSchema.safeParse(draftAudience);
+    if (!parsed.success) {
+      toast.error('قيم الجمهور غير صحيحة — التزم بأرقام موجبة');
+      return;
     }
+    const audience = parsed.data;
+    const reach = audienceCount(audience);
+    setSaving(true);
     const { error } = await supabase.from('campaigns').insert({
       project_id: projectId,
       name: campaignName.trim(),
       channel: campaignChannel,
       message_ar: campaignMsg.trim(),
       message_en: null,
-      audience_filter: audience,
+      audience_filter: audience as unknown as Json,
       status: 'draft',
     });
     setSaving(false);
@@ -176,11 +224,14 @@ export function CustomersClient({
       toast.error('تعذّر إنشاء الحملة');
       return;
     }
-    toast.success('أُنشئت الحملة — حالة مسودة، جاهزة للإرسال عبر مزوّد الرسائل');
+    toast.success(`أُنشئت الحملة — ستصل (تقديريًا) إلى ${reach} عميل مشترك`);
     setShowCampaign(false);
     setCampaignName('');
     setCampaignMsg('');
     setCampaignMinLoyalty('');
+    setCampaignMinVisits('');
+    setCampaignMinSpent('');
+    setCampaignLastVisit('');
     const { data } = await supabase
       .from('campaigns')
       .select('*')
@@ -188,6 +239,27 @@ export function CustomersClient({
       .order('created_at', { ascending: false })
       .limit(50);
     if (data) setCampaigns(data as Campaign[]);
+  }
+
+  async function setCampaignState(cp: Campaign, status: Campaign['status']) {
+    const update: { status: Campaign['status']; sent_count?: number } = {
+      status,
+      ...(status === 'sent' ? { sent_count: audienceCount(filterFromCampaign(cp)) } : {}),
+    };
+    const { error } = await supabase.from('campaigns').update(update).eq('id', cp.id);
+    if (error) {
+      toast.error('تعذّر تحديث الحملة');
+      return;
+    }
+    setCampaigns((prev) =>
+      prev.map((c) => (c.id === cp.id ? { ...c, ...update } as Campaign : c))
+    );
+    toast.success(status === 'sent' ? 'حُدّدت كأُرسلت' : status === 'cancelled' ? 'أُلغيت الحملة' : 'تم التحديث');
+  }
+
+  function filterFromCampaign(cp: Campaign): AudienceFilter {
+    const f = AudienceFilterSchema.safeParse(cp?.audience_filter ?? {});
+    return f.success ? f.data : {};
   }
 
   async function deleteCampaign(id: string) {
@@ -343,14 +415,21 @@ export function CustomersClient({
                             <Star className="h-3.5 w-3.5 text-[var(--color-warn)]" />
                             {c.loyalty_points}
                           </span>
+                          <span className="ms-1.5 text-[10.5px] text-[var(--color-text-muted)]">
+                            {c.loyalty_points >= 500 ? 'ذهبي' : c.loyalty_points >= 100 ? 'فضي' : 'برونزي'}
+                          </span>
                         </td>
                         <td className="font-mono text-[12.5px] font-bold tabular-nums" dir="ltr">
                           {formatMoney(c.total_spent, currency)}
                         </td>
                         <td className="text-[12px] text-[var(--color-text-secondary)]">
-                          {c.last_visit_at
-                            ? new Date(c.last_visit_at).toLocaleDateString('ar-BH-u-nu-latn', { timeZone: 'Asia/Bahrain' })
-                            : '—'}
+                          <span className="tabular-nums">{c.visit_count} زيارة</span>
+                          {c.last_visit_at && (
+                            <>
+                              {' · '}
+                              {new Date(c.last_visit_at).toLocaleDateString('ar-BH-u-nu-latn', { timeZone: 'Asia/Bahrain' })}
+                            </>
+                          )}
                         </td>
                         <td>
                           <span
@@ -373,6 +452,14 @@ export function CustomersClient({
                             >
                               <Star className="h-3.5 w-3.5" />
                               نقاط
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() => void openHistory(c)}
+                              aria-label="سجل النقاط"
+                            >
+                              <History className="h-3.5 w-3.5" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -410,39 +497,61 @@ export function CustomersClient({
                 />
               </div>
             )}
-            {campaigns.map((cp) => (
-              <div key={cp.id} className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-sm">
-                <div className="mb-3 flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h3 className="truncate text-sm font-semibold">{cp.name}</h3>
-                    <p className="mt-0.5 text-[11.5px] text-[var(--color-text-muted)]">
-                      {CAMPAIGN_CHANNEL_LABELS[cp.channel]} · أُرسلت إلى {cp.sent_count}
-                    </p>
+            {campaigns.map((cp) => {
+              const audience = filterFromCampaign(cp);
+              return (
+                <div key={cp.id} className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-sm">
+                  <div className="mb-3 flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="truncate text-sm font-semibold">{cp.name}</h3>
+                      <p className="mt-0.5 text-[11.5px] text-[var(--color-text-muted)]">
+                        {CAMPAIGN_CHANNEL_LABELS[cp.channel]} · أُرسلت إلى {cp.sent_count}
+                      </p>
+                    </div>
+                    <span className={`badge ${cp.status === 'sent' ? 'badge-ready' : cp.status === 'cancelled' ? 'badge-cancelled' : 'badge-pending'}`}>
+                      {CAMPAIGN_STATUS_LABELS[cp.status]}
+                    </span>
                   </div>
-                  <span className={`badge ${cp.status === 'sent' ? 'badge-ready' : cp.status === 'cancelled' ? 'badge-cancelled' : 'badge-pending'}`}>
-                    {CAMPAIGN_STATUS_LABELS[cp.status]}
-                  </span>
-                </div>
-                <p className="mb-3 line-clamp-3 text-[12.5px] leading-relaxed text-[var(--color-text-secondary)]">
-                  {cp.message_ar}
-                </p>
-                <div className="flex items-center justify-between text-[11px] text-[var(--color-text-muted)]">
-                  <span>
-                    {cp.scheduled_at
-                      ? `مجدولة: ${new Date(cp.scheduled_at).toLocaleDateString('ar-BH-u-nu-latn', { timeZone: 'Asia/Bahrain' })}`
-                      : 'مسودة — لم تُجدول'}
-                  </span>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon-sm" aria-label="تعديل" disabled>
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="icon-sm" onClick={() => deleteCampaign(cp.id)} aria-label="حذف">
-                      <Trash2 className="h-3.5 w-3.5 text-[var(--color-danger)]" />
-                    </Button>
+                  <p className="mb-3 line-clamp-3 text-[12.5px] leading-relaxed text-[var(--color-text-secondary)]">
+                    {cp.message_ar}
+                  </p>
+                  <div className="mb-3 flex flex-wrap gap-1.5">
+                    {describeAudience(audience).map((chip) => (
+                      <span key={chip} className="badge badge-neutral">{chip}</span>
+                    ))}
+                    <span className="badge badge-neutral">
+                      ~{audienceCount(audience)} مستلم تقديري
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-[var(--color-text-muted)]">
+                    <span>
+                      {cp.scheduled_at
+                        ? `مجدولة: ${new Date(cp.scheduled_at).toLocaleDateString('ar-BH-u-nu-latn', { timeZone: 'Asia/Bahrain' })}`
+                        : 'مسودة — لم تُجدول'}
+                    </span>
+                    <div className="flex flex-wrap justify-end gap-1">
+                      {(cp.status === 'draft' || cp.status === 'scheduled') && (
+                        <>
+                          <Button variant="ghost" size="sm" onClick={() => void setCampaignState(cp, 'sent')}>
+                            <Check className="h-3.5 w-3.5" />
+                            أُرسلت
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => void setCampaignState(cp, 'cancelled')}>
+                            <Ban className="h-3.5 w-3.5" />
+                            إلغاء
+                          </Button>
+                        </>
+                      )}
+                      {(cp.status === 'draft' || cp.status === 'cancelled') && (
+                        <Button variant="ghost" size="icon-sm" onClick={() => deleteCampaign(cp.id)} aria-label="حذف">
+                          <Trash2 className="h-3.5 w-3.5 text-[var(--color-danger)]" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </PullToRefresh>
@@ -541,6 +650,55 @@ export function CustomersClient({
         </Modal>
       )}
 
+      {/* Loyalty history */}
+      {historyCustomer && (
+        <Modal
+          title={`سجل النقاط — ${historyCustomer.name || historyCustomer.phone}`}
+          onClose={() => setHistoryCustomer(null)}
+          className="max-w-md"
+        >
+          {historyLoading ? (
+            <div className="space-y-2 animate-pulse">
+              <div className="h-10 w-full rounded-md bg-muted" />
+              <div className="h-10 w-full rounded-md bg-muted" />
+              <div className="h-10 w-full rounded-md bg-muted" />
+            </div>
+          ) : historyEvents.length === 0 ? (
+            <EmptyState
+              icon={<History className="h-7 w-7" />}
+              title="لا يوجد سجل"
+              description="لم تُسجل أي حركة نقاط لهذا العميل بعد."
+            />
+          ) : (
+            <div className="max-h-[55dvh] divide-y divide-[var(--color-border)] overflow-y-auto">
+              {historyEvents.map((ev) => (
+                <div key={ev.id} className="flex items-center justify-between gap-3 py-3">
+                  <div className="min-w-0">
+                    <div className="text-[13px] font-semibold">
+                      {ev.kind === 'earn' ? 'إضافة نقاط' : ev.kind === 'redeem' ? 'استبدال نقاط' : 'تعديل مباشر'}
+                    </div>
+                    {ev.reason && (
+                      <div className="truncate text-[11.5px] text-[var(--color-text-muted)]">{ev.reason}</div>
+                    )}
+                    <div className="mt-0.5 text-[11px] text-[var(--color-text-muted)]">
+                      {new Date(ev.created_at).toLocaleString('ar-BH-u-nu-latn', { timeZone: 'Asia/Bahrain' })}
+                    </div>
+                  </div>
+                  <span
+                    className={`font-mono text-[13px] font-bold tabular-nums ${
+                      ev.points > 0 ? 'text-[var(--color-primary)]' : 'text-[var(--color-danger)]'
+                    }`}
+                  >
+                    {ev.points > 0 ? '+' : ''}
+                    {ev.points}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Modal>
+      )}
+
       {/* Create campaign */}
       {showCampaign && (
         <Modal title="حملة تسويقية جديدة" onClose={() => setShowCampaign(false)} className="max-w-md">
@@ -584,18 +742,63 @@ export function CustomersClient({
                 onChange={(e) => setCampaignMsg(e.target.value)}
                 placeholder="اكتب نص الرسالة…"
               />
-              <p className="hint">الجمهور: جميع العملاء المشتركين</p>
             </div>
-            <div className="field">
-              <label className="label">حد أدنى لنقاط الولاء (اختياري)</label>
-              <input
-                className="input"
-                inputMode="numeric"
-                maxLength={6}
-                value={campaignMinLoyalty}
-                onChange={(e) => setCampaignMinLoyalty(e.target.value.replace(/\D/g, ''))}
-                placeholder="اتركه فارغًا لكل العملاء"
-              />
+            <div>
+              <label className="label">استهداف الجمهور (اختياري — فارغ = الكل)</label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="field">
+                  <label className="label">حد أدنى لنقاط الولاء</label>
+                  <input
+                    className="input"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={campaignMinLoyalty}
+                    onChange={(e) => setCampaignMinLoyalty(e.target.value.replace(/\D/g, ''))}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="field">
+                  <label className="label">حد أدنى للزيارات</label>
+                  <input
+                    className="input"
+                    inputMode="numeric"
+                    maxLength={4}
+                    value={campaignMinVisits}
+                    onChange={(e) => setCampaignMinVisits(e.target.value.replace(/\D/g, ''))}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="field">
+                  <label className="label">حد أدنى للإنفاق ({currency})</label>
+                  <input
+                    className="input"
+                    inputMode="decimal"
+                    maxLength={10}
+                    value={campaignMinSpent}
+                    onChange={(e) => setCampaignMinSpent(e.target.value.replace(/[^\d.]/g, ''))}
+                    placeholder="0.000"
+                  />
+                </div>
+                <div className="field">
+                  <label className="label">آخر زيارة خلال (أيام)</label>
+                  <input
+                    className="input"
+                    inputMode="numeric"
+                    maxLength={4}
+                    value={campaignLastVisit}
+                    onChange={(e) => setCampaignLastVisit(e.target.value.replace(/\D/g, ''))}
+                    placeholder="30"
+                  />
+                </div>
+              </div>
+              <p
+                className={`mt-2 text-[11.5px] ${draftAudienceValid ? 'text-[var(--color-text-muted)]' : 'text-[var(--color-danger)]'}`}
+              >
+                <Megaphone className="me-1 inline h-3.5 w-3.5 align-[-2px]" />
+                {draftAudienceValid
+                  ? `سيستهدف هذا الجمهور ${audienceCount(draftAudience)} عميلًا مشتركًا من المسجلين حاليًا`
+                  : 'تحقق من قيم الاستهداف — الأرقام يجب أن تكون موجبة'}
+              </p>
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="secondary" size="sm" onClick={() => setShowCampaign(false)}>

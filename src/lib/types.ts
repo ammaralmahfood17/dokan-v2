@@ -231,6 +231,18 @@ export interface Customer {
   created_at: string;
 }
 
+export type LoyaltyKind = 'earn' | 'redeem' | 'adjust';
+
+export interface LoyaltyEvent {
+  id: string;
+  project_id: string;
+  customer_id: string;
+  kind: LoyaltyKind;
+  points: number;
+  reason: string | null;
+  created_at: string;
+}
+
 export type CampaignChannel = 'sms' | 'whatsapp' | 'email' | 'push';
 export type CampaignStatus = 'draft' | 'scheduled' | 'sending' | 'sent' | 'cancelled';
 

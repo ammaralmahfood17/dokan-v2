@@ -342,6 +342,7 @@
   white-space: nowrap;
 }
 .badge-pending { background: var(--color-warn-tint); color: var(--color-warn); }
+.badge-neutral { background: var(--color-surface-sunken); color: var(--color-text-secondary); }
 .badge-preparing { background: var(--color-info-tint); color: var(--color-info); }
 .badge-ready { background: var(--color-success-tint); color: var(--color-success); }
 .badge-delivered { background: var(--color-surface-sunken); color: var(--color-text-muted); }

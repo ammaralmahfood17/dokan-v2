@@ -115,7 +115,7 @@ function fakeClient(opts: FakeOptions = {}) {
   return { admin, rpcCalls };
 }
 
-const PROJECT = 'p-11111111-1111-1111-1111-111111111111';
+const PROJECT = '11111111-1111-1111-1111-111111111111';
 
 function makeProduct(overrides: Partial<NonNullable<FakeOptions['products']>[number]> = {}) {
   return {
