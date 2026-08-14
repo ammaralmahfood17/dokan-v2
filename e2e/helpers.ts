@@ -10,10 +10,19 @@ import path from 'node:path';
 export const TEST_PASSWORD = 'E2e-test-123!';
 
 function envVar(name: string): string {
-  const raw = fs.readFileSync(path.resolve('.env.local'), 'utf-8');
-  const m = raw.match(new RegExp(`^${name}\\s*=\\s*(.+)$`, 'm'));
-  if (!m) throw new Error(`Missing ${name} in .env.local`);
-  return m[1].trim().replace(/^["']|["']$/g, '');
+  // 1. Try process.env first (GitHub Actions / Production)
+  if (process.env[name]) return process.env[name];
+
+  // 2. Fallback to .env.local for local development
+  try {
+    const raw = fs.readFileSync(path.resolve('.env.local'), 'utf-8');
+    const m = raw.match(new RegExp(`^${name}\\s*=\\s*(.+)$`, 'm'));
+    if (m) return m[1].trim().replace(/^["']|["']$/g, '');
+  } catch (e) {
+    // Ignore file read errors and proceed to throw missing var error
+  }
+
+  throw new Error(`Missing ${name} in environment variables or .env.local`);
 }
 
 const url = envVar('NEXT_PUBLIC_SUPABASE_URL');
