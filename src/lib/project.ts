@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import type { Project, StaffMember } from '@/lib/types';
 import type { ChecklistItem } from '@/lib/types';
+import type { Module, ProjectModule } from '@/lib/types';
 
 export type ProjectContext = {
   project: Project;
@@ -11,6 +12,7 @@ export type ProjectContext = {
    *  here (a plain function) so server components never call Date.now()
    *  during render (react-hooks/purity). */
   subscriptionDaysLeft: number | null;
+  activeModules: Module[];
 };
 
 /**
@@ -75,11 +77,23 @@ export async function getCurrentProject(): Promise<ProjectContext | null> {
       )
     : null;
 
+  // Load active modules for this project
+  const { data: activeModulesData } = await supabase
+    .from('project_modules')
+    .select('module_id, modules(*)')
+    .eq('project_id', project.id)
+    .eq('is_enabled', true);
+
+  const activeModules: Module[] = (activeModulesData ?? [])
+    .map((row: { modules: Module | null }) => row.modules)
+    .filter((m: Module | null): m is Module => m !== null);
+
   return {
     project: project as Project,
     membership: membership as StaffMember,
     userId: user.id,
     subscriptionDaysLeft,
+    activeModules,
   };
 }
 

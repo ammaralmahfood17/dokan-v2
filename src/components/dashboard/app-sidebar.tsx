@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import type { Module } from '@/lib/types';
 
 type NavItem = {
   href: string;
@@ -29,6 +30,8 @@ type NavItem = {
   shortLabel: string;
   icon: React.ComponentType<{ className?: string }>;
   section: 'overview' | 'operations' | 'manage';
+  /** Module code required to see this item. If omitted, always visible. */
+  module?: string;
 };
 
 const NAV_MAIN: NavItem[] = [
@@ -37,14 +40,14 @@ const NAV_MAIN: NavItem[] = [
   { href: '/dashboard/analytics', label: 'الإحصائيات', shortLabel: 'إحصائيات', icon: BarChart3, section: 'overview' },
   // عمليات — Operations
   { href: '/dashboard/orders', label: 'الطلبات', shortLabel: 'طلبات', icon: ClipboardList, section: 'operations' },
-  { href: '/dashboard/kitchen', label: 'شاشة المطبخ', shortLabel: 'مطبخ', icon: ChefHat, section: 'operations' },
-  { href: '/dashboard/pos', label: 'نقطة البيع', shortLabel: 'POS', icon: Monitor, section: 'operations' },
+  { href: '/dashboard/kitchen', label: 'شاشة المطبخ', shortLabel: 'مطبخ', icon: ChefHat, section: 'operations', module: 'kds' },
+  { href: '/dashboard/pos', label: 'نقطة البيع', shortLabel: 'POS', icon: Monitor, section: 'operations', module: 'pos' },
   { href: '/dashboard/products', label: 'المنتجات', shortLabel: 'منتجات', icon: Package, section: 'operations' },
-  { href: '/dashboard/tables', label: 'الطاولات و QR', shortLabel: 'طاولات', icon: QrCode, section: 'operations' },
+  { href: '/dashboard/tables', label: 'الطاولات و QR', shortLabel: 'طاولات', icon: QrCode, section: 'operations', module: 'menu_qr' },
   // إدارة — Manage
-  { href: '/dashboard/customers', label: 'العملاء', shortLabel: 'عملاء', icon: Users, section: 'manage' },
-  { href: '/dashboard/inventory', label: 'المخزون والموردون', shortLabel: 'مخزون', icon: Boxes, section: 'manage' },
-  { href: '/dashboard/billing', label: 'الاشتراك والفواتير', shortLabel: 'فواتير', icon: Receipt, section: 'manage' },
+  { href: '/dashboard/customers', label: 'العملاء', shortLabel: 'عملاء', icon: Users, section: 'manage', module: 'crm' },
+  { href: '/dashboard/inventory', label: 'المخزون والموردون', shortLabel: 'مخزون', icon: Boxes, section: 'manage', module: 'inventory' },
+  { href: '/dashboard/billing', label: 'الاشتراك والفواتير', shortLabel: 'فواتير', icon: Receipt, section: 'manage', module: 'accounting' },
   { href: '/dashboard/settings', label: 'الإعدادات', shortLabel: 'إعدادات', icon: Settings, section: 'manage' },
 ];
 
@@ -54,10 +57,12 @@ const SECTION_LABELS: Record<NavItem['section'], { label: string; en: string }> 
   manage: { label: 'الإدارة', en: 'Manage' },
 };
 
-export function AppSidebar({ projectName }: { projectName: string }) {
+export function AppSidebar({ projectName, activeModules }: { projectName: string; activeModules: Module[] }) {
   const pathname = usePathname();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
+
+  const activeModuleCodes = new Set(activeModules.map((m) => m.code));
 
   useEffect(() => {
     for (const p of [
@@ -90,6 +95,9 @@ export function AppSidebar({ projectName }: { projectName: string }) {
   }
 
   function navItem(item: NavItem) {
+    // Hide items whose module is not active
+    if (item.module && !activeModuleCodes.has(item.module)) return null;
+    
     const active = isActive(item.href);
     const Icon = item.icon;
     return (
@@ -123,9 +131,12 @@ export function AppSidebar({ projectName }: { projectName: string }) {
   }
 
   function navSection(items: NavItem[]) {
-    const label = SECTION_LABELS[items[0].section];
+    const visibleItems = items.filter(navItem).filter(Boolean) as NavItem[];
+    if (visibleItems.length === 0) return null;
+    
+    const label = SECTION_LABELS[visibleItems[0].section];
     return (
-      <div key={items[0].section}>
+      <div key={visibleItems[0].section}>
         <div className="mb-2 flex items-center gap-2 px-3">
           <span className="h-px w-3 bg-[var(--color-primary)]" />
           <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
@@ -135,7 +146,7 @@ export function AppSidebar({ projectName }: { projectName: string }) {
             {label.en}
           </span>
         </div>
-        <div className="space-y-0.5">{items.map(navItem)}</div>
+        <div className="space-y-0.5">{visibleItems.map(navItem)}</div>
       </div>
     );
   }

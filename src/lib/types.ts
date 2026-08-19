@@ -32,6 +32,43 @@ export interface Project {
   vat_rate: number;
   deleted_at: string | null;
   created_at: string;
+  business_type_id: string | null;
+}
+
+export interface BusinessType {
+  id: string;
+  code: string;
+  name_ar: string;
+  name_en: string;
+  description_ar: string | null;
+  description_en: string | null;
+  icon: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface Module {
+  id: string;
+  code: string;
+  name_ar: string;
+  name_en: string;
+  description_ar: string | null;
+  description_en: string | null;
+  category: string;
+  icon: string | null;
+  sort_order: number;
+  is_core: boolean;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface ProjectModule {
+  id: string;
+  project_id: string;
+  module_id: string;
+  is_enabled: boolean;
+  activated_at: string;
+  activated_by: string | null;
 }
 
 export interface Table {

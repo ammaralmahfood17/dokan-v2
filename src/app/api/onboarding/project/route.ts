@@ -62,12 +62,16 @@ export async function POST(request: NextRequest) {
       slug?: string;
       currency?: string;
       primaryColor?: string;
+      business_type_id?: string;
+      module_ids?: string[];
     };
 
     const name = body.name?.trim() ?? '';
     let slug = (body.slug?.trim() || generateSlug(name)).toLowerCase();
     const currency = body.currency?.trim() || 'BHD';
     const primaryColor = body.primaryColor?.trim() || DEFAULT_PRIMARY_COLOR;
+    const businessTypeId = body.business_type_id?.trim() || null;
+    const moduleIds = (body.module_ids ?? []).filter(Boolean);
 
     // Input hardening
     if (name.length < 2 || name.length > 80) {
@@ -131,6 +135,7 @@ export async function POST(request: NextRequest) {
         primary_color: primaryColor,
         is_active: true,
         created_by: user.id,
+        business_type_id: businessTypeId,
       })
       .select('id, name, slug')
       .single();
@@ -177,6 +182,28 @@ export async function POST(request: NextRequest) {
         { error: 'فشل ربط الملكية بالمشروع' },
         { status: 500 }
       );
+    }
+
+    // Activate selected modules (always include core modules)
+    const coreModules = ['pos', 'menu_qr'];
+    const allModuleIds = [...new Set([...coreModules, ...moduleIds])];
+    
+    if (allModuleIds.length > 0) {
+      const moduleInserts = allModuleIds.map((moduleId) => ({
+        project_id: project.id,
+        module_id: moduleId,
+        is_enabled: true,
+        activated_by: user.id,
+      }));
+      
+      const { error: modulesErr } = await admin
+        .from('project_modules')
+        .insert(moduleInserts);
+      
+      if (modulesErr) {
+        console.error('Modules activation error:', modulesErr);
+        // Non-blocking: project is created, modules can be activated later
+      }
     }
 
     return NextResponse.json({
