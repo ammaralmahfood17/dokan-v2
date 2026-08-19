@@ -18,6 +18,7 @@ import { RecentOrdersTable } from '@/components/dashboard/recent-orders-table';
 import { WeeklySalesChart } from '@/components/dashboard/weekly-sales-chart';
 import { TopProducts } from '@/components/dashboard/top-products';
 import { PageHeader } from '@/components/dashboard/page-header';
+import { Plus } from 'lucide-react';
 
 export default async function DashboardPage() {
   const ctx = await getCurrentProject();
@@ -204,6 +205,24 @@ export default async function DashboardPage() {
           </div>
         }
       />
+
+      {/* CTA Section — primary actions */}
+      <section className="mb-6 flex flex-wrap items-center gap-3">
+        <a
+          href="/dashboard/pos"
+          className="inline-flex items-center gap-2 rounded-xl bg-[var(--color-primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-transform hover:scale-[1.02] active:scale-95"
+        >
+          <Plus className="h-4 w-4" />
+          طلب جديد
+        </a>
+        <a
+          href="/dashboard/products"
+          className="inline-flex items-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-2.5 text-sm font-semibold text-[var(--color-text)] transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+        >
+          <Plus className="h-4 w-4" />
+          إضافة منتج
+        </a>
+      </section>
 
       <KpiCards
         todaySales={todaySales}
