@@ -26,7 +26,13 @@ INSERT INTO public.business_types (code, name_ar, name_en, description_ar, descr
   ('clinic', 'عيادة', 'Clinic', 'عيادة طبية أو صيدلية', 'Medical clinic or pharmacy', 'heart-pulse'),
   ('service', 'خدمات', 'Services', 'مكتب خدمات أو استشاري', 'Service or consulting office', 'briefcase'),
   ('grocery', 'بقالة', 'Grocery', 'بقالة أو سوبرماركت', 'Grocery store or supermarket', 'shopping-cart'),
-  ('fitness', 'نادي رياضي', 'Fitness', 'نادي رياضي أو صالة', 'Gym or fitness center', 'dumbbell');
+  ('fitness', 'نادي رياضي', 'Fitness', 'نادي رياضي أو صالة', 'Gym or fitness center', 'dumbbell'),
+  ('school', 'مدرسة', 'School', 'مدرسة أو مركز تعليمي', 'School or training center', 'graduation-cap'),
+  ('salon', 'صالون', 'Salon', 'صالون تجميل أو حلاقة', 'Beauty salon or barbershop', 'scissors'),
+  ('hotel', 'فندق', 'Hotel', 'فندق أو شقة فندقية', 'Hotel or serviced apartment', 'bed-double'),
+  ('real_estate', 'عقارات', 'Real Estate', 'وسيط عقاري أو إدارة عقارات', 'Real estate agency', 'building-2'),
+  ('pharmacy', 'صيدلية', 'Pharmacy', 'صيدلية أو مستحضرات تجميل', 'Pharmacy or cosmetics', 'pill'),
+  ('car_rental', 'تأجير سيارات', 'Car Rental', 'تأجير سيارات أو مركبات', 'Car or vehicle rental', 'car');
 
 -- ---------------------------------------------------------------------------
 -- 2. modules — unidades modulares opcionales

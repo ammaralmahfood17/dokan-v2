@@ -7,7 +7,7 @@ import { CURRENCIES, DEFAULT_PRIMARY_COLOR } from '@/lib/types';
 import { Button } from '@/components/shadcn/button';
 import { Input } from '@/components/shadcn/input';
 import { createClient } from '@/lib/supabase/client';
-import { Store, Globe, Palette, Check, Utensils, Package, HeartPulse, Briefcase, ShoppingCart, Dumbbell } from 'lucide-react';
+import { Store, Globe, Palette, Check, Utensils, Package, HeartPulse, Briefcase, ShoppingCart, Dumbbell, GraduationCap, Scissors, BedDouble, Building2, Pill, Car } from 'lucide-react';
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -18,6 +18,12 @@ const ICON_MAP: Record<string, typeof Store> = {
   briefcase: Briefcase,
   'shopping-cart': ShoppingCart,
   dumbbell: Dumbbell,
+  'graduation-cap': GraduationCap,
+  scissors: Scissors,
+  'bed-double': BedDouble,
+  'building-2': Building2,
+  pill: Pill,
+  car: Car,
 };
 
 export default function OnboardingPage() {
