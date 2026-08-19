@@ -30,6 +30,11 @@ import {
   Building2,
   Pill,
   Car,
+  Truck,
+  Calendar,
+  Award,
+  CreditCard,
+  Bell,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -55,10 +60,15 @@ const NAV_MAIN: NavItem[] = [
   { href: '/dashboard/pos', label: 'نقطة البيع', shortLabel: 'POS', icon: Monitor, section: 'operations', module: 'pos' },
   { href: '/dashboard/products', label: 'المنتجات', shortLabel: 'منتجات', icon: Package, section: 'operations' },
   { href: '/dashboard/tables', label: 'الطاولات و QR', shortLabel: 'طاولات', icon: QrCode, section: 'operations', module: 'menu_qr' },
+  { href: '/dashboard/delivery', label: 'التوصيل', shortLabel: 'توصيل', icon: Truck, section: 'operations', module: 'delivery' },
+  { href: '/dashboard/reservations', label: 'الحجوزات', shortLabel: 'حجوزات', icon: Calendar, section: 'operations', module: 'reservations' },
   // إدارة — Manage
   { href: '/dashboard/customers', label: 'العملاء', shortLabel: 'عملاء', icon: Users, section: 'manage', module: 'crm' },
   { href: '/dashboard/inventory', label: 'المخزون والموردون', shortLabel: 'مخزون', icon: Boxes, section: 'manage', module: 'inventory' },
   { href: '/dashboard/billing', label: 'الاشتراك والفواتير', shortLabel: 'فواتير', icon: Receipt, section: 'manage', module: 'accounting' },
+  { href: '/dashboard/loyalty', label: 'برنامج الولاء', shortLabel: 'ولاء', icon: Award, section: 'manage', module: 'loyalty' },
+  { href: '/dashboard/payments', label: 'بوابات الدفع', shortLabel: 'دفع', icon: CreditCard, section: 'manage', module: 'payments' },
+  { href: '/dashboard/notifications', label: 'الإشعارات', shortLabel: 'إشعارات', icon: Bell, section: 'manage', module: 'notifications' },
   { href: '/dashboard/settings', label: 'الإعدادات', shortLabel: 'إعدادات', icon: Settings, section: 'manage' },
 ];
 
@@ -101,6 +111,11 @@ export function AppSidebar({ projectName, activeModules, businessType }: { proje
       '/dashboard/customers',
       '/dashboard/inventory',
       '/dashboard/billing',
+      '/dashboard/loyalty',
+      '/dashboard/delivery',
+      '/dashboard/reservations',
+      '/dashboard/payments',
+      '/dashboard/notifications',
     ]) {
       try { router.prefetch(p); } catch {}
     }
