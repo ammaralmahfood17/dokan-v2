@@ -23,6 +23,7 @@ type KpiItem = {
   href: string;
   accent: string;
   bg: string;
+  border?: string;
 };
 
 export function KpiCards({
@@ -56,6 +57,7 @@ export function KpiCards({
       href: '/dashboard/analytics',
       accent: 'text-[var(--color-primary)]',
       bg: 'bg-[var(--color-primary-tint)]',
+      border: 'border-[var(--color-primary)]',
     },
     {
       label: 'عدد الطلبات',
@@ -66,6 +68,7 @@ export function KpiCards({
       href: '/dashboard/orders',
       accent: 'text-[var(--color-success)]',
       bg: 'bg-[var(--color-success-tint)]',
+      border: 'border-[var(--color-success)]',
     },
     {
       label: 'قيد التحضير',
@@ -74,6 +77,7 @@ export function KpiCards({
       href: '/dashboard/kitchen',
       accent: 'text-[var(--color-warn)]',
       bg: 'bg-[var(--color-warn-tint)]',
+      border: 'border-[var(--color-warn)]',
     },
     {
       label: 'الطاولات النشطة',
@@ -82,6 +86,7 @@ export function KpiCards({
       href: '/dashboard/tables',
       accent: 'text-[var(--color-info)]',
       bg: 'bg-[var(--color-info-tint)]',
+      border: 'border-[var(--color-info)]',
     },
   ];
 
@@ -93,20 +98,20 @@ export function KpiCards({
           <Link
             key={item.label}
             href={item.href}
-            className="group relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 transition-all hover:border-[var(--color-primary)] hover:shadow-md"
+            className="group relative overflow-hidden rounded-2xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] p-5 transition-all hover:border-[var(--color-primary)] hover:shadow-lg hover:-translate-y-0.5"
           >
             {/* Top accent line */}
-            <div className={`absolute inset-x-0 top-0 h-1 ${item.bg}`} />
+            <div className={`absolute inset-x-0 top-0 h-1.5 ${item.bg}`} />
 
             <div className="flex items-start justify-between gap-3">
-              <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${item.bg} ${item.accent}`}>
-                <Icon className="h-5 w-5" />
+              <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${item.bg} ${item.accent} shadow-sm`}>
+                <Icon className="h-6 w-6" />
               </div>
 
               {item.delta && (
                 <div
-                  className={`flex items-center gap-0.5 text-[11px] font-semibold ${
-                    item.positive ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'
+                  className={`flex items-center gap-0.5 rounded-full px-2.5 py-1 text-[11px] font-bold ${
+                    item.positive ? 'bg-[var(--color-success-tint)] text-[var(--color-success)]' : 'bg-[var(--color-danger-tint)] text-[var(--color-danger)]'
                   }`}
                 >
                   {item.positive ? (
@@ -120,9 +125,9 @@ export function KpiCards({
             </div>
 
             <div className="mt-4">
-              <p className="text-[11px] font-semibold text-[var(--color-text-secondary)]">{item.label}</p>
+              <p className="text-[11px] font-bold text-[var(--color-text-secondary)] uppercase tracking-wide">{item.label}</p>
               <p
-                className="mt-1 font-mono text-[28px] font-bold tabular-nums leading-none text-[var(--color-text)]"
+                className="mt-1.5 font-mono text-[32px] font-bold tabular-nums leading-none text-[var(--color-text)]"
                 dir="ltr"
                 dangerouslySetInnerHTML={{ __html: item.value }}
               />
@@ -130,26 +135,26 @@ export function KpiCards({
 
             {/* Peak hour hint for sales card */}
             {item.href === '/dashboard/analytics' && peakHour && peakHour.revenue > 0 && (
-              <p className="mt-3 flex items-center gap-1.5 text-[11px] text-[var(--color-text-secondary)]">
+              <div className="mt-3 flex items-center gap-1.5 rounded-lg bg-[var(--color-bg)] px-2.5 py-1.5 text-[11px] text-[var(--color-text-secondary)]">
                 <Clock className="h-3 w-3 text-[var(--color-text-muted)]" />
-                وقت الذروة: {peakHour.label} — {formatMoney(peakHour.revenue, currency)}
-              </p>
+                <span>وقت الذروة: {peakHour.label} — {formatMoney(peakHour.revenue, currency)}</span>
+              </div>
             )}
 
             {/* Kitchen link hint */}
             {item.href === '/dashboard/kitchen' && (pendingCount ?? 0) > 0 && (
-              <p className="mt-3 flex items-center gap-1 text-[11px] font-semibold text-[var(--color-primary)]">
+              <div className="mt-3 flex items-center gap-1 text-[11px] font-bold text-[var(--color-primary)]">
                 شاشة المطبخ
-                <ArrowUpRight className="h-3 w-3 rtl:rotate-180" />
-              </p>
+                <ArrowUpRight className="h-3.5 w-3.5 rtl:rotate-180" />
+              </div>
             )}
 
             {/* Tables hint */}
             {item.href === '/dashboard/tables' && occupiedCount > 0 && (
-              <p className="mt-3 flex items-center gap-1 text-[11px] text-[var(--color-text-secondary)]">
+              <div className="mt-3 flex items-center gap-1.5 text-[11px] text-[var(--color-text-secondary)]">
                 <Users className="h-3 w-3" />
-                {occupiedCount} مشغولة الآن
-              </p>
+                <span>{occupiedCount} مشغولة الآن</span>
+              </div>
             )}
           </Link>
         );

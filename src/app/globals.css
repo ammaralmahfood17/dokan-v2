@@ -27,37 +27,41 @@
 }
 
 @theme {
-  /* Brand — Indigo-600 (used ONLY for action/focus/selection, never decoration) */
-  --color-primary: #4F46E5;
-  --color-primary-hover: #4338CA;
-  --color-primary-active: #3730A3;
-  --color-primary-tint: #EEF2FF;
-  --color-primary-tint-strong: #E0E7FF;
+  /* Brand — Deep Teal (trust, finance, hospitality) */
+  --color-primary: #0F5E56;
+  --color-primary-hover: #0A4640;
+  --color-primary-active: #083532;
+  --color-primary-tint: #E4EFEC;
+  --color-primary-tint-strong: #C8E0DA;
 
-  /* Neutral — warm stone (editorial: bg stone-50, borders stone-200) */
-  --color-bg: #FAFAF9;
+  /* Neutral — warm parchment */
+  --color-bg: #F6F4EF;
   --color-surface: #FFFFFF;
-  --color-surface-sunken: #F5F5F4;
-  --color-border: #E7E5E4;
-  --color-border-strong: #D6D3D1;
-  --color-text: #0F172A;
-  --color-text-secondary: #57534E;
-  /* FIX-D-006: رفع تباين text-muted من 2.45:1 إلى 7.6:1 (WCAG AA Pass) */
-  --color-text-muted: #78716C; /* was #94A3B8 */
+  --color-surface-sunken: #F0EEE8;
+  --color-border: #E7E3D8;
+  --color-border-strong: #D6D2C7;
+  --color-text: #1B211F;
+  --color-text-secondary: #5B6663;
+  --color-text-muted: #78716C;
   --color-text-disabled: #D6D3D1;
 
-  /* Semantic — desaturated, no "game" colors */
-  --color-success: #047857; /* was #059669 (3.8:1) — WCAG 1.4.3 failed on 14px text */
-  --color-success-tint: #ECFDF5;
-  --color-success-hover: #065F46;
-  --color-warn: #D97706;
-  --color-warn-tint: #FFFBEB;
-  --color-warn-hover: #B45309;
-  --color-danger: #DC2626;
-  --color-danger-tint: #FEF2F2;
-  --color-danger-hover: #B91C1C;
-  --color-info: #0284C7;
-  --color-info-tint: #F0F9FF;
+  /* Semantic — warm, desaturated */
+  --color-success: #2F8F5B;
+  --color-success-tint: #E5F3EA;
+  --color-success-hover: #257A4B;
+  --color-warn: #D98E2C;
+  --color-warn-tint: #FBF0DD;
+  --color-warn-hover: #B87824;
+  --color-danger: #C0483D;
+  --color-danger-tint: #FBE9E7;
+  --color-danger-hover: #A33D33;
+  --color-info: #1E7A8C;
+  --color-info-tint: #E4F3F6;
+
+  /* Accent — Gold for CTAs and highlights */
+  --color-gold: #C9973B;
+  --color-gold-tint: #F6ECD8;
+  --color-gold-hover: #B8872F;
 
   /* Typography — Editorial pairing: Playfair (Latin display) → Cairo (Arabic
      fallback + primary body). Inter first for Latin/numbers, Cairo for Arabic.
