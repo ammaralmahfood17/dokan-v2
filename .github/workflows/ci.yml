@@ -34,9 +34,11 @@ jobs:
         run: npm run test
 
       - name: Install Playwright Browsers
+        if: ${{ vars.RUN_E2E == 'true' }}
         run: npx playwright install --with-deps
 
       - name: Run E2E Tests
+        if: ${{ vars.RUN_E2E == 'true' }}
         run: npx playwright test
 
       - name: Build Project
