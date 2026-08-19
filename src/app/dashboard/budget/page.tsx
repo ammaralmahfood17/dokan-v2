@@ -173,32 +173,36 @@ export default async function BudgetPage() {
       {/* Recent Expenses */}
       <div className="card card-body">
         <h2 className="mb-4 text-lg font-bold text-[var(--color-text)]">المصروفات الأخيرة</h2>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto rounded-2xl border border-[var(--color-border)]">
           <table className="w-full text-right text-sm">
             <thead>
-              <tr className="border-b border-[var(--color-border)] text-[var(--color-text-secondary)]">
-                <th className="px-4 py-3 font-medium">التاريخ</th>
-                <th className="px-4 py-3 font-medium">الوصف</th>
-                <th className="px-4 py-3 font-medium">البند</th>
-                <th className="px-4 py-3 font-medium text-left" dir="ltr">المبلغ</th>
+              <tr className="sticky top-0 z-10 bg-[var(--color-surface)] text-[var(--color-text-secondary)]">
+                <th className="px-5 py-3.5 text-xs font-bold uppercase tracking-wide">التاريخ</th>
+                <th className="px-5 py-3.5 text-xs font-bold uppercase tracking-wide">الوصف</th>
+                <th className="px-5 py-3.5 text-xs font-bold uppercase tracking-wide">البند</th>
+                <th className="px-5 py-3.5 text-xs font-bold uppercase tracking-wide text-left" dir="ltr">المبلغ</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--color-border)]">
               {(expenses ?? []).slice(0, 20).map((e, idx) => (
-                <tr key={`${e.created_at}-${e.amount}-${idx}`} className="hover:bg-[var(--color-bg)]">
-                  <td className="px-4 py-3 text-[var(--color-text-secondary)]">
-                    {new Date(e.created_at).toLocaleDateString('ar-BH-u-nu-latn', { timeZone: TZ })}
+                <tr key={`${e.created_at}-${e.amount}-${idx}`} className="group transition-colors hover:bg-[var(--color-primary-tint)]">
+                  <td className="px-5 py-4 text-[var(--color-text-secondary)]">
+                    {new Date(e.created_at).toLocaleDateString('ar-BH-u-nu-latn', { timeZone: TZ, month: 'short', day: 'numeric' })}
                   </td>
-                  <td className="px-4 py-3 font-semibold text-[var(--color-text)]">{e.description ?? '—'}</td>
-                  <td className="px-4 py-3 text-[var(--color-text-secondary)]">{e.category}</td>
-                  <td className="px-4 py-3 font-mono font-bold text-[var(--color-danger)]" dir="ltr">
+                  <td className="px-5 py-4 font-semibold text-[var(--color-text)]">{e.description ?? '—'}</td>
+                  <td className="px-5 py-4">
+                    <span className="inline-flex items-center rounded-full bg-[var(--color-bg)] px-2.5 py-1 text-xs font-bold text-[var(--color-text-secondary)]">
+                      {e.category}
+                    </span>
+                  </td>
+                  <td className="px-5 py-4 font-mono text-base font-bold text-[var(--color-danger)]" dir="ltr">
                     -{formatMoney(Number(e.amount ?? 0), ctx.project.currency)}
                   </td>
                 </tr>
               ))}
               {(expenses ?? []).length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-sm text-[var(--color-text-muted)]">
+                  <td colSpan={4} className="px-5 py-12 text-center text-sm text-[var(--color-text-muted)]">
                     لا توجد مصروفات لهذا الشهر
                   </td>
                 </tr>

@@ -172,37 +172,49 @@ export default async function ReportsPage() {
       {/* Orders Table */}
       <div className="card card-body">
         <h2 className="mb-4 text-lg font-bold text-[var(--color-text)]">الطلبات الأخيرة</h2>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto rounded-2xl border border-[var(--color-border)]">
           <table className="w-full text-right text-sm">
             <thead>
-              <tr className="border-b border-[var(--color-border)] text-[var(--color-text-secondary)]">
-                <th className="px-4 py-3 font-medium">رقم الطلب</th>
-                <th className="px-4 py-3 font-medium">التاريخ</th>
-                <th className="px-4 py-3 font-medium">الحالة</th>
-                <th className="px-4 py-3 font-medium text-left" dir="ltr">الإجمالي</th>
+              <tr className="sticky top-0 z-10 bg-[var(--color-surface)] text-[var(--color-text-secondary)]">
+                <th className="px-5 py-3.5 text-xs font-bold uppercase tracking-wide">رقم الطلب</th>
+                <th className="px-5 py-3.5 text-xs font-bold uppercase tracking-wide">التاريخ</th>
+                <th className="px-5 py-3.5 text-xs font-bold uppercase tracking-wide">الحالة</th>
+                <th className="px-5 py-3.5 text-xs font-bold uppercase tracking-wide text-left" dir="ltr">الإجمالي</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--color-border)]">
               {(monthOrders ?? []).slice(0, 20).map((o) => (
-                <tr key={o.id} className="hover:bg-[var(--color-bg)]">
-                  <td className="px-4 py-3 font-semibold text-[var(--color-text)]">#{String(o.id).slice(-6)}</td>
-                  <td className="px-4 py-3 text-[var(--color-text-secondary)]">
-                    {new Date(o.created_at).toLocaleDateString('ar-BH-u-nu-latn', { timeZone: TZ })}
+                <tr key={o.id} className="group transition-colors hover:bg-[var(--color-primary-tint)]">
+                  <td className="px-5 py-4">
+                    <span className="inline-flex h-8 w-16 items-center justify-center rounded-lg bg-[var(--color-bg)] font-mono text-xs font-bold text-[var(--color-text)]">
+                      #{String(o.id).slice(-6)}
+                    </span>
                   </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                  <td className="px-5 py-4 text-[var(--color-text-secondary)]">
+                    {new Date(o.created_at).toLocaleDateString('ar-BH-u-nu-latn', { timeZone: TZ, month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </td>
+                  <td className="px-5 py-4">
+                    <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${
                       o.status === 'cancelled' ? 'bg-[var(--color-danger-tint)] text-[var(--color-danger)]' :
                       o.status === 'delivered' || o.status === 'ready' ? 'bg-[var(--color-success-tint)] text-[var(--color-success)]' :
                       'bg-[var(--color-warn-tint)] text-[var(--color-warn)]'
                     }`}>
+                      <span className="h-1.5 w-1.5 rounded-full bg-current" />
                       {o.status === 'pending' ? 'قيد الانتظار' : o.status === 'preparing' ? 'قيد التحضير' : o.status === 'ready' ? 'جاهز' : o.status === 'delivered' ? 'تم التسليم' : o.status === 'cancelled' ? 'ملغي' : o.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 font-mono font-bold text-[var(--color-text)]" dir="ltr">
+                  <td className="px-5 py-4 font-mono text-base font-bold text-[var(--color-text)]" dir="ltr">
                     {formatMoney(Number(o.total_amount ?? 0), ctx.project.currency)}
                   </td>
                 </tr>
               ))}
+              {(monthOrders ?? []).length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-5 py-12 text-center text-sm text-[var(--color-text-muted)]">
+                    لا توجد طلبات لهذا الشهر
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
