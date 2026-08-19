@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import type { Module } from '@/lib/types';
+import type { Module, BusinessType } from '@/lib/types';
 
 type NavItem = {
   href: string;
@@ -57,7 +57,7 @@ const SECTION_LABELS: Record<NavItem['section'], { label: string; en: string }> 
   manage: { label: 'الإدارة', en: 'Manage' },
 };
 
-export function AppSidebar({ projectName, activeModules }: { projectName: string; activeModules: Module[] }) {
+export function AppSidebar({ projectName, activeModules, businessType }: { projectName: string; activeModules: Module[]; businessType: BusinessType | null }) {
   const pathname = usePathname();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);

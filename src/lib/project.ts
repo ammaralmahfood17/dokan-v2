@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import type { Project, StaffMember } from '@/lib/types';
 import type { ChecklistItem } from '@/lib/types';
-import type { Module, ProjectModule } from '@/lib/types';
+import type { Module, ProjectModule, BusinessType } from '@/lib/types';
 
 export type ProjectContext = {
   project: Project;
@@ -13,6 +13,7 @@ export type ProjectContext = {
    *  during render (react-hooks/purity). */
   subscriptionDaysLeft: number | null;
   activeModules: Module[];
+  businessType: BusinessType | null;
 };
 
 /**
@@ -109,12 +110,24 @@ export async function getCurrentProject(): Promise<ProjectContext | null> {
     })
     .map((m) => ({ ...m, is_enabled: true }));
 
+  // Load business type
+  let businessType: BusinessType | null = null;
+  if (project.business_type_id) {
+    const { data: bt } = await supabase
+      .from('business_types')
+      .select('*')
+      .eq('id', project.business_type_id)
+      .single();
+    if (bt) businessType = bt as BusinessType;
+  }
+
   return {
     project: project as Project,
     membership: membership as StaffMember,
     userId: user.id,
     subscriptionDaysLeft,
     activeModules,
+    businessType,
   };
 }
 

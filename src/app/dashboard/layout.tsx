@@ -59,6 +59,7 @@ export default async function DashboardLayout({
       <AppSidebar
         projectName={ctx.project.name}
         activeModules={ctx.activeModules}
+        businessType={ctx.businessType}
       />
 
       {/* Content */}
