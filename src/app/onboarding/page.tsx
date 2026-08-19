@@ -28,18 +28,18 @@ const ICON_MAP: Record<string, typeof Store> = {
 
 // Recommended modules per business type (auto-selected in onboarding)
 const BUSINESS_TYPE_RECOMMENDATIONS: Record<string, string[]> = {
-  restaurant: ['pos', 'menu_qr', 'kds', 'crm', 'inventory', 'reports'],
-  retail: ['pos', 'inventory', 'crm', 'reports', 'marketing'],
-  clinic: ['crm', 'billing', 'reports', 'staff'],
-  service: ['crm', 'billing', 'reports', 'staff'],
-  grocery: ['pos', 'inventory', 'crm', 'reports'],
-  fitness: ['crm', 'staff', 'billing', 'reports'],
-  school: ['crm', 'staff', 'billing', 'reports'],
-  salon: ['pos', 'crm', 'staff', 'billing', 'reports'],
-  hotel: ['pos', 'crm', 'staff', 'billing', 'reports'],
-  real_estate: ['crm', 'staff', 'billing', 'reports'],
-  pharmacy: ['pos', 'inventory', 'crm', 'billing', 'reports'],
-  car_rental: ['pos', 'crm', 'staff', 'billing', 'reports'],
+  restaurant: ['pos', 'menu_qr', 'kds', 'crm', 'inventory', 'reports', 'loyalty', 'delivery', 'reservations', 'notifications'],
+  retail: ['pos', 'inventory', 'crm', 'reports', 'marketing', 'loyalty', 'payments'],
+  clinic: ['crm', 'billing', 'reports', 'staff', 'notifications', 'reservations'],
+  service: ['crm', 'billing', 'reports', 'staff', 'notifications', 'reservations'],
+  grocery: ['pos', 'inventory', 'crm', 'reports', 'loyalty', 'payments'],
+  fitness: ['crm', 'staff', 'billing', 'reports', 'reservations', 'notifications'],
+  school: ['crm', 'staff', 'billing', 'reports', 'notifications'],
+  salon: ['pos', 'crm', 'staff', 'billing', 'reports', 'reservations', 'notifications'],
+  hotel: ['pos', 'crm', 'staff', 'billing', 'reports', 'reservations', 'notifications'],
+  real_estate: ['crm', 'staff', 'billing', 'reports', 'notifications'],
+  pharmacy: ['pos', 'inventory', 'crm', 'billing', 'reports', 'notifications'],
+  car_rental: ['pos', 'crm', 'staff', 'billing', 'reports', 'notifications'],
 };
 
 export default function OnboardingPage() {
