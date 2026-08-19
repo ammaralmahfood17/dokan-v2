@@ -88,9 +88,12 @@ export default async function BudgetPage() {
           <p className="mt-3 font-mono text-[28px] font-bold tabular-nums text-[var(--color-success)]" dir="ltr">
             {formatMoney(totalRevenue, ctx.project.currency)}
           </p>
-          <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-            {orderCount.toLocaleString('ar-BH-u-nu-latn')} طلب
-          </p>
+          <div className="mt-2 flex items-center gap-2">
+            <div className="flex-1 h-1.5 rounded-full bg-[var(--color-bg)]">
+              <div className="h-1.5 rounded-full bg-[var(--color-success)]" style={{ width: '100%' }} />
+            </div>
+            <span className="text-[11px] font-semibold text-[var(--color-text-secondary)]">{orderCount.toLocaleString('ar-BH-u-nu-latn')} طلب</span>
+          </div>
         </div>
 
         <div className="card card-body">
@@ -103,9 +106,12 @@ export default async function BudgetPage() {
           <p className="mt-3 font-mono text-[28px] font-bold tabular-nums text-[var(--color-danger)]" dir="ltr">
             {formatMoney(totalExpenses, ctx.project.currency)}
           </p>
-          <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-            {(expenses ?? []).length.toLocaleString('ar-BH-u-nu-latn')} مصروف
-          </p>
+          <div className="mt-2 flex items-center gap-2">
+            <div className="flex-1 h-1.5 rounded-full bg-[var(--color-bg)]">
+              <div className="h-1.5 rounded-full bg-[var(--color-danger)]" style={{ width: `${Math.min(100, totalRevenue > 0 ? (totalExpenses / totalRevenue) * 100 : 0)}%` }} />
+            </div>
+            <span className="text-[11px] font-semibold text-[var(--color-text-secondary)]">{(expenses ?? []).length.toLocaleString('ar-BH-u-nu-latn')} مصروف</span>
+          </div>
         </div>
 
         <div className="card card-body">

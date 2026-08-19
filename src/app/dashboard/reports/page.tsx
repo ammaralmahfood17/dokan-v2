@@ -90,30 +90,36 @@ export default async function ReportsPage() {
           <p className="mt-3 font-mono text-[28px] font-bold tabular-nums text-[var(--color-text)]" dir="ltr">
             {formatMoney(weekRevenue, ctx.project.currency)}
           </p>
-          <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-            {weekCount.toLocaleString('ar-BH-u-nu-latn')} طلب
-          </p>
+          <div className="mt-2 flex items-center gap-2">
+            <div className="flex-1 h-1.5 rounded-full bg-[var(--color-bg)]">
+              <div className="h-1.5 rounded-full bg-[var(--color-primary)]" style={{ width: `${Math.min(100, (weekRevenue / (monthRevenue || 1)) * 100)}%` }} />
+            </div>
+            <span className="text-[11px] font-semibold text-[var(--color-text-secondary)]">{weekCount.toLocaleString('ar-BH-u-nu-latn')} طلب</span>
+          </div>
         </div>
 
         <div className="card card-body">
           <div className="flex items-center justify-between">
             <p className="text-sm text-[var(--color-text-secondary)]">إجمالي هذا الشهر</p>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-success-tint)] text-[var(--color-success)]">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-gold-tint)] text-[var(--color-gold)]">
               <BarChart3 className="h-5 w-5" />
             </div>
           </div>
           <p className="mt-3 font-mono text-[28px] font-bold tabular-nums text-[var(--color-text)]" dir="ltr">
             {formatMoney(monthRevenue, ctx.project.currency)}
           </p>
-          <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-            {monthCount.toLocaleString('ar-BH-u-nu-latn')} طلب
-          </p>
+          <div className="mt-2 flex items-center gap-2">
+            <div className="flex-1 h-1.5 rounded-full bg-[var(--color-bg)]">
+              <div className="h-1.5 rounded-full bg-[var(--color-gold)]" style={{ width: `${Math.min(100, (monthRevenue / (monthRevenue || 1)) * 100)}%` }} />
+            </div>
+            <span className="text-[11px] font-semibold text-[var(--color-text-secondary)]">{monthCount.toLocaleString('ar-BH-u-nu-latn')} طلب</span>
+          </div>
         </div>
 
         <div className="card card-body">
           <div className="flex items-center justify-between">
             <p className="text-sm text-[var(--color-text-secondary)]">متوسط الطلب</p>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-warn-tint)] text-[var(--color-warn)]">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-info-tint)] text-[var(--color-info)]">
               <FileText className="h-5 w-5" />
             </div>
           </div>
@@ -126,7 +132,7 @@ export default async function ReportsPage() {
         <div className="card card-body">
           <div className="flex items-center justify-between">
             <p className="text-sm text-[var(--color-text-secondary)]">أعلى صنف ربحية</p>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-info-tint)] text-[var(--color-info)]">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-success-tint)] text-[var(--color-success)]">
               <Calendar className="h-5 w-5" />
             </div>
           </div>

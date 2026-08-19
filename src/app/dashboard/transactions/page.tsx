@@ -78,9 +78,12 @@ export default async function TransactionsPage() {
           <p className="mt-3 font-mono text-[28px] font-bold tabular-nums text-[var(--color-success)]" dir="ltr">
             {formatMoney(weekIncome, ctx.project.currency)}
           </p>
-          <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-            {(weekOrders ?? []).length.toLocaleString('ar-BH-u-nu-latn')} معاملة
-          </p>
+          <div className="mt-2 flex items-center gap-2">
+            <div className="flex-1 h-1.5 rounded-full bg-[var(--color-bg)]">
+              <div className="h-1.5 rounded-full bg-[var(--color-success)]" style={{ width: '100%' }} />
+            </div>
+            <span className="text-[11px] font-semibold text-[var(--color-text-secondary)]">{(weekOrders ?? []).length.toLocaleString('ar-BH-u-nu-latn')} معاملة</span>
+          </div>
         </div>
 
         <div className="card card-body">
@@ -93,9 +96,12 @@ export default async function TransactionsPage() {
           <p className="mt-3 font-mono text-[28px] font-bold tabular-nums text-[var(--color-text)]" dir="ltr">
             {formatMoney(todayIncome, ctx.project.currency)}
           </p>
-          <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-            {(todayOrders ?? []).length.toLocaleString('ar-BH-u-nu-latn')} طلب
-          </p>
+          <div className="mt-2 flex items-center gap-2">
+            <div className="flex-1 h-1.5 rounded-full bg-[var(--color-bg)]">
+              <div className="h-1.5 rounded-full bg-[var(--color-primary)]" style={{ width: '100%' }} />
+            </div>
+            <span className="text-[11px] font-semibold text-[var(--color-text-secondary)]">{(todayOrders ?? []).length.toLocaleString('ar-BH-u-nu-latn')} طلب</span>
+          </div>
         </div>
 
         <div className="card card-body">
@@ -108,9 +114,12 @@ export default async function TransactionsPage() {
           <p className="mt-3 font-mono text-[28px] font-bold tabular-nums text-[var(--color-danger)]" dir="ltr">
             {formatMoney(weekCancelled, ctx.project.currency)}
           </p>
-          <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-            {(cancelledOrders ?? []).length.toLocaleString('ar-BH-u-nu-latn')} طلب ملغي
-          </p>
+          <div className="mt-2 flex items-center gap-2">
+            <div className="flex-1 h-1.5 rounded-full bg-[var(--color-bg)]">
+              <div className="h-1.5 rounded-full bg-[var(--color-danger)]" style={{ width: `${Math.min(100, (weekCancelled / (weekIncome || 1)) * 100)}%` }} />
+            </div>
+            <span className="text-[11px] font-semibold text-[var(--color-text-secondary)]">{(cancelledOrders ?? []).length.toLocaleString('ar-BH-u-nu-latn')} ملغي</span>
+          </div>
         </div>
       </div>
 
