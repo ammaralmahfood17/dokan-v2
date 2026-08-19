@@ -26,6 +26,22 @@ const ICON_MAP: Record<string, typeof Store> = {
   car: Car,
 };
 
+// Recommended modules per business type (auto-selected in onboarding)
+const BUSINESS_TYPE_RECOMMENDATIONS: Record<string, string[]> = {
+  restaurant: ['pos', 'menu_qr', 'kds', 'crm', 'inventory', 'reports'],
+  retail: ['pos', 'inventory', 'crm', 'reports', 'marketing'],
+  clinic: ['crm', 'billing', 'reports', 'staff'],
+  service: ['crm', 'billing', 'reports', 'staff'],
+  grocery: ['pos', 'inventory', 'crm', 'reports'],
+  fitness: ['crm', 'staff', 'billing', 'reports'],
+  school: ['crm', 'staff', 'billing', 'reports'],
+  salon: ['pos', 'crm', 'staff', 'billing', 'reports'],
+  hotel: ['pos', 'crm', 'staff', 'billing', 'reports'],
+  real_estate: ['crm', 'staff', 'billing', 'reports'],
+  pharmacy: ['pos', 'inventory', 'crm', 'billing', 'reports'],
+  car_rental: ['pos', 'crm', 'staff', 'billing', 'reports'],
+};
+
 export default function OnboardingPage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
@@ -46,6 +62,14 @@ export default function OnboardingPage() {
   const effectiveSlug = slugTouched ? slug : autoSlug;
 
   const selectedBusinessType = businessTypes.find(b => b.id === businessTypeId);
+
+  // Auto-select recommended modules when business type changes
+  useEffect(() => {
+    if (selectedBusinessType) {
+      const recommended = BUSINESS_TYPE_RECOMMENDATIONS[selectedBusinessType.code] ?? [];
+      setSelectedModules(recommended);
+    }
+  }, [selectedBusinessType?.code]);
 
   useEffect(() => {
     let cancelled = false;
