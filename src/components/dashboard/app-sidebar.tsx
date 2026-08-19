@@ -19,6 +19,17 @@ import {
   Receipt,
   Menu,
   X,
+  Utensils,
+  HeartPulse,
+  Briefcase,
+  ShoppingCart,
+  Dumbbell,
+  GraduationCap,
+  Scissors,
+  BedDouble,
+  Building2,
+  Pill,
+  Car,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -56,6 +67,24 @@ const SECTION_LABELS: Record<NavItem['section'], { label: string; en: string }> 
   operations: { label: 'العمليات', en: 'Operations' },
   manage: { label: 'الإدارة', en: 'Manage' },
 };
+
+function BusinessTypeIcon({ icon }: { icon: string | null }) {
+  switch (icon) {
+    case 'utensils': return <Utensils className="h-5 w-5" />;
+    case 'store': return <Package className="h-5 w-5" />;
+    case 'heart-pulse': return <HeartPulse className="h-5 w-5" />;
+    case 'briefcase': return <Briefcase className="h-5 w-5" />;
+    case 'shopping-cart': return <ShoppingCart className="h-5 w-5" />;
+    case 'dumbbell': return <Dumbbell className="h-5 w-5" />;
+    case 'graduation-cap': return <GraduationCap className="h-5 w-5" />;
+    case 'scissors': return <Scissors className="h-5 w-5" />;
+    case 'bed-double': return <BedDouble className="h-5 w-5" />;
+    case 'building-2': return <Building2 className="h-5 w-5" />;
+    case 'pill': return <Pill className="h-5 w-5" />;
+    case 'car': return <Car className="h-5 w-5" />;
+    default: return <Store className="h-5 w-5" />;
+  }
+}
 
 export function AppSidebar({ projectName, activeModules, businessType }: { projectName: string; activeModules: Module[]; businessType: BusinessType | null }) {
   const pathname = usePathname();
@@ -194,7 +223,11 @@ export function AppSidebar({ projectName, activeModules, businessType }: { proje
         <div className="flex items-center justify-between border-b border-[var(--color-border)] px-5 py-5">
           <Link href="/dashboard" onClick={() => setIsOpen(false)} className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-[var(--color-primary)] text-white shadow-sm">
-              <Store className="h-5 w-5" />
+              {businessType ? (
+                <BusinessTypeIcon icon={businessType.icon} />
+              ) : (
+                <Store className="h-5 w-5" />
+              )}
             </div>
             <div className="min-w-0 leading-tight">
               <div className="truncate text-[15px] font-semibold tracking-wide text-[var(--color-text)]">
@@ -203,7 +236,7 @@ export function AppSidebar({ projectName, activeModules, businessType }: { proje
               <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-[var(--color-text-muted)]">
                 <span className="font-serif italic">dokan</span>
                 <span className="h-1 w-1 rounded-full bg-[var(--color-border-strong)]" />
-                <span>منصة المطاعم</span>
+                <span>{businessType?.name_ar ?? 'منصة الأعمال'}</span>
               </div>
             </div>
           </Link>
