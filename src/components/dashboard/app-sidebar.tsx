@@ -35,6 +35,8 @@ import {
   Award,
   CreditCard,
   Bell,
+  FileText,
+  Wallet2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -54,6 +56,9 @@ const NAV_MAIN: NavItem[] = [
   // نظرة عامة — Overview
   { href: '/dashboard', label: 'الرئيسية', shortLabel: 'الرئيسية', icon: LayoutDashboard, section: 'overview' },
   { href: '/dashboard/analytics', label: 'الإحصائيات', shortLabel: 'إحصائيات', icon: BarChart3, section: 'overview' },
+  { href: '/dashboard/reports', label: 'التقارير', shortLabel: 'تقارير', icon: FileText, section: 'overview' },
+  { href: '/dashboard/budget', label: 'الميزانية', shortLabel: 'ميزانية', icon: Wallet2, section: 'overview' },
+  { href: '/dashboard/transactions', label: 'المعاملات', shortLabel: 'معاملات', icon: Receipt, section: 'overview' },
   // عمليات — Operations
   { href: '/dashboard/orders', label: 'الطلبات', shortLabel: 'طلبات', icon: ClipboardList, section: 'operations' },
   { href: '/dashboard/kitchen', label: 'شاشة المطبخ', shortLabel: 'مطبخ', icon: ChefHat, section: 'operations', module: 'kds' },
