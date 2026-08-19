@@ -60,6 +60,7 @@ export interface Module {
   is_core: boolean;
   is_active: boolean;
   created_at: string;
+  is_enabled: boolean;
 }
 
 export interface ProjectModule {

@@ -84,9 +84,30 @@ export async function getCurrentProject(): Promise<ProjectContext | null> {
     .eq('project_id', project.id)
     .eq('is_enabled', true);
 
+  type ActiveModuleRow = {
+    modules: {
+      id: string;
+      code: string;
+      name_ar: string;
+      name_en: string;
+      description_ar: string | null;
+      description_en: string | null;
+      category: string;
+      icon: string | null;
+      sort_order: number;
+      is_core: boolean;
+      is_active: boolean;
+      created_at: string;
+    } | null;
+  };
+
   const activeModules: Module[] = (activeModulesData ?? [])
-    .map((row: { modules: Module | null }) => row.modules)
-    .filter((m: Module | null): m is Module => m !== null);
+    .map((row: ActiveModuleRow) => row.modules)
+    .filter((m): m is ActiveModuleRow['modules'] & { is_enabled: boolean } => {
+      if (!m) return false;
+      return true;
+    })
+    .map((m) => ({ ...m, is_enabled: true }));
 
   return {
     project: project as Project,

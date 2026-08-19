@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { CURRENCIES, DEFAULT_PRIMARY_COLOR, type Project } from '@/lib/types';
 import { Button } from '@/components/shadcn/button';
@@ -10,6 +10,7 @@ import { TelegramManager } from '@/components/telegram-manager';
 import { NotificationPrefs } from '@/components/notification-prefs';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import type { Module } from '@/lib/types';
 
 type FieldErrors = {
   name?: string;
@@ -169,9 +170,33 @@ export function SettingsClient({
   const [isActive, setIsActive] = useState(project.is_active);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
+  const [modules, setModules] = useState<Module[]>([]);
+  const [modulesLoading, setModulesLoading] = useState(true);
   // Guards the store-disable toggle — turning the store off instantly closes
   // the customer menu (menu route filters is_active = true), so confirm first.
   const [confirmDeactivate, setConfirmDeactivate] = useState(false);
+
+  // Load available modules
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/project/modules');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && data.modules) {
+          setModules(data.modules);
+        }
+      } catch {
+        // Silently fail - modules section will just be empty
+      } finally {
+        if (!cancelled) {
+          setModulesLoading(false);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -211,6 +236,40 @@ export function SettingsClient({
     }
   }
 
+  async function toggleModule(moduleId: string, currentEnabled: boolean) {
+    if (!isOwner) {
+      toast.error('فقط مالك المتجر يقدر يعدّل الوحدات');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/project/modules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          module_id: moduleId,
+          is_enabled: !currentEnabled,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        toast.error(data.error || 'فشل تحديث الوحدة');
+        return;
+      }
+
+      // Update local state
+      setModules((prev) =>
+        prev.map((mod) =>
+          mod.id === moduleId ? { ...mod, is_enabled: !currentEnabled } : mod
+        )
+      );
+      toast.success('تم تحديث الوحدة');
+    } catch {
+      toast.error('ما قدرت نحدّث الوحدة — حاول مرة ثانية');
+    }
+  }
+
   return (
     <div className="page">
       <div className="page-header">
@@ -234,6 +293,61 @@ export function SettingsClient({
       {/* Per-staff notification channel prefs */}
       <div className="mb-4 max-w-lg">
         <NotificationPrefs projectId={projectId} />
+      </div>
+
+      {/* Modules Management */}
+      <div className="card card-body mb-4 max-w-lg">
+        <h2 className="mb-1 text-sm font-bold">الوحدات المفعلة</h2>
+        <p className="mb-4 text-sm text-[var(--color-text-secondary)]">
+          فعّل أو عطّل الوحدات حسب احتياجك. الوحدات الأساسية (نقطة البيع + قائمة QR) مفعّلة دائماً ولا يمكن تعطيلها.
+        </p>
+
+        {modulesLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center justify-between rounded-[10px] border border-[var(--color-border)] p-3">
+                <div className="flex-1">
+                  <div className="h-4 w-24 rounded bg-[var(--color-bg)]" />
+                  <div className="mt-1 h-3 w-32 rounded bg-[var(--color-bg)]" />
+                </div>
+                <div className="h-8 w-12 rounded bg-[var(--color-bg)]" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {modules.map((mod) => (
+              <div
+                key={mod.id}
+                className={`flex items-center justify-between rounded-[10px] border p-3 ${
+                  mod.is_core
+                    ? 'border-[var(--color-border)] bg-[var(--color-bg)]'
+                    : 'border-[var(--color-border)] bg-[var(--color-surface)]'
+                }`}
+              >
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-bold">{mod.name_ar}</p>
+                    {mod.is_core && (
+                      <span className="rounded-full bg-[var(--color-primary-tint)] px-2 py-0.5 text-[10px] font-bold text-[var(--color-primary)]">
+                        أساسية
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-[var(--color-text-muted)]">{mod.description_ar}</p>
+                </div>
+                {isOwner && !mod.is_core ? (
+                  <Switch
+                    checked={mod.is_enabled}
+                    onCheckedChange={() => toggleModule(mod.id, mod.is_enabled)}
+                  />
+                ) : mod.is_core ? (
+                  <span className="text-[11px] text-[var(--color-text-muted)]">مفعّلة دائماً</span>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Subscription (owner-only renewal) */}
