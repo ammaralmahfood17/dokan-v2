@@ -47,13 +47,13 @@ export function BillingClient({
   return (
     <div className="page">
       <PageHeader
-        kicker="الإدارة · Subscription"
+        crumb={['دكان', 'المالية', 'الاشتراك والفواتير']}
         title="الاشتراك والفواتير"
-        description="خطط الأسعار، حدود الاستخدام، وإعدادات ضريبة القيمة المضافة"
+        sub="خطط الأسعار، حدود الاستخدام، وإعدادات ضريبة القيمة المضافة"
       />
 
       {/* Current plan summary */}
-      <div className="mb-6 flex flex-wrap items-center gap-4 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] px-6 py-5 shadow-sm">
+      <div className="mb-4 flex flex-wrap items-center gap-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-4">
         <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--color-primary-tint)]">
           <BadgeCheck className="h-5 w-5 text-[var(--color-primary)]" />
         </div>

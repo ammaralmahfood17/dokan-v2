@@ -4,6 +4,7 @@ import { getCurrentProject } from '@/lib/project';
 import { AppSidebar } from '@/components/dashboard/app-sidebar';
 import { ImpersonationBanner } from '@/components/impersonation-banner';
 import { getImpersonationById } from '@/lib/super-admin';
+import { TopHeader } from '@/components/dashboard/top-header';
 
 export default async function DashboardLayout({
   children,
@@ -64,20 +65,8 @@ export default async function DashboardLayout({
 
       {/* Content */}
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Mobile header */}
-        <header className="sticky top-0 z-[var(--z-sticky)] flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface)]/95 backdrop-blur-md px-4 py-3 lg:hidden print:hidden">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-primary)] text-xs font-bold text-white shadow-sm">
-              {ctx.project.name.slice(0, 1)}
-            </div>
-            <span className="text-sm font-semibold text-[var(--color-text)]">
-              {ctx.project.name}
-            </span>
-          </div>
-          <span className="font-serif text-[13px] italic text-[var(--color-text-muted)]">
-            dokan
-          </span>
-        </header>
+        {/* Top header — reference design (search + notifications + profile) */}
+        <TopHeader projectName={ctx.project.name} />
 
         {expiryWarn && (
           <div className="border-b border-[var(--color-danger)]/20 bg-[var(--color-danger-tint)] px-4 py-2.5 text-center text-xs font-semibold text-[var(--color-danger)]">

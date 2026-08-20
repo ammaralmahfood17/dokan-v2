@@ -1,7 +1,9 @@
 'use client';
 
 import { FormEvent, useState, useCallback } from 'react';
-import { Plus, Copy, ExternalLink, Printer, Trash2 } from 'lucide-react';
+import { Plus, Copy, ExternalLink, Printer, QrCode, Trash2 } from 'lucide-react';
+import { Btn, Card, Tag } from '@/components/dashboard/primitives';
+import { PageHeader } from '@/components/dashboard/page-header';
 import { createClient } from '@/lib/supabase/client';
 import {
   generateQrToken,
@@ -225,103 +227,74 @@ export function TablesClient({
   return (
     <div className="page">
       <PullToRefresh onRefresh={refresh}>
-      <div className="page-header">
-        <div>
-          <div className="page-kicker"><span>العمليات · QR Ordering</span></div>
-          <h1>الطاولات و QR</h1>
-          <p>الطاولات وروابط القوائم العامة</p>
-        </div>
-        <div className="flex gap-2">
-          {tables.length > 0 && (
-            <Button variant="secondary" size="sm" onClick={printAllQrs}>
-              <Printer className="h-4 w-4" />
+      <PageHeader
+        crumb={['دكان', 'المبيعات', 'الطاولات وQR']}
+        title="الطاولات وQR"
+        sub="اطبع أو نزّل رمز كل طاولة"
+        secondary={
+          tables.length > 0 ? (
+            <Btn variant="secondary" icon={Printer} onClick={printAllQrs}>
               طباعة QR
-            </Button>
-          )}
-          <Button size="sm" onClick={openCreateModal}>
-            <Plus className="h-4 w-4" />
-            طاولة جديدة
+            </Btn>
+          ) : undefined
+        }
+        primary={
+          <Btn variant="gold" icon={Plus} onClick={openCreateModal}>
+            إضافة طاولة
+          </Btn>
+        }
+      />
+
+      {!tables.length ? (
+        <div className="card empty">
+          <h3>ما فيه طاولات بعد</h3>
+          <p className="mb-4 text-sm">أضف أول طاولة عشان تولّد QR ويقدر العملاء يطلبون.</p>
+          <Button onClick={openCreateModal}>
+            أضف أول طاولة
           </Button>
         </div>
-      </div>
-
-      <section>
-        <p className="section-title">الطاولات</p>
-        {!tables.length ? (
-          <div className="card empty">
-            <h3>ما فيه طاولات بعد</h3>
-            <p className="mb-4 text-sm">أضف أول طاولة عشان تولّد QR ويقدر العملاء يطلبون.</p>
-            <Button onClick={openCreateModal}>
-              أضف أول طاولة
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {tables.map((t) => {
-              const path = menuPath(projectSlug, t.slug);
-              const url = `${siteUrl}${path}`;
-              return (
-                <div
-                  key={t.id}
-                  className="dashboard-card card flex flex-wrap items-center justify-between gap-3 px-4 py-3"
-                >
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-bold">طاولة {t.number}</p>
-                      {occupiedTableIds.has(t.id) ? (
-                        <span className="rounded-full bg-[var(--color-warn-tint)] px-2 py-0.5 text-[10px] font-bold text-[var(--color-warn)]">
-                          مشغولة
-                        </span>
-                      ) : (
-                        <span className="rounded-full bg-[var(--color-success-tint)] px-2 py-0.5 text-[10px] font-bold text-[var(--color-success)]">
-                          متاحة
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-0.5 text-xs text-[var(--color-text-secondary)]">
-                      <span dir="ltr">{t.slug}</span>
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => showQr(t)}
-                    >
-                      عرض QR
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => copyUrl(url)}
-                      aria-label="نسخ رابط المنيو"
-                    >
-                      <Copy className="h-3.5 w-3.5" />
-                    </Button>
-                    <a
-                      href={path}
-                      target="_blank"
-                      rel="noreferrer"
-                      aria-label="فتح المنيو في تبويب جديد"
-                      className="btn btn-ghost btn-sm"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </a>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setConfirmDelete(t)}
-                      aria-label="حذف الطاولة"
-                    >
-                      <Trash2 className="h-3.5 w-3.5 text-[var(--color-danger)]" />
-                    </Button>
-                  </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+          {tables.map((t) => {
+            const path = menuPath(projectSlug, t.slug);
+            const url = `${siteUrl}${path}`;
+            const occupied = occupiedTableIds.has(t.id);
+            return (
+              <Card key={t.id} className="flex flex-col items-center gap-2.5 text-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-xl" style={{ background: '#E4EFEC', color: '#0F5E56' }}>
+                  <QrCode size={26} />
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
+                <div className="flex flex-col items-center gap-1">
+                  <p className="text-sm font-bold" style={{ color: '#181D1B' }}>طاولة {t.number}</p>
+                  <Tag bg={occupied ? '#FBE9E7' : '#E5F3EA'} fg={occupied ? '#C0483D' : '#2F8F5B'} dot>
+                    {occupied ? 'مشغولة' : 'فاضية'}
+                  </Tag>
+                </div>
+                <div className="flex flex-wrap items-center justify-center gap-1">
+                  <Button variant="secondary" size="sm" onClick={() => showQr(t)}>
+                    عرض QR
+                  </Button>
+                  <Button variant="ghost" size="icon-sm" onClick={() => copyUrl(url)} aria-label="نسخ رابط المنيو">
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
+                  <a
+                    href={path}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="فتح المنيو في تبويب جديد"
+                    className="btn btn-ghost btn-sm"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                  <Button variant="ghost" size="icon-sm" onClick={() => setConfirmDelete(t)} aria-label="حذف الطاولة">
+                    <Trash2 className="h-3.5 w-3.5 text-[var(--color-danger)]" />
+                  </Button>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
       </PullToRefresh>
 
       {/* Create Table Modal — sibling of PullToRefresh */}

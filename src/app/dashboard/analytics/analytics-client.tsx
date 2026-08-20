@@ -3,6 +3,8 @@
 import { useRouter } from 'next/navigation';
 import { TrendingUp, ShoppingBag, Banknote, ReceiptText, XCircle, Printer, RefreshCcw } from 'lucide-react';
 import { formatMoney } from '@/lib/utils';
+import { Btn, Card, FilterBar, StatStrip } from '@/components/dashboard/primitives';
+import { PageHeader } from '@/components/dashboard/page-header';
 import type { AnalyticsData, Range } from './page';
 
 const RANGES: { value: Range; label: string }[] = [
@@ -18,48 +20,15 @@ function pctChange(curr: number, prev: number): number | null {
   return Math.round(((curr - prev) / prev) * 100);
 }
 
-/** Comparison badge: green up / red down (inverted for cancelled) */
-function DeltaBadge({ curr, prev, invert = false }: { curr: number; prev: number; invert?: boolean }) {
+/** Stat-strip delta: sign + pct (inverted for cancelled), null when no baseline */
+function deltaInfo(curr: number, prev: number, invert = false): { delta: string; positive: boolean } | null {
   const pct = pctChange(curr, prev);
   if (pct === null) return null;
   const up = pct >= 0;
-  const good = invert ? !up : up;
-  const cls = good
-    ? 'bg-[var(--color-success-tint)] text-[var(--color-success)]'
-    : 'bg-[var(--color-danger-tint)] text-[var(--color-danger)]';
-  const arrow = up ? '▲' : '▼';
-  return (
-    <span className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${cls}`}>
-      {arrow} {Math.abs(pct)}%
-    </span>
-  );
-}
-
-function KpiCard({
-  icon,
-  iconCls,
-  label,
-  value,
-  delta,
-}: {
-  icon: React.ReactNode;
-  iconCls: string;
-  label: string;
-  value: string;
-  delta: React.ReactNode;
-}) {
-  return (
-    <div className="dashboard-stat card card-body">
-      <div className={`mb-2 flex h-8 w-8 items-center justify-center rounded-lg ${iconCls}`}>
-        {icon}
-      </div>
-      <p className="truncate text-xl font-bold sm:text-2xl" dir="ltr">{value}</p>
-      <div className="flex items-center gap-1.5">
-        <p className="section-title mb-0">{label}</p>
-        {delta}
-      </div>
-    </div>
-  );
+  return {
+    delta: `${up ? '▲' : '▼'} ${Math.abs(pct).toLocaleString('ar-BH-u-nu-latn')}٪`,
+    positive: invert ? !up : up,
+  };
 }
 
 export function AnalyticsClient({
@@ -83,29 +52,28 @@ export function AnalyticsClient({
   const maxProductQty = Math.max(...topProducts.map((p) => p.quantity), 1);
   const totalByType = byType.reduce((s, t) => s + t.count, 0) || 1;
 
+  const dOrders = deltaInfo(kpi.orders, prevKpi.orders);
+  const dRevenue = deltaInfo(kpi.revenue, prevKpi.revenue);
+  const dAvg = deltaInfo(kpi.avgOrder, prevKpi.avgOrder);
+  const dCancelled = deltaInfo(kpi.cancelled, prevKpi.cancelled, true);
+
   function setRange(r: Range) {
     router.push(r === '7d' ? '/dashboard/analytics' : `/dashboard/analytics?range=${r}`);
   }
 
   return (
     <div className="page">
-      <div className="page-header print-hidden">
-        <div>
-          <div className="page-kicker"><span>نظرة عامة · Analytics</span></div>
-          <h1>الإحصائيات</h1>
-          <p>أداء {projectName} — {RANGES.find((r) => r.value === range)?.label}</p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="btn btn-secondary btn-sm print-hidden"
-          >
-            <Printer className="h-4 w-4" />
+      <PageHeader
+        className="print-hidden"
+        crumb={['دكان', 'المالية', 'الإحصائيات']}
+        title="الإحصائيات"
+        sub={`أداء ${projectName} — ${RANGES.find((r) => r.value === range)?.label}`}
+        primary={
+          <Btn variant="secondary" size="sm" icon={Printer} onClick={() => window.print()}>
             طباعة
-          </button>
-        </div>
-      </div>
+          </Btn>
+        }
+      />
 
       {/* Print-only header — FIX-A-008: h2 بدل h1 (هرمية عنوان واحدة لكل صفحة) */}
       <div className="hidden print:block mb-4">
@@ -115,59 +83,52 @@ export function AnalyticsClient({
         </p>
       </div>
 
-      {/* Range tabs */}
-      <div className="mb-5 flex gap-1.5 print-hidden">
-        {RANGES.map((r) => (
-          <button
-            key={r.value}
-            type="button"
-            onClick={() => setRange(r.value)}
-            aria-pressed={range === r.value}
-            className={`min-h-[44px] rounded-full px-4 py-1.5 text-xs font-bold transition-colors ${
-              range === r.value
-                ? 'bg-[var(--color-primary)] text-white'
-                : 'border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)]'
-            }`}
-          >
-            {r.label}
-          </button>
-        ))}
+      {/* Range filter */}
+      <div className="print-hidden">
+        <FilterBar
+          segments={RANGES.map((r) => r.label)}
+          active={RANGES.find((r) => r.value === range)?.label ?? ''}
+          onChange={(label) => {
+            const r = RANGES.find((x) => x.label === label);
+            if (r) setRange(r.value);
+          }}
+        />
       </div>
 
-      {/* KPI cards */}
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <KpiCard
-          icon={<ShoppingBag className="h-4 w-4" />}
-          iconCls="bg-[var(--color-primary-tint)] text-[var(--color-primary)]"
-          label="الطلبات"
-          value={String(kpi.orders)}
-          delta={<DeltaBadge curr={kpi.orders} prev={prevKpi.orders} />}
-        />
-        <KpiCard
-          icon={<Banknote className="h-4 w-4" />}
-          iconCls="bg-[var(--color-success-tint)] text-[var(--color-success)]"
-          label="الإيراد"
-          value={formatMoney(kpi.revenue, currency)}
-          delta={<DeltaBadge curr={kpi.revenue} prev={prevKpi.revenue} />}
-        />
-        <KpiCard
-          icon={<ReceiptText className="h-4 w-4" />}
-          iconCls="bg-[var(--color-warn-tint)] text-[var(--color-warn)]"
-          label="متوسط الطلب"
-          value={formatMoney(kpi.avgOrder, currency)}
-          delta={<DeltaBadge curr={kpi.avgOrder} prev={prevKpi.avgOrder} />}
-        />
-        <KpiCard
-          icon={<XCircle className="h-4 w-4" />}
-          iconCls="bg-[var(--color-danger-tint)] text-[var(--color-danger)]"
-          label="ملغى"
-          value={String(kpi.cancelled)}
-          delta={<DeltaBadge curr={kpi.cancelled} prev={prevKpi.cancelled} invert />}
+      {/* KPI strip */}
+      <div className="mb-6">
+        <StatStrip
+          cells={[
+            {
+              label: 'الطلبات',
+              value: kpi.orders.toLocaleString('ar-BH-u-nu-latn'),
+              icon: ShoppingBag,
+              ...(dOrders ?? {}),
+            },
+            {
+              label: 'الإيراد',
+              value: formatMoney(kpi.revenue, currency),
+              icon: Banknote,
+              ...(dRevenue ?? {}),
+            },
+            {
+              label: 'متوسط الطلب',
+              value: formatMoney(kpi.avgOrder, currency),
+              icon: ReceiptText,
+              ...(dAvg ?? {}),
+            },
+            {
+              label: 'ملغى',
+              value: kpi.cancelled.toLocaleString('ar-BH-u-nu-latn'),
+              icon: XCircle,
+              ...(dCancelled ?? {}),
+            },
+          ]}
         />
       </div>
 
       {fetchError ? (
-        <div className="card card-body py-10 text-center">
+        <Card className="py-10 text-center">
           <RefreshCcw className="mx-auto mb-3 h-8 w-8 text-[var(--color-danger)]" />
           <h3 className="text-sm font-bold text-[var(--color-danger)]">{fetchError}</h3>
           <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
@@ -180,19 +141,19 @@ export function AnalyticsClient({
           >
             إعادة المحاولة
           </button>
-        </div>
+        </Card>
       ) : kpi.orders === 0 ? (
-        <div className="card card-body py-10 text-center">
+        <Card className="py-10 text-center">
           <TrendingUp className="mx-auto mb-3 h-8 w-8 text-[var(--color-text-muted)]" />
           <h3 className="text-sm font-bold">ما فيه بيانات في هذه الفترة</h3>
           <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
             أول طلب سيظهر هنا — جرّب فترات أطول أو افتح POS.
           </p>
-        </div>
+        </Card>
       ) : (
         <>
           {/* Revenue by day */}
-          <section className="mb-6 card card-body">
+          <Card className="mb-4">
             <h2 className="mb-4 text-sm font-bold">الإيراد اليومي</h2>
             <div
               className="flex h-36 items-end gap-1.5"
@@ -227,11 +188,11 @@ export function AnalyticsClient({
                 </div>
               ))}
             </div>
-          </section>
+          </Card>
 
-          <div className="mb-6 grid gap-6 lg:grid-cols-2">
+          <div className="mb-4 grid gap-4 lg:grid-cols-2">
             {/* Peak hours */}
-            <section className="card card-body">
+            <Card>
               <h2 className="mb-4 text-sm font-bold">ذروة الساعات</h2>
               <div
                 className="flex h-28 items-end gap-1"
@@ -259,10 +220,10 @@ export function AnalyticsClient({
                 <span>6م</span>
                 <span>11م</span>
               </div>
-            </section>
+            </Card>
 
             {/* Top products */}
-            <section className="card card-body">
+            <Card>
               <h2 className="mb-4 text-sm font-bold">الأكثر مبيعًا</h2>
               {topProducts.length === 0 ? (
                 <p className="text-xs text-[var(--color-text-muted)]">ما فيه منتجات مباعة في هذه الفترة</p>
@@ -286,12 +247,12 @@ export function AnalyticsClient({
                   ))}
                 </ul>
               )}
-            </section>
+            </Card>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-2">
             {/* By type */}
-            <section className="card card-body">
+            <Card>
               <h2 className="mb-4 text-sm font-bold">حسب نوع الطلب</h2>
               <ul className="space-y-2.5">
                 {byType.map((t) => (
@@ -309,7 +270,7 @@ export function AnalyticsClient({
                   </li>
                 ))}
               </ul>
-            </section>
+            </Card>
           </div>
         </>
       )}

@@ -5,10 +5,10 @@ import { Search, ShoppingBag, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { formatMoney, money, currencyDecimals } from '@/lib/utils';
 import type { OrderType, Product, ProductAddon } from '@/lib/types';
-import { Button } from '@/components/shadcn/button';
 import { CartPanel } from '@/components/pos/cart-panel';
 import { ProductCard } from '@/components/pos/product-card';
 import type { PosLine } from '@/components/pos/types';
+import { PageHeader } from '@/components/dashboard/page-header';
 import { toast } from 'sonner';
 
 type ProductWithAddons = Product & { product_addons: ProductAddon[] };
@@ -343,18 +343,17 @@ export function PosClient({
 
   return (
     <div className="page md:max-w-[1440px]">
-      <div className="page-header">
-        <div>
-          <div className="page-kicker"><span>العمليات · Point of Sale</span></div>
-          <h1>نقطة البيع</h1>
-        </div>
-      </div>
+      <PageHeader
+        crumb={['دكان', 'المبيعات', 'نقطة البيع']}
+        title="نقطة البيع"
+        sub="أضف الأصناف للسلة ثم أرسل الطلب إلى المطبخ"
+      />
 
       <div data-pos-shell className="md:grid md:grid-cols-[minmax(0,1fr)_380px] md:items-start md:gap-4">
         {/* ── Left: product grid ─────────────────────────────────────── */}
         <div className="min-w-0">
           {/* Mobile order type — desktop keeps it in the cart header */}
-          <div className="mb-3 flex gap-1 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] p-1 md:hidden" role="tablist" aria-label="نوع الطلب">
+          <div className="mb-3 flex flex-wrap gap-1.5 md:hidden" role="tablist" aria-label="نوع الطلب">
             {ORDER_TYPES.map(([value, label]) => (
               <button
                 key={value}
@@ -363,7 +362,7 @@ export function PosClient({
                 aria-selected={type === value}
                 onClick={() => setType(value)}
                 disabled={submitting}
-                className={`min-h-[44px] flex-1 rounded-[6px] text-sm font-semibold transition-colors ${type === value ? 'bg-[var(--color-surface)] text-[var(--color-text)] shadow-sm' : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'}`}
+                className={`filter-seg min-h-[44px] flex-1 ${type === value ? 'active' : ''}`}
               >
                 {label}
               </button>
@@ -438,7 +437,7 @@ export function PosClient({
               onRemove={(key) => setLines((prev) => prev.filter((x) => x.key !== key))}
               onSubmit={submit}
               submitting={submitting}
-              className="rounded-[10px] border border-[var(--color-border)] shadow-sm"
+              className="overflow-hidden rounded-xl border border-[var(--color-border)]"
             />
           </div>
         </aside>
@@ -452,7 +451,7 @@ export function PosClient({
           disabled={submitting}
           aria-haspopup="dialog"
           aria-label="عرض السلة"
-          className="flex min-h-[48px] w-full items-center justify-between gap-3 rounded-[var(--radius-md)] bg-[var(--color-primary)] px-4 text-white transition-colors active:scale-[0.98] hover:bg-[var(--color-primary-hover)]"
+          className="flex min-h-[48px] w-full items-center justify-between gap-3 rounded-[var(--radius-md)] bg-[var(--color-gold)] px-4 text-white transition-colors active:scale-[0.98] hover:bg-[var(--color-gold-hover)]"
         >
           <span className="flex items-center gap-2 text-sm font-semibold">
             <ShoppingBag className="h-4 w-4" />
@@ -591,12 +590,12 @@ export function PosClient({
                 ))}
             </ul>
             <div className="flex gap-2">
-              <Button className="w-full" onClick={confirmAddons}>
+              <button type="button" className="btn btn-gold btn-block" onClick={confirmAddons}>
                 إضافة للسلة
-              </Button>
-              <Button variant="secondary" onClick={() => setPicker(null)}>
+              </button>
+              <button type="button" className="btn btn-secondary btn-block" onClick={() => setPicker(null)}>
                 إلغاء
-              </Button>
+              </button>
             </div>
           </div>
         </div>

@@ -1,10 +1,21 @@
 import { getCurrentProject } from '@/lib/project';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { Download, Filter, ArrowUpRight, ArrowDownRight, Wallet2, CreditCard } from 'lucide-react';
+import { Download, Filter, ArrowUpRight, ArrowDownRight, Wallet2, Banknote } from 'lucide-react';
 import { formatMoney } from '@/lib/utils';
+import { Btn, Pagination, StatStrip, Tag } from '@/components/dashboard/primitives';
+import { PageHeader } from '@/components/dashboard/page-header';
 
-export default async function TransactionsPage() {
+type TxFilter = 'all' | 'income' | 'expense';
+
+export default async function TransactionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ filter?: string }>;
+}) {
+  const { filter } = await searchParams;
+  const txFilter: TxFilter = filter === 'income' || filter === 'expense' ? filter : 'all';
+
   const ctx = await getCurrentProject();
   if (!ctx) redirect('/onboarding');
 
@@ -42,137 +53,137 @@ export default async function TransactionsPage() {
       .neq('status', 'cancelled'),
   ]);
 
-  const weekIncome = (weekOrders ?? []).reduce((sum, o) => sum + Number(o.total_amount ?? 0), 0);
+  const rows = weekOrders ?? [];
+  const incomeRows = rows.filter((o) => o.status !== 'cancelled');
+  const expenseRows = rows.filter((o) => o.status === 'cancelled');
+  const visible = txFilter === 'income' ? incomeRows : txFilter === 'expense' ? expenseRows : rows;
+
+  const weekIncome = incomeRows.reduce((sum, o) => sum + Number(o.total_amount ?? 0), 0);
   const weekCancelled = (cancelledOrders ?? []).reduce((sum, o) => sum + Number(o.total_amount ?? 0), 0);
   const todayIncome = (todayOrders ?? []).reduce((sum, o) => sum + Number(o.total_amount ?? 0), 0);
 
+  const statusTag: Record<string, { bg: string; fg: string }> = {
+    pending: { bg: '#FBF0DD', fg: '#D98E2C' },
+    preparing: { bg: '#FBF0DD', fg: '#D98E2C' },
+    ready: { bg: '#E5F3EA', fg: '#2F8F5B' },
+    delivered: { bg: '#E5F3EA', fg: '#2F8F5B' },
+    cancelled: { bg: '#FBE9E7', fg: '#C0483D' },
+  };
+  const statusLabel: Record<string, string> = {
+    pending: 'قيد الانتظار',
+    preparing: 'قيد التحضير',
+    ready: 'جاهز',
+    delivered: 'تم التسليم',
+    cancelled: 'ملغي',
+  };
+
   return (
     <div className="page">
-      <div className="page-header">
-        <div>
-          <div className="page-kicker"><span>المالية</span></div>
-          <h1>المعاملات المالية</h1>
-          <p>سجل كل الحركات المالية والمدفوعات</p>
-        </div>
-        <div className="flex gap-2">
-          <button className="btn btn-secondary">
-            <Filter className="h-4 w-4" />
-            فلترة
-          </button>
-          <button className="btn btn-primary">
-            <Download className="h-4 w-4" />
-            تصدير Excel
-          </button>
-        </div>
+      <PageHeader
+        crumb={['دكان', 'المالية', 'المعاملات']}
+        title="المعاملات المالية"
+        sub="سجل كل الحركات المالية والمدفوعات"
+        secondary={<Btn variant="secondary" icon={Filter}>فلترة</Btn>}
+        primary={<Btn variant="gold" icon={Download}>تصدير Excel</Btn>}
+      />
+
+      {/* KPI strip */}
+      <div className="mb-4">
+        <StatStrip
+          cells={[
+            {
+              label: 'إيرادات الأسبوع',
+              value: formatMoney(weekIncome, ctx.project.currency),
+              icon: ArrowUpRight,
+            },
+            {
+              label: 'إيرادات اليوم',
+              value: formatMoney(todayIncome, ctx.project.currency),
+              icon: Wallet2,
+            },
+            {
+              label: 'طلبات ملغاة',
+              value: formatMoney(weekCancelled, ctx.project.currency),
+              icon: ArrowDownRight,
+            },
+            {
+              label: 'صافي الأسبوع',
+              value: formatMoney(weekIncome - weekCancelled, ctx.project.currency),
+              icon: Banknote,
+            },
+          ]}
+        />
       </div>
 
-      {/* KPI Cards */}
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="card card-body">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-[var(--color-text-secondary)]">إيرادات الأسبوع</p>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-success-tint)] text-[var(--color-success)]">
-              <ArrowUpRight className="h-5 w-5" />
-            </div>
-          </div>
-          <p className="mt-3 font-mono text-[28px] font-bold tabular-nums text-[var(--color-success)]" dir="ltr">
-            {formatMoney(weekIncome, ctx.project.currency)}
-          </p>
-          <div className="mt-2 flex items-center gap-2">
-            <div className="flex-1 h-1.5 rounded-full bg-[var(--color-bg)]">
-              <div className="h-1.5 rounded-full bg-[var(--color-success)]" style={{ width: '100%' }} />
-            </div>
-            <span className="text-[11px] font-semibold text-[var(--color-text-secondary)]">{(weekOrders ?? []).length.toLocaleString('ar-BH-u-nu-latn')} معاملة</span>
-          </div>
-        </div>
-
-        <div className="card card-body">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-[var(--color-text-secondary)]">إيرادات اليوم</p>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-primary-tint)] text-[var(--color-primary)]">
-              <Wallet2 className="h-5 w-5" />
-            </div>
-          </div>
-          <p className="mt-3 font-mono text-[28px] font-bold tabular-nums text-[var(--color-text)]" dir="ltr">
-            {formatMoney(todayIncome, ctx.project.currency)}
-          </p>
-          <div className="mt-2 flex items-center gap-2">
-            <div className="flex-1 h-1.5 rounded-full bg-[var(--color-bg)]">
-              <div className="h-1.5 rounded-full bg-[var(--color-primary)]" style={{ width: '100%' }} />
-            </div>
-            <span className="text-[11px] font-semibold text-[var(--color-text-secondary)]">{(todayOrders ?? []).length.toLocaleString('ar-BH-u-nu-latn')} طلب</span>
-          </div>
-        </div>
-
-        <div className="card card-body">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-[var(--color-text-secondary)]">طلبات ملغاة</p>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-danger-tint)] text-[var(--color-danger)]">
-              <ArrowDownRight className="h-5 w-5" />
-            </div>
-          </div>
-          <p className="mt-3 font-mono text-[28px] font-bold tabular-nums text-[var(--color-danger)]" dir="ltr">
-            {formatMoney(weekCancelled, ctx.project.currency)}
-          </p>
-          <div className="mt-2 flex items-center gap-2">
-            <div className="flex-1 h-1.5 rounded-full bg-[var(--color-bg)]">
-              <div className="h-1.5 rounded-full bg-[var(--color-danger)]" style={{ width: `${Math.min(100, (weekCancelled / (weekIncome || 1)) * 100)}%` }} />
-            </div>
-            <span className="text-[11px] font-semibold text-[var(--color-text-secondary)]">{(cancelledOrders ?? []).length.toLocaleString('ar-BH-u-nu-latn')} ملغي</span>
-          </div>
+      {/* Filter — URL-driven segments (server component) */}
+      <div className="filter-bar">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {[
+            { key: 'all' as TxFilter, label: 'الكل', href: '/dashboard/transactions', count: rows.length },
+            { key: 'income' as TxFilter, label: 'إيرادات', href: '/dashboard/transactions?filter=income', count: incomeRows.length },
+            { key: 'expense' as TxFilter, label: 'مصروفات', href: '/dashboard/transactions?filter=expense', count: expenseRows.length },
+          ].map((s) => (
+            <a
+              key={s.key}
+              href={s.href}
+              aria-current={txFilter === s.key ? 'page' : undefined}
+              className={`filter-seg ${txFilter === s.key ? 'active' : ''}`}
+            >
+              {s.label}
+              <span className="count">{s.count.toLocaleString('ar-BH-u-nu-latn')}</span>
+            </a>
+          ))}
         </div>
       </div>
 
       {/* Transactions Table */}
-      <div className="card card-body">
-        <h2 className="mb-4 text-lg font-bold text-[var(--color-text)]">المعاملات الأخيرة</h2>
-        <div className="overflow-x-auto rounded-2xl border border-[var(--color-border)]">
-          <table className="w-full text-right text-sm">
+      <div className="table-card">
+        <div className="table-wrap">
+          <table className="ref-table">
             <thead>
-              <tr className="sticky top-0 z-10 bg-[var(--color-surface)] text-[var(--color-text-secondary)]">
-                <th className="px-5 py-3.5 text-xs font-bold uppercase tracking-wide">التاريخ</th>
-                <th className="px-5 py-3.5 text-xs font-bold uppercase tracking-wide">النوع</th>
-                <th className="px-5 py-3.5 text-xs font-bold uppercase tracking-wide">طريقة الدفع</th>
-                <th className="px-5 py-3.5 text-xs font-bold uppercase tracking-wide">الحالة</th>
-                <th className="px-5 py-3.5 text-xs font-bold uppercase tracking-wide text-left" dir="ltr">المبلغ</th>
+              <tr>
+                <th>التاريخ</th>
+                <th>النوع</th>
+                <th>طريقة الدفع</th>
+                <th>الحالة</th>
+                <th>المبلغ</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[var(--color-border)]">
-              {(weekOrders ?? []).map((o) => {
+            <tbody>
+              {visible.map((o) => {
                 const isCancelled = o.status === 'cancelled';
-                const methodLabel = '—';
+                const orderTypeLabel =
+                  o.type === 'dinein' ? 'تناول في المطعم' : o.type === 'walkin' ? 'محلي' : o.type === 'drivethru' ? 'سيارة ماشية' : 'طلب';
                 return (
-                  <tr key={o.id} className={`group transition-colors hover:bg-[var(--color-primary-tint)] ${isCancelled ? 'opacity-60' : ''}`}>
-                    <td className="px-5 py-4 text-[var(--color-text-secondary)]">
+                  <tr key={o.id} className={isCancelled ? 'opacity-60' : ''}>
+                    <td className="text-[var(--color-text-secondary)]">
                       {new Date(o.created_at).toLocaleDateString('ar-BH-u-nu-latn', { timeZone: TZ, month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </td>
-                    <td className="px-5 py-4 text-[var(--color-text)]">
-                      {o.type === 'dinein' ? 'تناول في المطعم' : o.type === 'walkin' ? 'محلي' : o.type === 'drivethru' ? 'سيارة ماشية' : 'طلب'}
+                    <td>
+                      <div className="flex flex-col items-start gap-1">
+                        <Tag bg={isCancelled ? '#FBE9E7' : '#E5F3EA'} fg={isCancelled ? '#C0483D' : '#2F8F5B'}>
+                          {isCancelled ? 'مصروف' : 'إيراد'}
+                        </Tag>
+                        <span className="text-[11px] text-[var(--color-text-muted)]">{orderTypeLabel}</span>
+                      </div>
                     </td>
-                    <td className="px-5 py-4">
-                      <span className="inline-flex items-center rounded-full bg-[var(--color-bg)] px-2.5 py-1 text-xs font-bold text-[var(--color-text-secondary)]">
-                        {methodLabel}
-                      </span>
+                    <td>
+                      <Tag bg="#EEF0EC" fg="#66716D">—</Tag>
                     </td>
-                    <td className="px-5 py-4">
-                      <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${
-                        isCancelled ? 'bg-[var(--color-danger-tint)] text-[var(--color-danger)]' :
-                        o.status === 'delivered' || o.status === 'ready' ? 'bg-[var(--color-success-tint)] text-[var(--color-success)]' :
-                        'bg-[var(--color-warn-tint)] text-[var(--color-warn)]'
-                      }`}>
-                        <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                        {o.status === 'pending' ? 'قيد الانتظار' : o.status === 'preparing' ? 'قيد التحضير' : o.status === 'ready' ? 'جاهز' : o.status === 'delivered' ? 'تم التسليم' : o.status === 'cancelled' ? 'ملغي' : o.status}
-                      </span>
+                    <td>
+                      <Tag bg={statusTag[o.status]?.bg ?? '#EEF0EC'} fg={statusTag[o.status]?.fg ?? '#66716D'} dot>
+                        {statusLabel[o.status] ?? o.status}
+                      </Tag>
                     </td>
-                    <td className={`px-5 py-4 font-mono text-base font-bold ${isCancelled ? 'text-[var(--color-danger)]' : 'text-[var(--color-success)]'}`} dir="ltr">
+                    <td className={`font-mono text-base font-bold tabular-nums ${isCancelled ? 'text-[var(--color-danger)]' : 'text-[var(--color-success)]'}`} dir="ltr">
                       {isCancelled ? '-' : '+'}{formatMoney(Number(o.total_amount ?? 0), ctx.project.currency)}
                     </td>
                   </tr>
                 );
               })}
-              {(weekOrders ?? []).length === 0 && (
+              {visible.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-5 py-12 text-center text-sm text-[var(--color-text-muted)]">
+                  <td colSpan={5} className="py-12 text-center text-sm text-[var(--color-text-muted)]">
                     لا توجد معاملات لهذا الأسبوع
                   </td>
                 </tr>
@@ -180,6 +191,7 @@ export default async function TransactionsPage() {
             </tbody>
           </table>
         </div>
+        <Pagination label={`عرض ١–${visible.length.toLocaleString('ar-BH-u-nu-latn')} من ${rows.length.toLocaleString('ar-BH-u-nu-latn')}`} />
       </div>
     </div>
   );

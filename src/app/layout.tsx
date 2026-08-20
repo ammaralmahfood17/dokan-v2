@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Cairo, Inter, Playfair_Display } from 'next/font/google';
+import { IBM_Plex_Sans_Arabic, Noto_Kufi_Arabic } from 'next/font/google';
 import { Toaster } from 'sonner';
 import { ServiceWorkerRegister } from '@/components/service-worker-register';
 import { WebVitals } from '@/components/web-vitals';
@@ -8,27 +8,20 @@ import { InstallPrompt } from '@/components/ui/install-prompt';
 import './globals.css';
 
 // "دكان" — Editorial identity v2.0
-// Cairo: الواجهة العربية + الأرقام. Inter: latin/numbers. Playfair:
-// display serif for Latin headings. Arabic headings render in Cairo bold
-// (no universal Arabic serif) — Latin titles get the classic serif voice.
-const cairo = Cairo({
+// IBM Plex Sans Arabic: الواجهة العربية + الأرقام. Noto Kufi Arabic:
+// display kufi for headings and brand. Arabic-first pairing from the
+// reference dashboard design.
+const ibmPlexSansArabic = IBM_Plex_Sans_Arabic({
+  subsets: ['arabic', 'latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-ibm-plex-sans-arabic',
+  display: 'swap',
+});
+
+const notoKufi = Noto_Kufi_Arabic({
   subsets: ['arabic', 'latin'],
   weight: ['400', '500', '600', '700', '800'],
-  variable: '--font-cairo',
-  display: 'swap',
-});
-
-const inter = Inter({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-inter',
-  display: 'swap',
-});
-
-const playfair = Playfair_Display({
-  subsets: ['latin'],
-  weight: ['500', '600', '700'],
-  variable: '--font-playfair',
+  variable: '--font-noto-kufi',
   display: 'swap',
 });
 
@@ -85,9 +78,9 @@ export const viewport: Viewport = {
   initialScale: 1,
   // FIX-R-001: تفعيل safe areas على iPhone مع notch (env(safe-area-inset-*))
   viewportFit: 'cover',
-  // Aligned with manifest.ts theme_color (#4F46E5) — browser chrome and
+  // Aligned with manifest.ts theme_color (#0F5E56) — browser chrome and
   // install prompt must not disagree.
-  themeColor: '#4F46E5',
+  themeColor: '#0F5E56',
 };
 
 export default function RootLayout({
@@ -100,7 +93,7 @@ export default function RootLayout({
       lang="ar"
       dir="rtl"
       suppressHydrationWarning
-      className={`${cairo.variable} ${inter.variable} ${playfair.variable}`}
+      className={`${ibmPlexSansArabic.variable} ${notoKufi.variable}`}
     >
       <head>
         {/* Supabase: early connect */}

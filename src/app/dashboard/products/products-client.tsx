@@ -2,7 +2,7 @@
 
 import { FormEvent, useCallback, useDeferredValue, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
-import { Plus, Pencil, Trash2, X, ImageIcon, Check, Search } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, ImageIcon, Check, Search, ChevronLeft } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { formatMoney, money, currencyDecimals } from '@/lib/utils';
 import { Button } from '@/components/shadcn/button';
@@ -354,9 +354,15 @@ export function ProductsClient({
       <PullToRefresh onRefresh={refresh}>
       <div className="page-header">
         <div>
-          <div className="page-kicker"><span>العمليات · Catalog</span></div>
-          <h1>المنتجات</h1>
-          <p>إدارة التصنيفات والمنتجات والإضافات</p>
+          <div className="crumb">
+            <span>دكان</span>
+            <ChevronLeft size={12} style={{ color: 'var(--color-text-muted)' }} />
+            <span>المبيعات</span>
+            <ChevronLeft size={12} style={{ color: 'var(--color-text-muted)' }} />
+            <span>القائمة</span>
+          </div>
+          <h1>القائمة</h1>
+          <p>{sortedProducts.length} صنف عبر {categories.length} فئات</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {bulkMode ? (

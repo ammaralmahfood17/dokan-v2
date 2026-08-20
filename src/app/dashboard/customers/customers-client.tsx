@@ -22,6 +22,7 @@ import { Modal } from '@/components/ui/modal';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { PageHeader } from '@/components/dashboard/page-header';
+import { Btn, Card, Pagination, Tag } from '@/components/dashboard/primitives';
 import { validatePhone } from '@/lib/phone-validation';
 import type { Json } from '@/lib/database.types';
 import {
@@ -288,45 +289,31 @@ export function CustomersClient({
     { value: 'adjust', label: 'تعديل مباشر' },
   ];
 
+  const custTab = `العملاء (${customers.length})`;
+  const campTab = `الحملات (${campaigns.length})`;
+
   return (
     <div className="page">
       <PullToRefresh onRefresh={refresh}>
         <PageHeader
-          kicker="الإدارة · CRM"
+          crumb={['دكان', 'الفريق', 'العملاء']}
           title="العملاء"
-          description="ملفات العملاء، نقاط الولاء، والحملات التسويقية"
-          actions={
+          sub="ملفات العملاء، نقاط الولاء، والحملات التسويقية"
+          tabs={[custTab, campTab]}
+          activeTab={tab === 'customers' ? custTab : campTab}
+          onTab={(t) => setTab(t === custTab ? 'customers' : 'campaigns')}
+          primary={
             tab === 'customers' ? (
-              <Button size="sm" onClick={() => setShowAdd(true)}>
-                <Plus className="h-4 w-4" />
+              <Btn variant="gold" icon={Plus} onClick={() => setShowAdd(true)}>
                 عميل جديد
-              </Button>
+              </Btn>
             ) : (
-              <Button size="sm" onClick={() => setShowCampaign(true)}>
-                <Plus className="h-4 w-4" />
+              <Btn variant="gold" icon={Plus} onClick={() => setShowCampaign(true)}>
                 حملة جديدة
-              </Button>
+              </Btn>
             )
           }
         />
-
-        {/* Tabs */}
-        <div className="tabs mb-5">
-          <button
-            type="button"
-            className={`tab min-h-11 ${tab === 'customers' ? 'active' : ''}`}
-            onClick={() => setTab('customers')}
-          >
-            العملاء ({customers.length})
-          </button>
-          <button
-            type="button"
-            className={`tab min-h-11 ${tab === 'campaigns' ? 'active' : ''}`}
-            onClick={() => setTab('campaigns')}
-          >
-            الحملات ({campaigns.length})
-          </button>
-        </div>
 
         {tab === 'customers' && (
           <>
@@ -373,8 +360,9 @@ export function CustomersClient({
                 />
               </div>
             ) : (
-              <div className="overflow-x-auto border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
-                <table className="data-table min-w-[760px]">
+              <div className="table-card">
+                <div className="table-wrap">
+                <table className="ref-table min-w-[760px]">
                   <thead>
                     <tr>
                       <th>العميل</th>
@@ -391,7 +379,7 @@ export function CustomersClient({
                       <tr key={c.id}>
                         <td>
                           <div className="flex items-center gap-2.5">
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary-tint)] text-xs font-bold text-[var(--color-primary)]">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-xs font-bold text-white">
                               {(c.name || c.phone).slice(0, 1)}
                             </div>
                             <div className="min-w-0">
@@ -432,11 +420,9 @@ export function CustomersClient({
                           )}
                         </td>
                         <td>
-                          <span
-                            className={`badge ${c.is_opted_in ? 'badge-ready' : 'badge-cancelled'}`}
-                          >
+                          <Tag bg={c.is_opted_in ? '#E5F3EA' : '#EEF0EC'} fg={c.is_opted_in ? '#2F8F5B' : '#66716D'} dot>
                             {c.is_opted_in ? 'مشترك' : 'غير مشترك'}
-                          </span>
+                          </Tag>
                         </td>
                         <td>
                           <div className="flex items-center justify-end gap-1">
@@ -475,6 +461,8 @@ export function CustomersClient({
                     ))}
                   </tbody>
                 </table>
+                </div>
+                <Pagination label={`عرض ١–${filtered.length.toLocaleString('ar-BH-u-nu-latn')} من ${customers.length.toLocaleString('ar-BH-u-nu-latn')}`} />
               </div>
             )}
           </>
@@ -500,28 +488,28 @@ export function CustomersClient({
             {campaigns.map((cp) => {
               const audience = filterFromCampaign(cp);
               return (
-                <div key={cp.id} className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-sm">
+                <Card key={cp.id}>
                   <div className="mb-3 flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <h3 className="truncate text-sm font-semibold">{cp.name}</h3>
+                      <h3 className="truncate text-sm font-bold">{cp.name}</h3>
                       <p className="mt-0.5 text-[11.5px] text-[var(--color-text-muted)]">
                         {CAMPAIGN_CHANNEL_LABELS[cp.channel]} · أُرسلت إلى {cp.sent_count}
                       </p>
                     </div>
-                    <span className={`badge ${cp.status === 'sent' ? 'badge-ready' : cp.status === 'cancelled' ? 'badge-cancelled' : 'badge-pending'}`}>
+                    <Tag bg={cp.status === 'sent' ? '#E5F3EA' : cp.status === 'cancelled' ? '#FBE9E7' : '#FBF0DD'} fg={cp.status === 'sent' ? '#2F8F5B' : cp.status === 'cancelled' ? '#C0483D' : '#D98E2C'}>
                       {CAMPAIGN_STATUS_LABELS[cp.status]}
-                    </span>
+                    </Tag>
                   </div>
                   <p className="mb-3 line-clamp-3 text-[12.5px] leading-relaxed text-[var(--color-text-secondary)]">
                     {cp.message_ar}
                   </p>
                   <div className="mb-3 flex flex-wrap gap-1.5">
                     {describeAudience(audience).map((chip) => (
-                      <span key={chip} className="badge badge-neutral">{chip}</span>
+                      <Tag key={chip} bg="#EEF0EC" fg="#66716D">{chip}</Tag>
                     ))}
-                    <span className="badge badge-neutral">
+                    <Tag bg="#EEF0EC" fg="#66716D">
                       ~{audienceCount(audience)} مستلم تقديري
-                    </span>
+                    </Tag>
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-[var(--color-text-muted)]">
                     <span>
@@ -549,7 +537,7 @@ export function CustomersClient({
                       )}
                     </div>
                   </div>
-                </div>
+                </Card>
               );
             })}
           </div>

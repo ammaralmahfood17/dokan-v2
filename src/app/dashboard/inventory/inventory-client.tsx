@@ -9,6 +9,7 @@ import { Modal } from '@/components/ui/modal';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { PageHeader } from '@/components/dashboard/page-header';
+import { Btn, Card, Tag } from '@/components/dashboard/primitives';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import {
@@ -163,13 +164,42 @@ export function InventoryClient({
     { value: 'expenses', label: 'المصروفات', icon: Wallet },
   ];
 
+  const tabLabels: Record<Tab, string> = {
+    inventory: `المخزون (${items.length})`,
+    suppliers: `الموردون (${suppliers.length})`,
+    expenses: 'المصروفات',
+  };
+  const tabValues = tabs.map((t) => tabLabels[t.value]);
+  const handleTab = (label: string) => {
+    const match = tabs.find((t) => tabLabels[t.value] === label);
+    if (match) setTab(match.value);
+  };
+
   return (
     <div className="page">
       <PullToRefresh onRefresh={refresh}>
         <PageHeader
-          kicker="الإدارة · ERP / Back-Office"
+          crumb={['دكان', 'الفريق', 'المخزون والموردون']}
           title="المخزون والموردون"
-          description="إدارة الأصناف، حدود التنبيه، الموردين، وتسجيل المصروفات"
+          sub="إدارة الأصناف، حدود التنبيه، الموردين، وتسجيل المصروفات"
+          tabs={tabValues}
+          activeTab={tabLabels[tab]}
+          onTab={handleTab}
+          primary={
+            tab === 'inventory' ? (
+              <Btn variant="gold" icon={Plus} onClick={() => setShowItem(true)}>
+                صنف جديد
+              </Btn>
+            ) : tab === 'suppliers' ? (
+              <Btn variant="gold" icon={Plus} onClick={() => setShowSupplier(true)}>
+                مورد جديد
+              </Btn>
+            ) : (
+              <Btn variant="gold" icon={Plus} onClick={() => setShowExpense(true)}>
+                تسجيل مصروف
+              </Btn>
+            )
+          }
         />
 
         {/* Low stock alert */}
@@ -188,30 +218,8 @@ export function InventoryClient({
           </div>
         )}
 
-        {/* Tabs */}
-        <div className="tabs mb-5">
-          {tabs.map((t) => (
-            <button
-              key={t.value}
-              type="button"
-              className={`tab flex min-h-11 items-center gap-1.5 ${tab === t.value ? 'active' : ''}`}
-              onClick={() => setTab(t.value)}
-            >
-              <t.icon className="h-3.5 w-3.5" />
-              {t.label}
-              {typeof t.count === 'number' && ` (${t.count})`}
-            </button>
-          ))}
-        </div>
-
         {tab === 'inventory' && (
           <>
-            <div className="mb-4 flex justify-end">
-              <Button size="sm" onClick={() => setShowItem(true)}>
-                <Plus className="h-4 w-4" />
-                صنف جديد
-              </Button>
-            </div>
             {items.length === 0 ? (
               <div className="border border-[var(--color-border)] bg-[var(--color-surface)]">
                 <EmptyState
@@ -227,8 +235,9 @@ export function InventoryClient({
                 />
               </div>
             ) : (
-              <div className="overflow-x-auto border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
-                <table className="data-table min-w-[720px]">
+              <div className="table-card">
+                <div className="table-wrap">
+                <table className="ref-table min-w-[720px]">
                   <thead>
                     <tr>
                       <th>الصنف</th>
@@ -255,14 +264,11 @@ export function InventoryClient({
                           </td>
                           <td className="text-[12px] text-[var(--color-text-secondary)]">{i.unit}</td>
                           <td>
-                            <span
-                              className={`inline-flex items-center gap-1.5 font-mono text-[12.5px] font-bold tabular-nums ${
-                                low ? 'text-[var(--color-danger)]' : 'text-[var(--color-text)]'
-                              }`}
-                            >
-                              {low && <AlertTriangle className="h-3 w-3" />}
-                              {i.qty_on_hand}
-                            </span>
+                            {low ? (
+                              <Tag bg="#FBE9E7" fg="#C0483D" dot>{i.qty_on_hand} منخفض</Tag>
+                            ) : (
+                              <span className="font-bold tabular-nums">{i.qty_on_hand}</span>
+                            )}
                           </td>
                           <td className="font-mono text-[12px] tabular-nums text-[var(--color-text-secondary)]">
                             {i.reorder_level}
@@ -290,6 +296,7 @@ export function InventoryClient({
                     })}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
           </>
@@ -297,12 +304,6 @@ export function InventoryClient({
 
         {tab === 'suppliers' && (
           <>
-            <div className="mb-4 flex justify-end">
-              <Button size="sm" onClick={() => setShowSupplier(true)}>
-                <Plus className="h-4 w-4" />
-                مورد جديد
-              </Button>
-            </div>
             {suppliers.length === 0 ? (
               <div className="border border-[var(--color-border)] bg-[var(--color-surface)]">
                 <EmptyState
@@ -318,8 +319,9 @@ export function InventoryClient({
                 />
               </div>
             ) : (
-              <div className="overflow-x-auto border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
-                <table className="data-table min-w-[680px]">
+              <div className="table-card">
+                <div className="table-wrap">
+                <table className="ref-table min-w-[680px]">
                   <thead>
                     <tr>
                       <th>المورد</th>
@@ -361,6 +363,7 @@ export function InventoryClient({
                     })}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
           </>
@@ -369,16 +372,17 @@ export function InventoryClient({
         {tab === 'expenses' && (
           <>
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <div className="border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-3 shadow-sm">
-                <p className="text-[11px] font-semibold text-[var(--color-text-secondary)]">إجمالي المصروفات (آخر 100)</p>
-                <p className="font-mono text-lg font-bold tabular-nums" dir="ltr">
-                  {formatMoney(expenseTotal, currency)}
-                </p>
-              </div>
-              <Button size="sm" onClick={() => setShowExpense(true)}>
-                <Plus className="h-4 w-4" />
-                تسجيل مصروف
-              </Button>
+              <Card className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-danger-tint)] text-[var(--color-danger)]">
+                  <Wallet className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold text-[var(--color-text-secondary)]">إجمالي المصروفات (آخر 100)</p>
+                  <p className="font-mono text-lg font-bold tabular-nums" dir="ltr">
+                    {formatMoney(expenseTotal, currency)}
+                  </p>
+                </div>
+              </Card>
             </div>
             {expenses.length === 0 ? (
               <div className="border border-[var(--color-border)] bg-[var(--color-surface)]">
@@ -395,8 +399,9 @@ export function InventoryClient({
                 />
               </div>
             ) : (
-              <div className="overflow-x-auto border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
-                <table className="data-table min-w-[680px]">
+              <div className="table-card">
+                <div className="table-wrap">
+                <table className="ref-table min-w-[680px]">
                   <thead>
                     <tr>
                       <th>التاريخ</th>
@@ -415,9 +420,7 @@ export function InventoryClient({
                           })}
                         </td>
                         <td>
-                          <span className="badge bg-[var(--color-surface-sunken)] text-[var(--color-text-secondary)]">
-                            {x.category}
-                          </span>
+                          <Tag bg="#EEF0EC" fg="#66716D">{x.category}</Tag>
                         </td>
                         <td className="max-w-[260px] truncate text-[12.5px] text-[var(--color-text-secondary)]">
                           {x.description || '—'}
@@ -441,6 +444,7 @@ export function InventoryClient({
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
           </>

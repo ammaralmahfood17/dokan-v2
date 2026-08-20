@@ -35,14 +35,14 @@
   --color-primary-tint-strong: #C8E0DA;
 
   /* Neutral — warm parchment */
-  --color-bg: #F6F4EF;
+  --color-bg: #F3F2ED;
   --color-surface: #FFFFFF;
   --color-surface-sunken: #F0EEE8;
-  --color-border: #E7E3D8;
-  --color-border-strong: #D6D2C7;
-  --color-text: #1B211F;
-  --color-text-secondary: #5B6663;
-  --color-text-muted: #78716C;
+  --color-border: #E4E1D6;
+  --color-border-strong: #D3CFC0;
+  --color-text: #181D1B;
+  --color-text-secondary: #66716D;
+  --color-text-muted: #94A19C;
   --color-text-disabled: #D6D3D1;
 
   /* Semantic — warm, desaturated */
@@ -55,23 +55,21 @@
   --color-danger: #C0483D;
   --color-danger-tint: #FBE9E7;
   --color-danger-hover: #A33D33;
-  --color-info: #1E7A8C;
-  --color-info-tint: #E4F3F6;
+  --color-info: #3B6FA0;
+  --color-info-tint: #E6EEF6;
 
   /* Accent — Gold for CTAs and highlights */
   --color-gold: #C9973B;
   --color-gold-tint: #F6ECD8;
   --color-gold-hover: #B8872F;
 
-  /* Typography — Editorial pairing: Playfair (Latin display) → Cairo (Arabic
-     fallback + primary body). Inter first for Latin/numbers, Cairo for Arabic.
-     Serif display on headings gives the classic SaaS editorial voice while
-     Cairo bold keeps Arabic headings clean and readable (no Arabic serif is
-     universally available). */
-  --font-sans: var(--font-inter), "Inter", var(--font-cairo), "Cairo", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: var(--font-playfair), "Playfair Display", var(--font-cairo), "Cairo", ui-serif, Georgia, serif;
-  --font-display: var(--font-serif);
-  --font-mono: var(--font-inter), var(--font-cairo), ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* Typography — IBM Plex Sans Arabic body + Noto Kufi Arabic display
+     (the reference "دكان" design). Kufi Arabic for headings, Plex for
+     UI/body — both read cleanly in Arabic at any weight. */
+  --font-sans: var(--font-ibm-plex-sans-arabic), "IBM Plex Sans Arabic", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-noto-kufi), "Noto Kufi Arabic", var(--font-ibm-plex-sans-arabic), "IBM Plex Sans Arabic", ui-serif, Georgia, serif;
+  --font-display: var(--font-noto-kufi), "Noto Kufi Arabic", var(--font-ibm-plex-sans-arabic), "IBM Plex Sans Arabic", sans-serif;
+  --font-mono: var(--font-ibm-plex-sans-arabic), ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* Radius — small by intent; full-round reads "consumer" */
   --radius-xs: 4px;
@@ -108,25 +106,25 @@
    No .dark block: v2 is light-only by design (DESIGN_SYSTEM.md §1).
    ========================================================================== */
 :root {
-  --background: #FAFAF9;
-  --foreground: #0F172A;
+  --background: #F3F2ED;
+  --foreground: #181D1B;
   --card: #FFFFFF;
-  --card-foreground: #0F172A;
+  --card-foreground: #181D1B;
   --popover: #FFFFFF;
-  --popover-foreground: #0F172A;
-  --primary: #4F46E5;
+  --popover-foreground: #181D1B;
+  --primary: #0F5E56;
   --primary-foreground: #FFFFFF;
-  --secondary: #F5F5F4;
-  --secondary-foreground: #0F172A;
-  --muted: #F5F5F4;
-  --muted-foreground: #78716C;
-  --accent: #EEF2FF;
-  --accent-foreground: #4338CA;
-  --destructive: #DC2626;
+  --secondary: #F5F4F0;
+  --secondary-foreground: #181D1B;
+  --muted: #F5F4F0;
+  --muted-foreground: #94A19C;
+  --accent: #E4EFEC;
+  --accent-foreground: #0F5E56;
+  --destructive: #C0483D;
   --destructive-foreground: #FFFFFF;
-  --border: #E7E5E4;
-  --input: #D6D3D1;
-  --ring: #4F46E5;
+  --border: #E4E1D6;
+  --input: #D3CFC0;
+  --ring: #0F5E56;
   --radius: 10px; /* v2 radius-lg; per-size tokens already defined above */
 }
 
@@ -201,12 +199,15 @@
     font-weight: 700;
     font-family: var(--font-display);
   }
-  h1 { font-size: 1.75rem; }
+  h1 { font-size: 1.625rem; }
   h2 { font-size: 1.25rem; }
   h3 { font-size: 1.0625rem; }
   h4 { font-size: 0.9375rem; }
   p { margin: 0; }
   a { color: inherit; text-decoration: none; }
+
+  /* Kufi display weight for brand + headings (reference design) */
+  .kufi { font-family: var(--font-noto-kufi), "Noto Kufi Arabic", sans-serif; font-weight: 800; }
 }
 
 /* ==========================================================================
@@ -215,8 +216,8 @@
    ========================================================================== */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 0.375rem;
-  border-radius: var(--radius-sm); font-weight: 600; font-size: 0.875rem;
-  height: 36px; padding: 0 1rem; border: 1px solid transparent; cursor: pointer;
+  border-radius: var(--radius-lg); font-weight: 600; font-size: 0.875rem;
+  height: 38px; padding: 0 1rem; border: 1px solid transparent; cursor: pointer;
   white-space: nowrap;
   transition: background 0.1s linear, border-color 0.1s linear, color 0.1s linear;
 }
@@ -230,6 +231,17 @@
 }
 .btn-primary:active:not(:disabled) {
   background: var(--color-primary-active);
+}
+
+/* Gold CTA (reference design) */
+.btn-gold {
+  background: var(--color-gold); color: #fff;
+}
+.btn-gold:hover:not(:disabled) {
+  background: var(--color-gold-hover);
+}
+.btn-gold:active:not(:disabled) {
+  background: var(--color-gold-hover);
 }
 
 .btn-secondary {
@@ -255,14 +267,14 @@
 
 .btn-danger {
   background: var(--color-danger-tint); color: var(--color-danger);
-  border-color: rgba(220, 38, 38, 0.25);
+  border-color: rgba(192, 72, 61, 0.25);
 }
 .btn-danger:hover:not(:disabled) {
   background: color-mix(in srgb, var(--color-danger-tint) 85%, var(--color-danger));
 }
 
 .btn-sm { height: 32px; padding: 0 0.75rem; font-size: 0.8125rem; }
-.btn-lg { height: 44px; padding: 0 1.25rem; font-size: 0.9375rem; border-radius: var(--radius-md); }
+.btn-lg { height: 44px; padding: 0 1.25rem; font-size: 0.9375rem; border-radius: var(--radius-lg); }
 .btn-block { width: 100%; }
 
 /* Touch targets — mobile bump keeps ≥44px even for sm (AGENTS.md) */
@@ -313,13 +325,13 @@
 .card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   transition: border-color 0.15s ease;
 }
 .card:hover { border-color: var(--color-border-strong); }
-.card-body { padding: 1.75rem; }
+.card-body { padding: 1.125rem; }
 .card-header {
-  padding: 1.25rem 1.75rem;
+  padding: 1.125rem 1.125rem;
   border-bottom: 1px solid var(--color-border);
   display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
 }
@@ -328,8 +340,8 @@
 .stat-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: 1.5rem;
+  border-radius: var(--radius-xl);
+  padding: 1.125rem;
   transition: border-color 0.15s ease;
 }
 .stat-card:hover { border-color: var(--color-border-strong); }
@@ -352,6 +364,14 @@
 .badge-delivered { background: var(--color-surface-sunken); color: var(--color-text-muted); }
 .badge-cancelled { background: var(--color-danger-tint); color: var(--color-danger); }
 
+/* Tag — small tint chip (reference design) */
+.tag {
+  display: inline-flex; align-items: center; gap: 0.375rem;
+  border-radius: 6px; padding: 0.25rem 0.5rem;
+  font-size: 0.75rem; font-weight: 600; white-space: nowrap;
+}
+.tag-dot { width: 6px; height: 6px; border-radius: 999px; background: currentColor; }
+
 /* ==========================================================================
    Section title — tracking instead of uppercase (Arabic-safe, spec §6.6)
    ========================================================================== */
@@ -365,18 +385,18 @@
    Page structure
    ========================================================================== */
 .page {
-  max-width: 1200px; margin: 0 auto;
-  padding: 2rem 2rem 5rem;
+  max-width: 1500px; margin: 0 auto;
+  padding: 1.5rem 2rem 5rem;
 }
 .page-header {
   display: flex; flex-wrap: wrap; align-items: flex-end;
-  justify-content: space-between; gap: 1rem; margin-bottom: 2rem;
+  justify-content: space-between; gap: 1rem; margin-bottom: 1.25rem;
 }
 .page-header h1 {
-  font-size: 1.625rem; font-weight: 600;
-  letter-spacing: 0.005em; line-height: 1.15;
+  font-size: 1.375rem; font-weight: 700;
+  letter-spacing: 0.005em; line-height: 1.25;
 }
-.page-header p { margin: 0.5rem 0 0; color: var(--color-text-secondary); font-size: 0.8125rem; max-width: 56ch; }
+.page-header p { margin: 0.25rem 0 0; color: var(--color-text-secondary); font-size: 0.875rem; max-width: 56ch; }
 
 /* Editorial kicker — small tracking label above the serif page title */
 .page-kicker {
@@ -436,7 +456,7 @@
 @layer base {
   *:focus-visible {
     outline: 2px solid transparent;
-    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.25);
+    box-shadow: 0 0 0 3px rgba(15, 94, 86, 0.25);
     border-radius: 4px;
   }
 }
@@ -631,15 +651,15 @@
 /* ==========================================================================
    Landing page (keep existing)
    ========================================================================== */
-.landing-shell { background: radial-gradient(circle at 85% 7%, rgba(99, 102, 241, 0.16), transparent 25rem), radial-gradient(circle at 12% 25%, rgba(20, 184, 166, 0.10), transparent 20rem), var(--color-bg); }
+.landing-shell { background: radial-gradient(circle at 85% 7%, rgba(15, 94, 86, 0.14), transparent 25rem), radial-gradient(circle at 12% 25%, rgba(15, 94, 86, 0.08), transparent 20rem), var(--color-bg); }
 .landing-nav { background: color-mix(in srgb, var(--color-surface) 88%, transparent); backdrop-filter: blur(14px); }
 .landing-hero { position: relative; overflow: hidden; }
-.landing-eyebrow { display: inline-flex; align-items: center; gap: 0.4rem; border: 1px solid #C7D2FE; border-radius: 999px; background: rgba(238, 242, 255, 0.72); color: var(--color-primary); padding: 0.35rem 0.7rem; font-size: 0.75rem; font-weight: 700; }
+.landing-eyebrow { display: inline-flex; align-items: center; gap: 0.4rem; border: 1px solid #C8E0DA; border-radius: 999px; background: rgba(228, 239, 236, 0.72); color: var(--color-primary); padding: 0.35rem 0.7rem; font-size: 0.75rem; font-weight: 700; }
 .landing-title { font-size: clamp(2.3rem, 6vw, 4.5rem); line-height: 1.15; }
-.landing-title-accent { background: linear-gradient(120deg, var(--color-primary), #7C3AED 55%, #0F766E); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.landing-title-accent { background: linear-gradient(120deg, var(--color-primary), #0F5E56 55%, #2F8F5B); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .landing-feature { position: relative; overflow: hidden; padding: 1.4rem; }
-.landing-feature:hover { border-color: #C7D2FE; box-shadow: 0 16px 30px rgba(15, 23, 42, 0.08); transform: translateY(-3px); }
-.landing-stat { border: 1px solid rgba(199, 210, 254, 0.72); border-radius: 1rem; background: rgba(255, 255, 255, 0.74); padding: 0.9rem 1.2rem; box-shadow: 0 8px 24px rgba(67, 56, 202, 0.06); }
+.landing-feature:hover { border-color: #C8E0DA; box-shadow: 0 16px 30px rgba(15, 23, 42, 0.08); transform: translateY(-3px); }
+.landing-stat { border: 1px solid rgba(200, 224, 218, 0.72); border-radius: 1rem; background: rgba(255, 255, 255, 0.74); padding: 0.9rem 1.2rem; box-shadow: 0 8px 24px rgba(15, 94, 86, 0.06); }
 
 /* ==========================================================================
    Tabs
@@ -660,6 +680,147 @@
   color: var(--color-primary);
   border-bottom-color: var(--color-primary);
 }
+
+/* ==========================================================================
+   Page tabs — reference design (underline, not full-width border)
+   ========================================================================== */
+.page-tabs {
+  display: flex; align-items: center; gap: 0.25rem;
+  border-bottom: 1px solid var(--color-border); margin-top: 1rem;
+}
+.page-tab {
+  position: relative; padding: 0.625rem 0.875rem;
+  font-size: 0.875rem; font-weight: 600; color: var(--color-text-secondary);
+  transition: color 0.15s; cursor: pointer;
+}
+.page-tab:hover { color: var(--color-text); }
+.page-tab.active { color: var(--color-text); }
+.page-tab.active::after {
+  content: ''; position: absolute; inset-inline: 0.875rem; bottom: -1px;
+  height: 2px; border-radius: 2px; background: var(--color-primary);
+}
+
+/* ==========================================================================
+   Breadcrumb (reference design)
+   ========================================================================== */
+.crumb {
+  display: flex; align-items: center; gap: 0.25rem;
+  font-size: 0.75rem; color: var(--color-text-muted); margin-bottom: 0.375rem;
+}
+.crumb span { font-weight: 600; color: var(--color-text-secondary); }
+
+/* ==========================================================================
+   Filter bar — pill segments (reference design)
+   ========================================================================== */
+.filter-bar {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 0.5rem; margin-bottom: 0.75rem;
+}
+.filter-seg {
+  display: inline-flex; align-items: center; gap: 0.25rem;
+  border-radius: 999px; padding: 0.375rem 0.75rem;
+  font-size: 0.75rem; font-weight: 600; cursor: pointer;
+  background: var(--color-surface); color: var(--color-text-secondary);
+  border: 1px solid var(--color-border); transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.filter-seg:hover { border-color: var(--color-border-strong); }
+.filter-seg.active {
+  background: var(--color-primary-hover); color: #fff; border-color: var(--color-primary-hover);
+}
+.filter-seg .count {
+  border-radius: 999px; padding: 0.125rem 0.375rem; font-size: 0.625rem;
+  background: var(--color-bg); color: var(--color-text-muted); font-weight: 700;
+}
+.filter-seg.active .count { background: rgba(255,255,255,.2); color: #fff; }
+
+/* ==========================================================================
+   Checkbox (reference design)
+   ========================================================================== */
+.cbox {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; border-radius: 4px; cursor: pointer;
+  border: 1.5px solid var(--color-border-strong);
+  background: transparent; transition: background 0.12s, border-color 0.12s; padding: 0;
+}
+.cbox.checked { background: var(--color-primary); border-color: var(--color-primary); }
+
+/* ==========================================================================
+   Stat strip — single card, divided cells (reference design)
+   ========================================================================== */
+.stat-strip {
+  display: grid; grid-template-columns: repeat(2, 1fr);
+  border-radius: var(--radius-xl); border: 1px solid var(--color-border);
+  background: var(--color-surface); overflow: hidden;
+}
+@media (min-width: 1024px) {
+  .stat-strip { grid-template-columns: repeat(4, 1fr); }
+}
+.stat-strip .stat-cell {
+  padding: 1rem 1.125rem;
+}
+.stat-strip .stat-cell + .stat-cell { border-inline-start: 1px solid var(--color-border); }
+@media (max-width: 1023px) {
+  .stat-strip .stat-cell:nth-child(odd) { border-inline-start: none; }
+  .stat-strip .stat-cell:nth-child(n+3) { border-top: 1px solid var(--color-border); }
+}
+.stat-cell-label {
+  display: flex; align-items: center; gap: 0.375rem;
+  font-size: 0.75rem; font-weight: 500; color: var(--color-text-secondary);
+}
+.stat-cell-value {
+  display: flex; align-items: baseline; gap: 0.375rem; margin-top: 0.375rem;
+  font-size: 1.375rem; font-weight: 700; color: var(--color-text);
+}
+.stat-cell-delta { display: inline-flex; align-items: center; gap: 0.125rem; font-size: 0.75rem; font-weight: 700; }
+.stat-cell-delta.up { color: var(--color-success); }
+.stat-cell-delta.down { color: var(--color-danger); }
+
+/* ==========================================================================
+   Data table — shared primitives for reference-style tables
+   ========================================================================== */
+.table-card {
+  border-radius: var(--radius-xl); border: 1px solid var(--color-border);
+  background: var(--color-surface); overflow: hidden;
+}
+.table-wrap { overflow-x: auto; }
+.ref-table { width: 100%; text-align: start; font-size: 0.875rem; border-collapse: collapse; }
+.ref-table thead th {
+  padding: 0.75rem 1.125rem; font-size: 0.75rem; font-weight: 600;
+  color: var(--color-text-muted); background: var(--color-surface); border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+.ref-table tbody td {
+  padding: 0.75rem 1.125rem; border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+.ref-table tbody tr:last-child td { border-bottom: none; }
+.ref-table tbody tr { transition: background 0.1s; }
+.ref-table tbody tr:hover { background: rgba(0,0,0,.015); }
+
+/* Table pagination footer (reference design) */
+.table-pager {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.75rem 1.25rem; border-top: 1px solid var(--color-border);
+  font-size: 0.75rem; color: var(--color-text-muted);
+}
+.pager-btns { display: flex; align-items: center; gap: 0.25rem; }
+.pager-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2rem; height: 2rem; border-radius: 8px; border: 1px solid var(--color-border);
+  color: var(--color-text-muted); font-size: 0.75rem; cursor: pointer; transition: all 0.15s;
+}
+.pager-btn:hover { border-color: var(--color-border-strong); color: var(--color-text); }
+.pager-btn.active { border-color: var(--color-primary); background: var(--color-primary-tint); color: var(--color-primary); font-weight: 700; }
+
+/* ==========================================================================
+   Bulk action bar — reference orders table
+   ========================================================================== */
+.bulk-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.625rem 1.25rem; background: var(--color-primary-tint);
+  border-bottom: 1px solid var(--color-border);
+}
+.bulk-bar .count { font-size: 0.75rem; font-weight: 700; color: var(--color-primary-hover); }
 
 /* ==========================================================================
    Split panes (POS / Layout)

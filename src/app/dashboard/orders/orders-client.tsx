@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowUpDown, Search, X } from 'lucide-react';
+import { Fragment, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowUpDown, Search, X, ChevronDown } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { formatMoney } from '@/lib/utils';
+import { Tag } from '@/components/dashboard/primitives';
 import {
   ORDER_STATUS_LABELS,
   ORDER_TYPE_LABELS,
@@ -318,21 +319,25 @@ export function OrdersClient({
     return c;
   }, [orders]);
 
+  const statusTag: Record<OrderStatus, { bg: string; fg: string }> = {
+    pending: { bg: '#E6EEF6', fg: '#3B6FA0' },
+    preparing: { bg: '#FBF0DD', fg: '#D98E2C' },
+    ready: { bg: '#E5F3EA', fg: '#2F8F5B' },
+    delivered: { bg: '#EEF0EC', fg: '#66716D' },
+    cancelled: { bg: '#FBE9E7', fg: '#C0483D' },
+  };
+
+  // Row whose items are expanded (items list + stepper + cancel).
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const toggleExpanded = (id: string) => setExpanded((cur) => (cur === id ? null : id));
+
   return (
       <div className="page">
       <PullToRefresh onRefresh={() => void refresh()}>
       <PageHeader
-        kicker="العمليات · Orders"
+        crumb={['دكان', 'المبيعات', 'الطلبات']}
         title="الطلبات"
-        description="متابعة فقط · الحالة تتحدث من شاشة المطبخ"
-        actions={
-          <div className="flex flex-col items-end gap-1">
-            <p className="text-[11px] text-[var(--color-text-secondary)]">مبيعات اليوم</p>
-            <p className="font-mono text-lg font-bold tabular-nums text-[var(--color-text)]" dir="ltr">
-              {formatMoney(dayTotal, currency)}
-            </p>
-          </div>
-        }
+        sub={`${counts.all.toLocaleString('ar-BH-u-nu-latn')} طلب · مبيعات ${formatMoney(dayTotal, currency)}`}
       />
 
       {realtimeOffline && (
@@ -346,27 +351,23 @@ export function OrdersClient({
       )}
 
       {/* Date picker — اليوم/أمس + تقويم (لا مستقبل) */}
-      <div className="mb-4 flex flex-wrap items-center gap-1.5">
+      <div className="mb-3 flex flex-wrap items-center gap-1.5">
         <button
           type="button"
           onClick={() => selectDayOffset(0)}
           aria-pressed={isToday}
-          className={`flex min-h-[44px] items-center rounded-full px-4 text-xs font-bold transition-colors ${
-            isToday
-              ? 'bg-[var(--color-primary)] text-white shadow-sm'
-              : 'border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:border-[var(--color-primary)]'
-          }`}
+          className={`filter-seg ${isToday ? 'active' : ''}`}
         >
           اليوم
         </button>
         <button
           type="button"
           onClick={() => selectDayOffset(-1)}
-          className="flex min-h-[44px] items-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-4 text-xs font-bold text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-primary)]"
+          className="filter-seg"
         >
           أمس
         </button>
-        <label className="flex min-h-[44px] cursor-pointer items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-xs font-semibold text-[var(--color-text-secondary)]">
+        <label className="filter-seg cursor-pointer">
           📅
           <input
             type="date"
@@ -381,72 +382,60 @@ export function OrdersClient({
         </label>
       </div>
 
-      {/* بحث فوري + فرز */}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[200px] flex-1">
-          <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
-          <input
-            type="search"
-            inputMode="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="ابحث برقم الطلب أو المنتج أو الطاولة…"
-            aria-label="ابحث في الطلبات"
-            maxLength={60}
-            className="input min-h-[44px] w-full ps-10 pe-10"
-          />
-          {query && (
+      {/* Filters + search + sort */}
+      <div className="filter-bar">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {FILTERS.map((f) => (
             <button
+              key={f.value}
               type="button"
-              onClick={() => setQuery('')}
-              aria-label="مسح البحث"
-              className="absolute end-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-[var(--color-text-muted)] hover:bg-[var(--color-surface-sunken)]"
+              onClick={() => setFilter(f.value)}
+              aria-pressed={filter === f.value}
+              className={`filter-seg ${filter === f.value ? 'active' : ''}`}
             >
-              <X className="h-4 w-4" />
+              {f.label}
+              <span className="count">{counts[f.value]}</span>
             </button>
-          )}
+          ))}
         </div>
-        <label className="flex min-h-[44px] cursor-pointer items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-xs font-semibold text-[var(--color-text-secondary)]">
-          <ArrowUpDown className="h-3.5 w-3.5" />
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'amount')}
-            aria-label="ترتيب الطلبات"
-            className="bg-transparent text-xs font-semibold outline-none"
-          >
-            <option value="newest">الأحدث</option>
-            <option value="oldest">الأقدم</option>
-            <option value="amount">الأعلى مبلغًا</option>
-          </select>
-        </label>
-      </div>
-
-      {/* Filters — مع عدادات حية */}
-      <div className="mb-4 flex flex-wrap gap-1.5">
-        {FILTERS.map((f) => (
-          <button
-            key={f.value}
-            type="button"
-            onClick={() => setFilter(f.value)}
-            aria-pressed={filter === f.value}
-            className={`flex min-h-[44px] items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition-colors ${
-              filter === f.value
-                ? 'bg-[var(--color-primary)] text-white'
-                : 'bg-[var(--color-surface)] text-[var(--color-text-secondary)] border border-[var(--color-border)]'
-            }`}
-          >
-            {f.label}
-            <span
-              className={`rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${
-                filter === f.value
-                  ? 'bg-white/20 text-white'
-                  : 'bg-[var(--color-bg)] text-[var(--color-text-muted)]'
-              }`}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative">
+            <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
+            <input
+              type="search"
+              inputMode="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="ابحث…"
+              aria-label="ابحث في الطلبات"
+              maxLength={60}
+              className="input h-9 w-48 min-w-[140px] ps-9 pe-8 text-xs"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery('')}
+                aria-label="مسح البحث"
+                className="absolute end-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-[var(--color-text-muted)] hover:bg-[var(--color-surface-sunken)]"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          <label className="filter-seg cursor-pointer">
+            <ArrowUpDown className="h-3.5 w-3.5" />
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'amount')}
+              aria-label="ترتيب الطلبات"
+              className="bg-transparent text-xs font-semibold outline-none"
             >
-              {counts[f.value]}
-            </span>
-          </button>
-        ))}
+              <option value="newest">الأحدث</option>
+              <option value="oldest">الأقدم</option>
+              <option value="amount">الأعلى مبلغًا</option>
+            </select>
+          </label>
+        </div>
       </div>
 
       {!filtered.length ? (
@@ -455,136 +444,148 @@ export function OrdersClient({
           description={isToday ? 'أول طلب بيظهر هنا مباشرة.' : 'جرب اختيار يوم آخر.'}
         />
       ) : (
-        <div className="space-y-3">
-          {filtered.map((order) => (
-            <article key={order.id} className="dashboard-card card">
-              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--color-border)] px-4 py-3">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-bold tabular-nums" dir="ltr">order-{order.order_number}</span>
-                    <span className={`badge badge-${order.status}`}>
-                      {ORDER_STATUS_LABELS[order.status]}
-                    </span>
-                    <span className="text-xs text-[var(--color-text-muted)]">
-                      {ORDER_TYPE_LABELS[order.type]}
-                    </span>
-                  </div>
-                  <p className="mt-0.5 text-xs text-[var(--color-text-secondary)]">
-                    {order.tables
-                      ? `طاولة ${order.tables.number}`
-                      : 'بدون طاولة'}{' '}
-                    · {new Date(order.created_at).toLocaleString('ar-BH-u-nu-latn', { timeZone: 'Asia/Bahrain' })}
-                  </p>
-                </div>
-                <p className="text-sm font-bold tabular-nums">
-                  {formatMoney(Number(order.total_amount), currency)}
-                </p>
-              </div>
-
-              {/* Status stepper — ثابت (عرض فقط): يعكس تسلسل العملية الحقيقية */}
-              {order.status !== 'cancelled' ? (
-                <div className="px-4 py-2.5" dir="ltr">
-                  <div className="flex items-center gap-1">
-                    {STATUS_STEPS.map((step, i) => {
-                      const idx = STATUS_STEPS.indexOf(order.status);
-                      const done = i < idx;
-                      const active = i === idx;
-                      return (
-                        <div key={step} className="flex flex-1 items-center gap-1 last:flex-none">
-                          <span
-                            className={`h-2 w-2 shrink-0 rounded-full ${
-                              done
-                                ? 'bg-[var(--color-success)]'
-                                : active
-                                  ? 'bg-[var(--color-primary)] ring-2 ring-[var(--color-primary-tint)]'
-                                  : 'bg-[var(--color-border)]'
-                            }`}
-                          />
-                          {i < STATUS_STEPS.length - 1 && (
-                            <span
-                              className={`h-0.5 flex-1 rounded ${
-                                i < idx ? 'bg-[var(--color-success)]' : 'bg-[var(--color-border)]'
-                              }`}
-                            />
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <p className="mt-1 text-[10px] text-[var(--color-text-muted)]" dir="rtl">
-                    {ORDER_STATUS_LABELS[order.status]}
-                  </p>
-                </div>
-              ) : (
-                <p className="border-b border-[var(--color-border)] px-4 py-2 text-[10px] font-bold text-[var(--color-danger)]">
-                  {ORDER_STATUS_LABELS.cancelled}
-                </p>
-              )}
-
-              {order.order_items && order.order_items.length > 0 && (
-                <ul className="space-y-1 px-4 py-3 text-sm">
-                  {order.order_items.map((item) => (
-                    <li key={item.id} className="flex justify-between gap-2">
-                      <span>
-                        <strong>{item.quantity}×</strong> {item.product_name}
-                        {Array.isArray(item.addons) && item.addons.length > 0 && (
-                          <span className="block text-xs text-[var(--color-text-muted)]">
-                            {(item.addons as OrderItemAddon[])
-                              .map((a) => a.name)
-                              .join(' · ')}
+        <div className="table-card">
+          <div className="overflow-x-auto">
+            <table className="ref-table">
+              <thead>
+                <tr>
+                  <th>رقم الطلب</th>
+                  <th>الطاولة</th>
+                  <th>القناة</th>
+                  <th>الأصناف</th>
+                  <th>الوقت</th>
+                  <th>الإجمالي</th>
+                  <th>الحالة</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((order) => {
+                  const st = statusTag[order.status];
+                  const isExpanded = expanded === order.id;
+                  return (
+                    <Fragment key={order.id}>
+                      <tr className="cursor-pointer" onClick={() => toggleExpanded(order.id)}>
+                        <td>
+                          <span className="font-bold text-[var(--color-primary)]" dir="ltr">
+                            order-{order.order_number}
                           </span>
-                        )}
-                        {item.notes && (
-                          <span className="block text-xs text-[var(--color-text-muted)]">
-                            {item.notes}
-                          </span>
-                        )}
-                      </span>
-                      <span className="text-[var(--color-text-secondary)] shrink-0 tabular-nums">
-                        {formatMoney(
-                          Number(item.unit_price) * item.quantity,
-                          currency
-                        )}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {order.notes && (
-                <p className="border-t border-[var(--color-border)] px-4 py-2 text-xs text-[var(--color-text-secondary)]">
-                  {order.notes}
-                </p>
-              )}
-              {/* Cancel — only while the order is still cancellable server-side
-                  (pending/preparing/ready); delivered/cancelled hide it. */}
-              {['pending', 'preparing', 'ready'].includes(order.status) && (
-                <div className="border-t border-[var(--color-border)] px-4 py-2.5">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setCancelTarget({ id: order.id, number: order.order_number })
-                    }
-                    className="min-h-[44px] w-full rounded-[var(--radius-md)] border border-[var(--color-danger-tint)] bg-transparent px-4 text-[13px] font-bold text-[var(--color-danger)] transition-colors hover:bg-[var(--color-danger-tint)]"
-                  >
-                    إلغاء الطلب
-                  </button>
-                </div>
-              )}
-            </article>
-          ))}
-        </div>
-      )}
-      {/* تحميل المزيد — صفحة تالية (50/صفحة) */}
-      {hasMore && filtered.length >= 50 && (
-        <div className="mt-5 flex justify-center">
-          <button
-            type="button"
-            onClick={() => void loadMore()}
-            disabled={loadingMore}
-            className="min-h-[44px] rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] px-6 text-sm font-bold text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] disabled:opacity-50"
-          >
-            {loadingMore ? 'جاري التحميل…' : 'تحميل المزيد'}
-          </button>
+                        </td>
+                        <td className="font-medium">
+                          {order.tables ? `طاولة ${order.tables.number}` : 'بدون طاولة'}
+                        </td>
+                        <td>
+                          <Tag bg={order.type === 'dinein' ? '#E6EEF6' : '#F6ECD8'} fg={order.type === 'dinein' ? '#3B6FA0' : '#C9973B'}>
+                            {ORDER_TYPE_LABELS[order.type]}
+                          </Tag>
+                        </td>
+                        <td className="text-[var(--color-text-secondary)]">
+                          {(order.order_items ?? []).reduce((n, it) => n + it.quantity, 0)} أصناف
+                        </td>
+                        <td className="text-[var(--color-text-muted)]">
+                          {new Date(order.created_at).toLocaleString('ar-BH-u-nu-latn', { timeZone: 'Asia/Bahrain', hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                        <td className="font-bold tabular-nums">{formatMoney(Number(order.total_amount), currency)}</td>
+                        <td>
+                          <Tag bg={st.bg} fg={st.fg} dot>{ORDER_STATUS_LABELS[order.status]}</Tag>
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); toggleExpanded(order.id); }}
+                            aria-label={isExpanded ? 'إخفاء التفاصيل' : 'عرض التفاصيل'}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-surface-sunken)]"
+                          >
+                            <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                          </button>
+                        </td>
+                      </tr>
+                      {isExpanded && (
+                        <tr>
+                          <td colSpan={8} className="!border-0 !p-0">
+                            <div className="bg-[var(--color-bg)] px-5 py-4">
+                              {order.status !== 'cancelled' ? (
+                                <div className="mb-3 flex items-center gap-1" dir="ltr">
+                                  {STATUS_STEPS.map((step, i) => {
+                                    const idx = STATUS_STEPS.indexOf(order.status);
+                                    const done = i < idx;
+                                    const active = i === idx;
+                                    return (
+                                      <div key={step} className="flex flex-1 items-center gap-1 last:flex-none">
+                                        <span className={`h-2 w-2 shrink-0 rounded-full ${done ? 'bg-[var(--color-success)]' : active ? 'bg-[var(--color-primary)] ring-2 ring-[var(--color-primary-tint)]' : 'bg-[var(--color-border)]'}`} />
+                                        {i < STATUS_STEPS.length - 1 && (
+                                          <span className={`h-0.5 flex-1 rounded ${i < idx ? 'bg-[var(--color-success)]' : 'bg-[var(--color-border)]'}`} />
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <p className="mb-3 text-[11px] font-bold text-[var(--color-danger)]">{ORDER_STATUS_LABELS.cancelled}</p>
+                              )}
+
+                              {order.order_items && order.order_items.length > 0 && (
+                                <ul className="mb-3 space-y-1 text-sm">
+                                  {order.order_items.map((item) => (
+                                    <li key={item.id} className="flex justify-between gap-2">
+                                      <span>
+                                        <strong>{item.quantity}×</strong> {item.product_name}
+                                        {Array.isArray(item.addons) && item.addons.length > 0 && (
+                                          <span className="block text-xs text-[var(--color-text-muted)]">
+                                            {(item.addons as OrderItemAddon[]).map((a) => a.name).join(' · ')}
+                                          </span>
+                                        )}
+                                        {item.notes && (
+                                          <span className="block text-xs text-[var(--color-text-muted)]">{item.notes}</span>
+                                        )}
+                                      </span>
+                                      <span className="shrink-0 tabular-nums text-[var(--color-text-secondary)]">
+                                        {formatMoney(Number(item.unit_price) * item.quantity, currency)}
+                                      </span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                              {order.notes && (
+                                <p className="mb-3 text-xs text-[var(--color-text-secondary)]">{order.notes}</p>
+                              )}
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-[11px] text-[var(--color-text-muted)]">
+                                  {new Date(order.created_at).toLocaleString('ar-BH-u-nu-latn', { timeZone: 'Asia/Bahrain', dateStyle: 'medium', timeStyle: 'short' })}
+                                </p>
+                                {['pending', 'preparing', 'ready'].includes(order.status) && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setCancelTarget({ id: order.id, number: order.order_number })}
+                                    className="btn btn-danger btn-sm"
+                                  >
+                                    إلغاء الطلب
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className="table-pager">
+            <p>عرض ١–{filtered.length.toLocaleString('ar-BH-u-nu-latn')} من {counts.all.toLocaleString('ar-BH-u-nu-latn')}</p>
+            {hasMore && filtered.length >= 50 && (
+              <button
+                type="button"
+                onClick={() => void loadMore()}
+                disabled={loadingMore}
+                className="flex h-8 items-center rounded-lg border border-[var(--color-border)] px-3 text-xs font-semibold text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] disabled:opacity-50"
+              >
+                {loadingMore ? 'جاري التحميل…' : 'تحميل المزيد'}
+              </button>
+            )}
+          </div>
         </div>
       )}
       </PullToRefresh>

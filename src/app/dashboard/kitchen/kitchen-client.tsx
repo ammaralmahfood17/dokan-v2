@@ -50,6 +50,7 @@ import { useKitchenAudio } from '@/components/dashboard/kitchen/use-kitchen-audi
 // FIX-C-002: بطاقة الطلب مستخرجة
 import { Modal } from '@/components/ui/modal';
 import { KitchenTicket } from '@/components/dashboard/kitchen/kitchen-ticket';
+import { PageHeader } from '@/components/dashboard/page-header';
 
 /* ========== Page title flashing (ref-based, tied to component) ========== */
 
@@ -660,84 +661,77 @@ export function KitchenClient({
 
   return (
     <div className="min-h-dvh bg-[var(--color-bg)]" onClick={clearBadge}>
-      {/* Header — Scan Grid: tabs + display title + clock */}
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border)] bg-[var(--color-surface)] px-6 py-4">
-        <nav className="flex items-center gap-5 text-[13px]" aria-label="تصنيف الطلبات">
-          {(['all', 'dinein', 'drivethru', 'walkin'] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTab(t)}
-              aria-pressed={tab === t}
-              className={`relative min-h-[44px] font-semibold transition-colors ${
-                tab === t
-                  ? 'text-[var(--color-text)]'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
-              }`}
-            >
-              {TAB_LABELS[t]}
-              <span className="ms-1 font-mono text-[11px] tabular-nums opacity-70">
-                · {String(countByTab[t]).padStart(2, '0')}
-              </span>
-              {tab === t && (
-                <span className="absolute inset-x-0 bottom-0 h-0.5 bg-[var(--color-primary)]" />
+      <div className="page">
+        {/* Header — reference PageHeader + filter pill tabs */}
+        <PageHeader
+          crumb={['دكان', 'المبيعات', 'شاشة المطبخ']}
+          title="شاشة المطبخ"
+          sub={`${projectName} · ${time}`}
+          primary={
+            <>
+              {pendingCount > 0 && (
+                <button
+                  type="button"
+                  onClick={startAll}
+                  className="btn btn-gold min-h-[44px]"
+                >
+                  ⚡ بدء الكل ({pendingCount})
+                </button>
               )}
-            </button>
-          ))}
-        </nav>
-
-        <h1 className="font-display text-xl font-bold text-[var(--color-primary)]">
-          {projectName} — شاشة المطبخ
-        </h1>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSoundOn((s) => !s);
+                }}
+                aria-label={soundOn ? 'كتم الصوت' : 'تفعيل الصوت'}
+                aria-pressed={soundOn}
+                className="btn btn-secondary min-h-[44px]"
+              >
+                <span aria-hidden="true">{soundOn ? '🔊' : '🔇'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!soundOn) setSoundOn(true);
+                  void playChime();
+                  toast.success('🔔 صوت التنبيه', { description: 'صوت الإشعار يعمل ✅' });
+                }}
+                title="اختبار الصوت"
+                className="btn btn-secondary min-h-[44px]"
+              >
+                <span aria-hidden="true">🔊</span> اختبار
+              </button>
+            </>
+          }
+        />
         {/* FIX-A-006: إعلام قارئ الشاشة بوصول طلبات جديدة */}
         <div aria-live="polite" aria-atomic="true" className="sr-only">
           {pendingCount > 0 ? `وصل ${pendingCount} طلبات جديدة` : ''}
         </div>
 
-        <div className="flex items-center gap-2.5">
-          {pendingCount > 0 && (
-            <button
-              type="button"
-              onClick={startAll}
-              className="flex min-h-[44px] items-center gap-1.5 rounded-[7px] bg-[var(--color-primary)] px-4 text-[12px] font-bold text-white transition-colors hover:bg-[var(--color-primary-hover)]"
-            >
-              ⚡ بدء الكل ({pendingCount})
-            </button>
-          )}
-          <span className="font-mono text-[15px] tabular-nums text-[var(--color-text-muted)]" dir="ltr">
-            {time}
-          </span>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setSoundOn((s) => !s);
-            }}
-            aria-label={soundOn ? 'كتم الصوت' : 'تفعيل الصوت'}
-            aria-pressed={soundOn}
-            className="flex min-h-[44px] items-center rounded-[7px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-xs font-semibold text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-primary)]"
-          >
-            <span aria-hidden="true">{soundOn ? '🔊' : '🔇'}</span>
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (!soundOn) setSoundOn(true);
-              void playChime();
-              toast.success('🔔 صوت التنبيه', { description: 'صوت الإشعار يعمل ✅' });
-            }}
-            title="اختبار الصوت"
-            className="flex min-h-[44px] items-center rounded-[7px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-xs font-semibold text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-success)]"
-          >
-            <span aria-hidden="true">🔊</span> اختبار
-          </button>
+        {/* Board tabs — filter pills with live counts */}
+        <div className="filter-bar">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {(['all', 'dinein', 'drivethru', 'walkin'] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTab(t)}
+                aria-pressed={tab === t}
+                className={`filter-seg min-h-[44px] ${tab === t ? 'active' : ''}`}
+              >
+                {TAB_LABELS[t]}
+                <span className="count">{String(countByTab[t]).padStart(2, '0')}</span>
+              </button>
+            ))}
+          </div>
         </div>
-      </header>
 
       {/* Board — Scan Grid tickets */}
       <main
-        className="grid grid-cols-1 gap-4 p-5 md:grid-cols-2 xl:grid-cols-3"
+        className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
         role="region"
         aria-label="تذاكر المطبخ"
         tabIndex={0}
@@ -761,6 +755,7 @@ export function KitchenClient({
           />
         ))}
       </main>
+      </div>
 
       {/* Cancel confirmation (Modal — window.confirm silently fails on iOS PWA) */}
       {cancelTarget && (
@@ -774,14 +769,14 @@ export function KitchenClient({
               type="button"
               autoFocus
               onClick={() => void cancelOrder(cancelTarget.id)}
-              className="min-h-[44px] flex-1 rounded-[var(--radius-md)] bg-[var(--color-danger)] px-4 text-sm font-bold text-white transition-colors hover:opacity-90"
+              className="btn btn-danger btn-block min-h-[44px]"
             >
               نعم، إلغاء
             </button>
             <button
               type="button"
               onClick={() => setCancelTarget(null)}
-              className="min-h-[44px] flex-1 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-transparent px-4 text-sm font-bold text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-sunken)]"
+              className="btn btn-secondary btn-block min-h-[44px]"
             >
               تراجع
             </button>

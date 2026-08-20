@@ -1,10 +1,8 @@
-// D1: Enhanced KPI stat cards — redesigned for better visual hierarchy
+// D1: Enhanced KPI stat strip — reference "دكان" Shopify-style single card
+// with divided cells (no per-card decorative blobs).
 import Link from 'next/link';
 import {
-  TrendingUp,
-  TrendingDown,
   Clock,
-  Users,
   ShoppingBag,
   ChefHat,
   MapPin,
@@ -19,11 +17,9 @@ type KpiItem = {
   value: string;
   delta?: string | null;
   positive?: boolean;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<{ size?: number }>;
   href: string;
-  accent: string;
-  bg: string;
-  border?: string;
+  hint?: string;
 };
 
 export function KpiCards({
@@ -51,111 +47,56 @@ export function KpiCards({
     {
       label: 'مبيعات اليوم',
       value: formatMoney(todaySales, currency),
-      delta: salesDelta !== null ? `${Math.abs(salesDelta)}٪ عن أمس` : null,
+      delta: salesDelta !== null ? `${salesDelta >= 0 ? '+' : ''}${salesDelta}٪` : null,
       positive: salesDelta === null ? true : salesDelta >= 0,
       icon: ShoppingBag,
       href: '/dashboard/analytics',
-      accent: 'text-[var(--color-primary)]',
-      bg: 'bg-[var(--color-primary-tint)]',
-      border: 'border-[var(--color-primary)]',
+      hint: peakHour && peakHour.revenue > 0 ? `وقت الذروة: ${peakHour.label}` : undefined,
     },
     {
-      label: 'عدد الطلبات',
+      label: 'الطلبات',
       value: (todayOrders ?? 0).toLocaleString('ar-BH-u-nu-latn'),
-      delta: ordersDelta !== 0 ? `${Math.abs(ordersDelta)} طلبات` : null,
+      delta: ordersDelta !== 0 ? `${ordersDelta >= 0 ? '+' : ''}${ordersDelta}` : null,
       positive: ordersDelta >= 0,
       icon: ChefHat,
       href: '/dashboard/orders',
-      accent: 'text-[var(--color-success)]',
-      bg: 'bg-[var(--color-success-tint)]',
-      border: 'border-[var(--color-success)]',
+      hint: (pendingCount ?? 0) > 0 ? `${pendingCount} قيد التحضير` : undefined,
     },
     {
       label: 'قيد التحضير',
       value: (pendingCount ?? 0).toLocaleString('ar-BH-u-nu-latn'),
       icon: Clock,
       href: '/dashboard/kitchen',
-      accent: 'text-[var(--color-warn)]',
-      bg: 'bg-[var(--color-warn-tint)]',
-      border: 'border-[var(--color-warn)]',
     },
     {
       label: 'الطاولات النشطة',
-      value: `${occupiedCount.toLocaleString('ar-BH-u-nu-latn')}<span class="text-[16px] font-semibold text-[var(--color-text-muted)]">/${totalActiveTables}</span>`,
+      value: `${occupiedCount.toLocaleString('ar-BH-u-nu-latn')}/${totalActiveTables.toLocaleString('ar-BH-u-nu-latn')}`,
       icon: MapPin,
       href: '/dashboard/tables',
-      accent: 'text-[var(--color-info)]',
-      bg: 'bg-[var(--color-info-tint)]',
-      border: 'border-[var(--color-info)]',
+      hint: occupiedCount > 0 ? `${occupiedCount} مشغولة الآن` : undefined,
     },
   ];
 
   return (
-    <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="stat-strip mb-6">
       {items.map((item) => {
         const Icon = item.icon;
         return (
-          <Link
-            key={item.label}
-            href={item.href}
-            className="group relative overflow-hidden rounded-2xl border-2 border-[var(--color-border)] bg-[var(--color-surface)] p-5 transition-all hover:border-[var(--color-primary)] hover:shadow-lg hover:-translate-y-0.5"
-          >
-            {/* Top accent line */}
-            <div className={`absolute inset-x-0 top-0 h-1.5 ${item.bg}`} />
-
-            <div className="flex items-start justify-between gap-3">
-              <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${item.bg} ${item.accent} shadow-sm`}>
-                <Icon className="h-6 w-6" />
-              </div>
-
+          <Link key={item.label} href={item.href} className="stat-cell group">
+            <div className="stat-cell-label">
+              <Icon size={14} />
+              <span>{item.label}</span>
+            </div>
+            <div className="stat-cell-value">
+              <span className="group-hover:opacity-80 transition-opacity">{item.value}</span>
               {item.delta && (
-                <div
-                  className={`flex items-center gap-0.5 rounded-full px-2.5 py-1 text-[11px] font-bold ${
-                    item.positive ? 'bg-[var(--color-success-tint)] text-[var(--color-success)]' : 'bg-[var(--color-danger-tint)] text-[var(--color-danger)]'
-                  }`}
-                >
-                  {item.positive ? (
-                    <ArrowUpRight className="h-3.5 w-3.5" />
-                  ) : (
-                    <ArrowDownRight className="h-3.5 w-3.5" />
-                  )}
+                <span className={`stat-cell-delta ${item.positive ? 'up' : 'down'}`}>
+                  {item.positive ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
                   {item.delta}
-                </div>
+                </span>
               )}
             </div>
-
-            <div className="mt-4">
-              <p className="text-[11px] font-bold text-[var(--color-text-secondary)] uppercase tracking-wide">{item.label}</p>
-              <p
-                className="mt-1.5 font-mono text-[32px] font-bold tabular-nums leading-none text-[var(--color-text)]"
-                dir="ltr"
-                dangerouslySetInnerHTML={{ __html: item.value }}
-              />
-            </div>
-
-            {/* Peak hour hint for sales card */}
-            {item.href === '/dashboard/analytics' && peakHour && peakHour.revenue > 0 && (
-              <div className="mt-3 flex items-center gap-1.5 rounded-lg bg-[var(--color-bg)] px-2.5 py-1.5 text-[11px] text-[var(--color-text-secondary)]">
-                <Clock className="h-3 w-3 text-[var(--color-text-muted)]" />
-                <span>وقت الذروة: {peakHour.label} — {formatMoney(peakHour.revenue, currency)}</span>
-              </div>
-            )}
-
-            {/* Kitchen link hint */}
-            {item.href === '/dashboard/kitchen' && (pendingCount ?? 0) > 0 && (
-              <div className="mt-3 flex items-center gap-1 text-[11px] font-bold text-[var(--color-primary)]">
-                شاشة المطبخ
-                <ArrowUpRight className="h-3.5 w-3.5 rtl:rotate-180" />
-              </div>
-            )}
-
-            {/* Tables hint */}
-            {item.href === '/dashboard/tables' && occupiedCount > 0 && (
-              <div className="mt-3 flex items-center gap-1.5 text-[11px] text-[var(--color-text-secondary)]">
-                <Users className="h-3 w-3" />
-                <span>{occupiedCount} مشغولة الآن</span>
-              </div>
-            )}
+            {item.hint && <p className="mt-0.5 text-[11px] text-[var(--color-text-muted)]">{item.hint}</p>}
           </Link>
         );
       })}

@@ -175,13 +175,8 @@ export default async function DashboardPage() {
     .sort((a, b) => b[1].revenue - a[1].revenue)
     .slice(0, 3);
 
-  // Vercel runs UTC — without an explicit timeZone the TODAY chip would show
-  // UTC and the date would flip a day between 00:00–03:00 Bahrain time.
-  const nowTime = new Date().toLocaleTimeString('ar-BH-u-nu-latn', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'Asia/Bahrain',
-  });
+  // Vercel runs UTC — without an explicit timeZone the date would flip a day
+  // between 00:00–03:00 Bahrain time.
   const todayLabel = new Date().toLocaleDateString('ar-BH-u-nu-latn', {
     weekday: 'long',
     day: 'numeric',
@@ -193,28 +188,24 @@ export default async function DashboardPage() {
   return (
     <div className="page">
       <PageHeader
-        kicker="لوحة التحكم · الرئيسية"
+        crumb={['دكان', 'الرئيسية']}
         title={`مرحبًا، ${ctx.project.name}`}
-        description={todayLabel}
-        actions={
-          <div
-            className="border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 font-mono text-[12.5px] tabular-nums text-[var(--color-text)] shadow-sm"
-            dir="ltr"
-          >
-            TODAY · {nowTime}
-          </div>
+        sub={todayLabel}
+        secondary={
+          <a href="/dashboard/orders" className="btn btn-secondary">
+            الطلبات
+          </a>
+        }
+        primary={
+          <a href="/dashboard/pos" className="btn btn-gold">
+            <Plus className="h-4 w-4" />
+            طلب جديد
+          </a>
         }
       />
 
       {/* CTA Section — primary actions */}
       <section className="mb-6 flex flex-wrap items-center gap-3">
-        <a
-          href="/dashboard/pos"
-          className="inline-flex items-center gap-2 rounded-xl bg-[var(--color-primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-transform hover:scale-[1.02] active:scale-95"
-        >
-          <Plus className="h-4 w-4" />
-          طلب جديد
-        </a>
         <a
           href="/dashboard/products"
           className="inline-flex items-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-2.5 text-sm font-semibold text-[var(--color-text)] transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"

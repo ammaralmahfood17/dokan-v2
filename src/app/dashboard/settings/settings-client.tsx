@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/client';
 import { CURRENCIES, DEFAULT_PRIMARY_COLOR, type Project } from '@/lib/types';
 import { Button } from '@/components/shadcn/button';
 import { Switch } from '@/components/shadcn/switch';
+import { Tag } from '@/components/dashboard/primitives';
+import { PageHeader } from '@/components/dashboard/page-header';
 import { PushNotificationManager } from '@/components/push-notification-manager';
 import { TelegramManager } from '@/components/telegram-manager';
 import { NotificationPrefs } from '@/components/notification-prefs';
@@ -272,13 +274,11 @@ export function SettingsClient({
 
   return (
     <div className="page">
-      <div className="page-header">
-        <div>
-          <div className="page-kicker"><span>الإدارة · Settings</span></div>
-          <h1>الإعدادات</h1>
-          <p>اسم المتجر، العملة، الهوية، والإشعارات</p>
-        </div>
-      </div>
+      <PageHeader
+        crumb={['دكان', 'الإعدادات']}
+        title="الإعدادات"
+        sub="اسم المتجر، العملة، الهوية، والإشعارات"
+      />
 
       {/* Push Notification Settings */}
       <div className="mb-4 max-w-lg">
@@ -297,10 +297,15 @@ export function SettingsClient({
 
       {/* Modules Management */}
       <div className="card card-body mb-4 max-w-lg">
-        <h2 className="mb-1 text-sm font-bold">الوحدات المفعلة</h2>
-        <p className="mb-4 text-sm text-[var(--color-text-secondary)]">
-          فعّل أو عطّل الوحدات حسب احتياجك. الوحدات الأساسية (نقطة البيع + قائمة QR) مفعّلة دائماً ولا يمكن تعطيلها.
-        </p>
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-bold">الوحدات المفعلة</h2>
+            <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+              فعّل أو عطّل الوحدات حسب احتياجك. الوحدات الأساسية (نقطة البيع + قائمة QR) مفعّلة دائماً ولا يمكن تعطيلها.
+            </p>
+          </div>
+          <Tag bg="#E4EFEC" fg="#0F5E56">{modules.filter((m) => m.is_enabled).length} مفعّلة</Tag>
+        </div>
 
         {modulesLoading ? (
           <div className="space-y-3">
@@ -329,9 +334,7 @@ export function SettingsClient({
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-bold">{mod.name_ar}</p>
                     {mod.is_core && (
-                      <span className="rounded-full bg-[var(--color-primary-tint)] px-2 py-0.5 text-[10px] font-bold text-[var(--color-primary)]">
-                        أساسية
-                      </span>
+                      <Tag bg="#E4EFEC" fg="#0F5E56">أساسية</Tag>
                     )}
                   </div>
                   <p className="text-[11px] text-[var(--color-text-muted)]">{mod.description_ar}</p>
@@ -354,6 +357,18 @@ export function SettingsClient({
       <SubscriptionCard project={project} isOwner={isOwner} expiryDaysLeft={expiryDaysLeft} />
 
       <form onSubmit={onSubmit} className="card card-body max-w-lg">
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-bold">إعدادات المتجر</h2>
+            <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+              اسم المتجر، العملة، اللون الأساسي، وحالة النشاط
+            </p>
+          </div>
+          <Tag bg={isActive ? '#E5F3EA' : '#EEF0EC'} fg={isActive ? '#2F8F5B' : '#66716D'} dot>
+            {isActive ? 'نشط' : 'متوقف'}
+          </Tag>
+        </div>
+
         <div className="field">
           <label className="label" htmlFor="store-name">اسم المتجر</label>
           <input
