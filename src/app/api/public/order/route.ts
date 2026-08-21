@@ -163,6 +163,31 @@ export async function POST(request: NextRequest) {
       await Promise.all([
         // Phase 3: Audit log
         (async () => {
+          // Accounting: post public order into tenant ledger (non-blocking)
+          try {
+            const { postOrderToJournal } = await import('@/lib/accounting-post');
+            const cur = (project as { currency?: string }).currency ?? 'BHD';
+            const minorFactor = cur === 'BHD' || cur === 'KWD' ? 1000 : 100;
+            const totalMinor = Math.round(result.order.totalAmount * minorFactor);
+            const postResult = await postOrderToJournal(supabase, {
+              projectId: project.id,
+              orderId: result.order.id,
+              totalMinor,
+              userId: (result.order as { created_by?: string }).created_by ?? 'system',
+              isDelivery: false,
+            });
+            if (!postResult.ok && postResult.skipped !== 'already_posted') {
+              Sentry.captureMessage('pub-order-acct-failed', {
+                level: 'warning',
+                tags: { skipped: postResult.skipped, orderId: result.order.id, error: postResult.error ?? '' },
+              });
+            }
+          } catch (e) {
+            Sentry.captureException(e, { tags: { area: 'pub-acct', orderId: result.order.id } });
+          }
+        })(),
+
+        (async () => {
           try {
             await supabase.from('order_audit_logs').insert({
               order_id: result.order.id,

@@ -189,6 +189,32 @@ export async function POST(request: NextRequest) {
     // these are notifications/logging only.
     after(async () => {
       await Promise.all([
+        // Phase 4: Post to accounting ledger (non-blocking, never affects order)
+        (async () => {
+          try {
+            const { postOrderToJournal } = await import('@/lib/accounting-post');
+            // totalAmount is currently in the project's display currency units;
+            // convert to minor currency units (BHD=1000, SAR=100, etc).
+            const minorFactor = currency === 'BHD' || currency === 'KWD' ? 1000 : 100;
+            const totalMinor = Math.round(totalAmount * minorFactor);
+            const result = await postOrderToJournal(supabase, {
+              projectId: membership.project_id,
+              orderId: orderId,
+              totalMinor,
+              userId: user.id,
+              isDelivery: false,
+            });
+            if (!result.ok && result.skipped !== 'already_posted') {
+              Sentry.captureMessage('accounting-post-failed', {
+                level: 'warning',
+                tags: { skipped: result.skipped, orderId: orderId, error: result.error ?? '' },
+              });
+            }
+          } catch (acctErr) {
+            Sentry.captureException(acctErr, { tags: { area: 'accounting-post', orderId: orderId } });
+          }
+        })(),
+
         // Phase 3: Audit log
         (async () => {
           try {
