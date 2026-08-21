@@ -7,12 +7,22 @@ import { Button } from '@/components/shadcn/button';
 import { Switch } from '@/components/shadcn/switch';
 import { Tag } from '@/components/dashboard/primitives';
 import { PageHeader } from '@/components/dashboard/page-header';
-import { PushNotificationManager } from '@/components/push-notification-manager';
-import { TelegramManager } from '@/components/telegram-manager';
 import { NotificationPrefs } from '@/components/notification-prefs';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import type { Module } from '@/lib/types';
+// FIX-P-003: Dynamic imports for heavy managers — only load when settings page opens
+import dynamic from 'next/dynamic';
+
+const PushNotificationManager = dynamic(
+  () => import('@/components/push-notification-manager').then((m) => m.PushNotificationManager),
+  { ssr: false }
+);
+
+const TelegramManager = dynamic(
+  () => import('@/components/telegram-manager').then((m) => m.TelegramManager),
+  { ssr: false }
+);
 
 type FieldErrors = {
   name?: string;

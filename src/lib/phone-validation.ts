@@ -1,5 +1,3 @@
-import { z } from 'zod';
-
 /**
  * Phone validation regex (E.164-ish)
  * Allows optional '+' prefix and 8-15 digits.

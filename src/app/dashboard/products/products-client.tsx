@@ -24,12 +24,32 @@ type ProductWithAddons = Product & { product_addons: ProductAddon[] };
  */
 // FIX-C-001: helpers مستخرجة (validate/remove/compress)
 import { validateProduct, removeProductImage, compressImage, type FieldErrors } from '@/lib/products-utils';
-// FIX-C-001: مكوّن رفع الصور مستخرج
-import { ImageUploader } from '@/components/dashboard/products/image-uploader';
-// FIX-C-001: نموذج المنتج مستخرج
-import { ProductFormModal } from '@/components/dashboard/products/product-form-modal';
-// FIX-C-001: modals التصنيفات مستخرجة
-import { CategoryManager } from '@/components/dashboard/products/category-manager';
+// FIX-P-003: Dynamic imports for heavy components — only load when needed
+import dynamic from 'next/dynamic';
+
+const ProductFormModal = dynamic(
+  () => import('@/components/dashboard/products/product-form-modal').then((m) => m.ProductFormModal),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-white border-t-transparent" />
+      </div>
+    )
+  }
+);
+
+const CategoryManager = dynamic(
+  () => import('@/components/dashboard/products/category-manager').then((m) => m.CategoryManager),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-white border-t-transparent" />
+      </div>
+    )
+  }
+);
 
 function revalidateMenuCache(projectId: string) {
   void fetch('/api/revalidate-menu', {
