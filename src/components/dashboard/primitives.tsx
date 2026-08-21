@@ -9,7 +9,7 @@ const C = {
   surface: '#FFFFFF',
   ink: '#181D1B',
   sub: '#66716D',
-  faint: '#94A19C',
+  faint: '#5F6D68',
   border: '#E4E1D6',
   borderStrong: '#D3CFC0',
   primary: '#0F5E56',

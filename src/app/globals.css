@@ -42,7 +42,7 @@
   --color-border-strong: #D3CFC0;
   --color-text: #181D1B;
   --color-text-secondary: #66716D;
-  --color-text-muted: #94A19C;
+  --color-text-muted: #5F6D68;
   --color-text-disabled: #D6D3D1;
 
   /* Semantic — warm, desaturated */
@@ -117,7 +117,7 @@
   --secondary: #F5F4F0;
   --secondary-foreground: #181D1B;
   --muted: #F5F4F0;
-  --muted-foreground: #94A19C;
+  --muted-foreground: #5F6D68;
   --accent: #E4EFEC;
   --accent-foreground: #0F5E56;
   --destructive: #C0483D;
