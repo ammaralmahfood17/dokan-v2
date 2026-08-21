@@ -1595,6 +1595,212 @@ export type Database = {
           },
         ]
       }
+      zatca_config: {
+        Row: {
+          clearance_secret: string | null
+          compliance_certificate_pem: string | null
+          created_at: string
+          csr_pem: string | null
+          device_id: string
+          environment: string
+          onboarded_at: string | null
+          private_key_vault_id: string | null
+          project_id: string
+          public_key_pem: string | null
+          seller_name_ar: string
+          seller_name_en: string
+          updated_at: string
+          vat_number: string
+        }
+        Insert: {
+          clearance_secret?: string | null
+          compliance_certificate_pem?: string | null
+          created_at?: string
+          csr_pem?: string | null
+          device_id?: string
+          environment?: string
+          onboarded_at?: string | null
+          private_key_vault_id?: string | null
+          project_id: string
+          public_key_pem?: string | null
+          seller_name_ar: string
+          seller_name_en: string
+          updated_at?: string
+          vat_number: string
+        }
+        Update: {
+          clearance_secret?: string | null
+          compliance_certificate_pem?: string | null
+          created_at?: string
+          csr_pem?: string | null
+          device_id?: string
+          environment?: string
+          onboarded_at?: string | null
+          private_key_vault_id?: string | null
+          project_id?: string
+          public_key_pem?: string | null
+          seller_name_ar?: string
+          seller_name_en?: string
+          updated_at?: string
+          vat_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zatca_config_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      zatca_invoices: {
+        Row: {
+          created_at: string
+          cryptographic_stamp: string
+          currency_code: string
+          customer_country_code: string
+          customer_name_ar: string | null
+          customer_name_en: string | null
+          customer_vat_number: string | null
+          id: string
+          invoice_kind: string
+          invoice_number: string
+          issue_date: string
+          order_id: string | null
+          project_id: string
+          status: string
+          submitted_at: string | null
+          total_gross_minor: number
+          total_net_minor: number
+          total_vat_minor: number
+          uuid: string
+          xml_hash: string
+          xml_payload: string
+          zatca_acknowledgement_code: string | null
+          zatca_response: Json | null
+        }
+        Insert: {
+          created_at?: string
+          cryptographic_stamp: string
+          currency_code?: string
+          customer_country_code?: string
+          customer_name_ar?: string | null
+          customer_name_en?: string | null
+          customer_vat_number?: string | null
+          id?: string
+          invoice_kind: string
+          invoice_number: string
+          issue_date: string
+          order_id?: string | null
+          project_id: string
+          status?: string
+          submitted_at?: string | null
+          total_gross_minor: number
+          total_net_minor: number
+          total_vat_minor: number
+          uuid: string
+          xml_hash: string
+          xml_payload: string
+          zatca_acknowledgement_code?: string | null
+          zatca_response?: Json | null
+        }
+        Update: {
+          created_at?: string
+          cryptographic_stamp?: string
+          currency_code?: string
+          customer_country_code?: string
+          customer_name_ar?: string | null
+          customer_name_en?: string | null
+          customer_vat_number?: string | null
+          id?: string
+          invoice_kind?: string
+          invoice_number?: string
+          issue_date?: string
+          order_id?: string | null
+          project_id?: string
+          status?: string
+          submitted_at?: string | null
+          total_gross_minor?: number
+          total_net_minor?: number
+          total_vat_minor?: number
+          uuid?: string
+          xml_hash?: string
+          xml_payload?: string
+          zatca_acknowledgement_code?: string | null
+          zatca_response?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zatca_invoices_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zatca_invoices_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      zatca_submission_attempts: {
+        Row: {
+          accepted: boolean | null
+          attempt_at: string
+          created_at: string
+          http_status: number | null
+          id: string
+          invoice_id: string
+          project_id: string
+          zatca_errors: Json | null
+          zatca_message: string | null
+          zatca_uuid: string | null
+        }
+        Insert: {
+          accepted?: boolean | null
+          attempt_at?: string
+          created_at?: string
+          http_status?: number | null
+          id?: string
+          invoice_id: string
+          project_id: string
+          zatca_errors?: Json | null
+          zatca_message?: string | null
+          zatca_uuid?: string | null
+        }
+        Update: {
+          accepted?: boolean | null
+          attempt_at?: string
+          created_at?: string
+          http_status?: number | null
+          id?: string
+          invoice_id?: string
+          project_id?: string
+          zatca_errors?: Json | null
+          zatca_message?: string | null
+          zatca_uuid?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zatca_submission_attempts_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "zatca_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zatca_submission_attempts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
