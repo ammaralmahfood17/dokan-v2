@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { Module, ProjectModule } from '@/lib/types';
@@ -142,9 +143,31 @@ export async function POST(request: NextRequest) {
         }
       );
 
+    // Distinguish RLS policy violations from real DB errors.
+    // Postgres uses SQLSTATE "42501" (insufficient_privilege) when the new
+    // split policies reject the write; the trigger uses "P0001" for the
+    // core-lock RAISE. Send both to Sentry so module-gating regressions are
+    // observable before customers report them.
     if (error) {
+      const sqlState = (error as { code?: string }).code ?? '';
+      if (sqlState === '42501' || sqlState === 'P0001') {
+        Sentry.captureMessage('project_modules_rls_rejected', {
+          level: 'warning',
+          tags: {
+            sqlstate: sqlState,
+            module_code: module.code,
+            is_enabled: String(is_enabled),
+            project_id: membership.project_id,
+            user_id: user.id,
+          },
+        });
+      } else {
         console.error('Error updating module:', error);
-        return NextResponse.json({ error: 'فشل تحديث الوحدة' }, { status: 500 });
+        Sentry.captureException(error, {
+          tags: { area: 'modules', project_id: membership.project_id },
+        });
+      }
+      return NextResponse.json({ error: 'فشل تحديث الوحدة' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });

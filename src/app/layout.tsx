@@ -47,7 +47,7 @@ export const metadata: Metadata = {
     description: 'منصة سحابية لإدارة المطاعم والمقاهي في الخليج',
     images: [
       {
-        url: '/og-image.png',
+        url: '/og-image.jpg',
         width: 1024,
         height: 576,
         alt: 'دكان — منصة إدارة المطاعم',
@@ -58,7 +58,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'دكان — منصة إدارة المطاعم',
     description: 'منصة سحابية لإدارة المطاعم والمقاهي في الخليج',
-    images: ['/og-image.png'],
+    images: ['/og-image.jpg'],
   },
   icons: [
     { rel: 'icon', url: '/favicon.ico', sizes: '32x32' },
