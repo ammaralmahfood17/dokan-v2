@@ -5,6 +5,13 @@ import { createAdminClient } from '@/lib/supabase/admin';
  * Dynamic sitemap generation for Dokan v2.
  * Fetches all active tables (with their project slug) so every real public
  * menu URL is indexed — '/' is not a valid tableSlug, so we never guess.
+ *
+ * Privacy trade-off, deliberate: menu URLs `<projectSlug>/menu/<tableSlug>`
+ * are the product pages diners need. The per-table lastModified was dropped
+ * (it regenerated on every build and leaked deploy cadence); static pages
+ * keep lastModified since they represent the site as a whole.
+ * If full privacy is ever needed, gate menus behind signed short URLs and
+ * remove the table loop entirely.
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const supabase = createAdminClient();
@@ -31,7 +38,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const projectSlug = (t.projects as unknown as { slug: string }).slug;
     return {
       url: `https://www.dokanstore.xyz/${projectSlug}/menu/${t.slug}`,
-      lastModified: new Date(),
       changeFrequency: 'weekly' as const,
       priority: 0.8,
     };
