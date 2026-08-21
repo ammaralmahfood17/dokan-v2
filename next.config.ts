@@ -13,16 +13,18 @@ const securityHeaders = [
     key: 'Permissions-Policy',
     value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
   },
-  // F1: Content-Security-Policy. Next.js needs 'unsafe-inline'/'unsafe-eval'
-  // for its runtime scripts; Google Fonts (Cairo via next/font) needs
-  // fonts.googleapis.com (style) + fonts.gstatic.com (font data); Supabase
-  // is the API/WS origin; Sentry for error reporting. frame-ancestors 'none'
-  // hardens against clickjacking on top of X-Frame-Options.
+  // F1: Content-Security-Policy. Next.js needs 'unsafe-eval' for Fast Refresh
+  // in dev and its compiled runtime uses new Function in a few places; it does
+  // NOT need 'unsafe-inline' in production — RSC payload hydration scripts are
+  // injected as <script> without body content (no inline execution), and the
+  // only inline <script> we ship (dark-flash blocker) moved into the static
+  // layout via an external bundle since v16.2. 'unsafe-inline' remains on
+  // style-src because Next + Google Fonts inject inline <style> tags.
   {
     key: 'Content-Security-Policy',
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://*.sentry.io",
+      "script-src 'self' 'unsafe-eval' https://*.sentry.io",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "img-src 'self' blob: data: https://*.supabase.co",
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://sentry.io https://*.ingest.sentry.io",
