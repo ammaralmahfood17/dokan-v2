@@ -80,29 +80,41 @@ export function Btn({
   );
 }
 
+/** Segment with optional count badge — for cases like kitchen/POS tabs showing live totals. */
+export type FilterSegment = {
+  key: string;
+  label: string;
+  count?: number | string;
+};
+
 export function FilterBar({
   segments,
   active,
   onChange,
   right,
 }: {
-  segments: string[];
+  segments: string[] | FilterSegment[];
   active: string;
   onChange: (s: string) => void;
   right?: React.ReactNode;
 }) {
+  // Normalize to FilterSegment[] — strings become {key: s, label: s}.
+  const normalized: FilterSegment[] = segments.map((s) =>
+    typeof s === 'string' ? { key: s, label: s } : s
+  );
   return (
     <div className="filter-bar">
       <div className="flex flex-wrap items-center gap-1.5">
-        {segments.map((s) => (
+        {normalized.map((seg) => (
           <button
-            key={s}
+            key={seg.key}
             type="button"
-            onClick={() => onChange(s)}
-            aria-pressed={active === s}
-            className={cn('filter-seg', active === s && 'active')}
+            onClick={() => onChange(seg.key)}
+            aria-pressed={active === seg.key}
+            className={cn('filter-seg', active === seg.key && 'active')}
           >
-            {s}
+            {seg.label}
+            {seg.count !== undefined && <span className="count">{seg.count}</span>}
           </button>
         ))}
       </div>

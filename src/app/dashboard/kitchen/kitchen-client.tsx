@@ -51,6 +51,7 @@ import { useKitchenAudio } from '@/components/dashboard/kitchen/use-kitchen-audi
 import { Modal } from '@/components/ui/modal';
 import { KitchenTicket } from '@/components/dashboard/kitchen/kitchen-ticket';
 import { PageHeader } from '@/components/dashboard/page-header';
+import { FilterBar, type FilterSegment } from '@/components/dashboard/primitives';
 
 /* ========== Page title flashing (ref-based, tied to component) ========== */
 
@@ -711,23 +712,19 @@ export function KitchenClient({
           {pendingCount > 0 ? `وصل ${pendingCount} طلبات جديدة` : ''}
         </div>
 
-        {/* Board tabs — filter pills with live counts */}
-        <div className="filter-bar">
-          <div className="flex flex-wrap items-center gap-1.5">
-            {(['all', 'dinein', 'drivethru', 'walkin'] as const).map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTab(t)}
-                aria-pressed={tab === t}
-                className={`filter-seg min-h-[44px] ${tab === t ? 'active' : ''}`}
-              >
-                {TAB_LABELS[t]}
-                <span className="count">{String(countByTab[t]).padStart(2, '0')}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+        {/* Board tabs — FilterBar primitive with live count badges */}
+        <FilterBar
+          segments={(
+            [
+              { key: 'all', label: TAB_LABELS.all, count: String(countByTab.all).padStart(2, '0') },
+              { key: 'dinein', label: TAB_LABELS.dinein, count: String(countByTab.dinein).padStart(2, '0') },
+              { key: 'drivethru', label: TAB_LABELS.drivethru, count: String(countByTab.drivethru).padStart(2, '0') },
+              { key: 'walkin', label: TAB_LABELS.walkin, count: String(countByTab.walkin).padStart(2, '0') },
+            ] as FilterSegment[]
+          )}
+          active={tab}
+          onChange={(k) => setTab(k as typeof tab)}
+        />
 
       {/* Board — Scan Grid tickets */}
       <main
