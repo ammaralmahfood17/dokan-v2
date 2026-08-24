@@ -324,18 +324,8 @@ end;
 $$;
 
 
---
--- Name: project_has_no_members(uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.project_has_no_members(p_project_id uuid) RETURNS boolean
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public'
-    AS $$
-  select not exists (
-    select 1 from public.staff_members sm where sm.project_id = p_project_id
-  );
-$$;
+-- project_has_no_members moved below staff_members table
+-- (LANGUAGE sql bodies are validated at CREATE time)
 
 
 --
@@ -636,6 +626,15 @@ CREATE TABLE public.staff_members (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT staff_members_role_check CHECK ((role = ANY (ARRAY['owner'::text, 'manager'::text, 'staff'::text])))
 );
+
+--
+-- Name: project_has_no_members(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.project_has_no_members(p_project_id uuid) RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public'
+    AS 'select not exists (select 1 from public.staff_members sm where sm.project_id = p_project_id)';
 
 
 --
@@ -1980,10 +1979,10 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENC
 -- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: public; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON SEQUENCES TO postgres;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON SEQUENCES TO anon;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON SEQUENCES TO authenticated;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON SEQUENCES TO service_role;
+-- ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON SEQUENCES TO postgres; -- skipped: requires supabase_admin role (hosted platform only)
+-- ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON SEQUENCES TO anon; -- skipped: requires supabase_admin role (hosted platform only)
+-- ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON SEQUENCES TO authenticated; -- skipped: requires supabase_admin role (hosted platform only)
+-- ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON SEQUENCES TO service_role; -- skipped: requires supabase_admin role (hosted platform only)
 
 
 --
@@ -2000,10 +1999,10 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON FUNCTIO
 -- Name: DEFAULT PRIVILEGES FOR FUNCTIONS; Type: DEFAULT ACL; Schema: public; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON FUNCTIONS TO postgres;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON FUNCTIONS TO authenticated;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON FUNCTIONS TO service_role;
+-- ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON FUNCTIONS TO postgres; -- skipped: requires supabase_admin role (hosted platform only)
+-- ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon; -- skipped: requires supabase_admin role (hosted platform only)
+-- ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON FUNCTIONS TO authenticated; -- skipped: requires supabase_admin role (hosted platform only)
+-- ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON FUNCTIONS TO service_role; -- skipped: requires supabase_admin role (hosted platform only)
 
 
 --
@@ -2020,10 +2019,10 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES 
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: public; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON TABLES TO postgres;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON TABLES TO anon;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON TABLES TO authenticated;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON TABLES TO service_role;
+-- ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON TABLES TO postgres; -- skipped: requires supabase_admin role (hosted platform only)
+-- ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON TABLES TO anon; -- skipped: requires supabase_admin role (hosted platform only)
+-- ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON TABLES TO authenticated; -- skipped: requires supabase_admin role (hosted platform only)
+-- ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON TABLES TO service_role; -- skipped: requires supabase_admin role (hosted platform only)
 
 
 --
@@ -2406,7 +2405,7 @@ CREATE POLICY staff_insert_first_owner ON public.staff_members
   WITH CHECK (
     user_id = auth.uid()
     AND role = 'owner'
-    AND project_has_no_members(project_id)
+    AND public.project_has_no_members(project_id)
     AND EXISTS (
       SELECT 1 FROM public.projects p
       WHERE p.id = project_id AND p.created_by = auth.uid()

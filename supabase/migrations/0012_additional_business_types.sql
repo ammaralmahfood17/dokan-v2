@@ -9,4 +9,5 @@ INSERT INTO public.business_types (code, name_ar, name_en, description_ar, descr
   ('hotel', 'فندق', 'Hotel', 'فندق أو شقة فندقية', 'Hotel or serviced apartment', 'bed-double'),
   ('real_estate', 'عقارات', 'Real Estate', 'وسيط عقاري أو إدارة عقارات', 'Real estate agency', 'building-2'),
   ('pharmacy', 'صيدلية', 'Pharmacy', 'صيدلية أو مستحضرات تجميل', 'Pharmacy or cosmetics', 'pill'),
-  ('car_rental', 'تأجير سيارات', 'Car Rental', 'تأجير سيارات أو مركبات', 'Car or vehicle rental', 'car');
+  ('car_rental', 'تأجير سيارات', 'Car Rental', 'تأجير سيارات أو مركبات', 'Car or vehicle rental', 'car')
+ON CONFLICT (code) DO NOTHING;
