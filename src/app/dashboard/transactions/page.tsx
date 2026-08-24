@@ -29,6 +29,7 @@ export default async function TransactionsPage({
     { data: weekOrders },
     { data: cancelledOrders },
     { data: todayOrders },
+    { data: expenses },
   ] = await Promise.all([
     supabase
       .from('orders')
@@ -51,15 +52,52 @@ export default async function TransactionsPage({
       .is('service_type', null)
       .gte('created_at', today.toISOString())
       .neq('status', 'cancelled'),
+    supabase
+      .from('expenses')
+      .select('id, amount, description, category, created_at')
+      .eq('project_id', ctx.project.id)
+      .gte('created_at', weekAgo.toISOString()),
   ]);
 
   const rows = weekOrders ?? [];
   const incomeRows = rows.filter((o) => o.status !== 'cancelled');
-  const expenseRows = rows.filter((o) => o.status === 'cancelled');
-  const visible = txFilter === 'income' ? incomeRows : txFilter === 'expense' ? expenseRows : rows;
+  const expenseRows = expenses ?? [];
+
+  type TxRow =
+    | { kind: 'order'; id: string; created_at: string; label: string; amount: number; status: string; type: string }
+    | { kind: 'expense'; id: string; created_at: string; label: string; amount: number; status: string; type: 'expense' };
+
+  const normalizeOrder = (o: { id: string; created_at: string; total_amount: number | string | null; status: string; type: string }): TxRow => ({
+    kind: 'order',
+    id: o.id,
+    created_at: o.created_at,
+    label: o.type === 'dinein' ? 'تناول في المطعم' : o.type === 'walkin' ? 'محلي' : o.type === 'drivethru' ? 'سيارة ماشية' : 'طلب',
+    amount: Number(o.total_amount ?? 0),
+    status: o.status,
+    type: o.type,
+  });
+
+  const normalizeExpense = (e: { id: string; created_at: string; description: string | null; amount: number | string | null }): TxRow => ({
+    kind: 'expense',
+    id: e.id,
+    created_at: e.created_at,
+    label: e.description ?? 'مصروف',
+    amount: Number(e.amount ?? 0),
+    status: 'recorded',
+    type: 'expense',
+  });
+
+  const allRows: TxRow[] = [...incomeRows.map(normalizeOrder), ...expenseRows.map(normalizeExpense)];
+  const visible =
+    txFilter === 'income'
+      ? allRows.filter((r) => r.kind === 'order')
+      : txFilter === 'expense'
+        ? allRows.filter((r) => r.kind === 'expense')
+        : allRows;
 
   const weekIncome = incomeRows.reduce((sum, o) => sum + Number(o.total_amount ?? 0), 0);
   const weekCancelled = (cancelledOrders ?? []).reduce((sum, o) => sum + Number(o.total_amount ?? 0), 0);
+  const weekExpenses = expenseRows.reduce((sum, e) => sum + Number(e.amount ?? 0), 0);
   const todayIncome = (todayOrders ?? []).reduce((sum, o) => sum + Number(o.total_amount ?? 0), 0);
 
   const statusTag: Record<string, { bg: string; fg: string }> = {
@@ -68,6 +106,7 @@ export default async function TransactionsPage({
     ready: { bg: '#E5F3EA', fg: '#2F8F5B' },
     delivered: { bg: '#E5F3EA', fg: '#2F8F5B' },
     cancelled: { bg: '#FBE9E7', fg: '#C0483D' },
+    recorded: { bg: '#EEF0EC', fg: '#66716D' },
   };
   const statusLabel: Record<string, string> = {
     pending: 'قيد الانتظار',
@@ -75,6 +114,7 @@ export default async function TransactionsPage({
     ready: 'جاهز',
     delivered: 'تم التسليم',
     cancelled: 'ملغي',
+    recorded: 'مسجل',
   };
 
   return (
@@ -108,7 +148,7 @@ export default async function TransactionsPage({
             },
             {
               label: 'صافي الأسبوع',
-              value: formatMoney(weekIncome - weekCancelled, ctx.project.currency),
+              value: formatMoney(weekIncome - weekExpenses, ctx.project.currency),
               icon: Banknote,
             },
           ]}
@@ -151,9 +191,8 @@ export default async function TransactionsPage({
             </thead>
             <tbody>
               {visible.map((o) => {
-                const isCancelled = o.status === 'cancelled';
-                const orderTypeLabel =
-                  o.type === 'dinein' ? 'تناول في المطعم' : o.type === 'walkin' ? 'محلي' : o.type === 'drivethru' ? 'سيارة ماشية' : 'طلب';
+                const isExpense = o.kind === 'expense';
+                const isCancelled = !isExpense && o.status === 'cancelled';
                 return (
                   <tr key={o.id} className={isCancelled ? 'opacity-60' : ''}>
                     <td className="text-[var(--color-text-secondary)]">
@@ -161,10 +200,10 @@ export default async function TransactionsPage({
                     </td>
                     <td>
                       <div className="flex flex-col items-start gap-1">
-                        <Tag bg={isCancelled ? '#FBE9E7' : '#E5F3EA'} fg={isCancelled ? '#C0483D' : '#2F8F5B'}>
-                          {isCancelled ? 'مصروف' : 'إيراد'}
+                        <Tag bg={isExpense ? '#FBE9E7' : '#E5F3EA'} fg={isExpense ? '#C0483D' : '#2F8F5B'}>
+                          {isExpense ? 'مصروف' : 'إيراد'}
                         </Tag>
-                        <span className="text-[11px] text-[var(--color-text-muted)]">{orderTypeLabel}</span>
+                        <span className="text-[11px] text-[var(--color-text-muted)]">{o.label}</span>
                       </div>
                     </td>
                     <td>
@@ -175,8 +214,8 @@ export default async function TransactionsPage({
                         {statusLabel[o.status] ?? o.status}
                       </Tag>
                     </td>
-                    <td className={`font-mono text-base font-bold tabular-nums ${isCancelled ? 'text-[var(--color-danger)]' : 'text-[var(--color-success)]'}`} dir="ltr">
-                      {isCancelled ? '-' : '+'}{formatMoney(Number(o.total_amount ?? 0), ctx.project.currency)}
+                    <td className={`font-mono text-base font-bold tabular-nums ${(isExpense || isCancelled) ? 'text-[var(--color-danger)]' : 'text-[var(--color-success)]'}`} dir="ltr">
+                      {isExpense ? '-' : '+'}{formatMoney(Number(o.amount ?? 0), ctx.project.currency)}
                     </td>
                   </tr>
                 );

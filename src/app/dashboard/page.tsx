@@ -18,6 +18,7 @@ import { RecentOrdersTable } from '@/components/dashboard/recent-orders-table';
 import { WeeklySalesChart } from '@/components/dashboard/weekly-sales-chart';
 import { TopProducts } from '@/components/dashboard/top-products';
 import { PageHeader } from '@/components/dashboard/page-header';
+import Link from 'next/link';
 import { Plus } from 'lucide-react';
 
 export default async function DashboardPage() {
@@ -192,27 +193,27 @@ export default async function DashboardPage() {
         title={`مرحبًا، ${ctx.project.name}`}
         sub={todayLabel}
         secondary={
-          <a href="/dashboard/orders" className="btn btn-secondary">
+          <Link href="/dashboard/orders" className="btn btn-secondary">
             الطلبات
-          </a>
+          </Link>
         }
         primary={
-          <a href="/dashboard/pos" className="btn btn-gold">
+          <Link href="/dashboard/pos" className="btn btn-gold">
             <Plus className="h-4 w-4" />
             طلب جديد
-          </a>
+          </Link>
         }
       />
 
       {/* CTA Section — primary actions */}
       <section className="mb-6 flex flex-wrap items-center gap-3">
-        <a
+        <Link
           href="/dashboard/products"
           className="inline-flex items-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-2.5 text-sm font-semibold text-[var(--color-text)] transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
         >
           <Plus className="h-4 w-4" />
           إضافة منتج
-        </a>
+        </Link>
       </section>
 
       <KpiCards

@@ -15,7 +15,7 @@ export default async function KitchenPage() {
     .eq('project_id', ctx.project.id)
     .in('status', ['pending', 'preparing', 'ready'])
     .is('service_type', null)
-    .order('created_at', { ascending: true })
+    .order('created_at', { ascending: false })
     .limit(50);
 
   return (

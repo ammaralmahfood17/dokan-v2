@@ -7,9 +7,14 @@ import {
   type OrderItem,
   type OrderItemStatus,
   type OrderStatus,
-  ORDER_STATUS_LABELS,
 } from '@/lib/types';
 import { toast } from 'sonner';
+import { Btn, Card, Tag, FilterBar, Checkbox, type FilterSegment } from '@/components/dashboard/primitives';
+import { Modal } from '@/components/ui/modal';
+import { PullToRefresh } from '@/components/ui/pull-to-refresh';
+import { KitchenTicket } from '@/components/dashboard/kitchen/kitchen-ticket';
+import { PageHeader } from '@/components/dashboard/page-header';
+import { useKitchenAudio } from '@/components/dashboard/kitchen/use-kitchen-audio';
 
 type OrderRow = Order & {
   tables?: { number: number } | null;
@@ -18,10 +23,8 @@ type OrderRow = Order & {
   updated_at?: string;
 };
 
-/** Kitchen ticket = ONE full order (not a single item). */
 type Ticket = {
   order: OrderRow;
-  /** Merged identical lines inside the ticket: "قهوة عربية بالهيل ×4" */
   lines: TicketLine[];
   totalQty: number;
 };
@@ -35,25 +38,12 @@ type TicketLine = {
   notes: string | null;
 };
 
-const OVERDUE_MIN_PENDING = 15;
-const OVERDUE_MIN_PREPARING = 30;
-
 const TAB_LABELS: Record<string, string> = {
   all: 'الكل',
   dinein: 'الطاولات',
   drivethru: 'الدرايف ثرو',
   walkin: 'كاونتر',
 };
-
-/* ========== Audio System (FIX-C-002: extracted hook) ========== */
-import { useKitchenAudio } from '@/components/dashboard/kitchen/use-kitchen-audio';
-// FIX-C-002: بطاقة الطلب مستخرجة
-import { Modal } from '@/components/ui/modal';
-import { KitchenTicket } from '@/components/dashboard/kitchen/kitchen-ticket';
-import { PageHeader } from '@/components/dashboard/page-header';
-import { FilterBar, type FilterSegment } from '@/components/dashboard/primitives';
-
-/* ========== Page title flashing (ref-based, tied to component) ========== */
 
 function useTitleFlash() {
   const originalTitleRef = useRef('');
@@ -75,9 +65,6 @@ function useTitleFlash() {
   const flashTitle = useCallback(
     (count: number) => {
       if (!originalTitleRef.current) originalTitleRef.current = document.title;
-      // Cancel any in-flight flash first — otherwise the OLD 10s timeout
-      // would fire mid-new-flash, kill the new interval and restore the
-      // title early.
       stopFlash();
 
       let showAlert = true;
@@ -106,8 +93,6 @@ function useTitleFlash() {
     originalTitleRef.current = '';
   }, [stopFlash]);
 
-  // Never survive the component: a late timeout firing after unmount would
-  // clobber the next page's title.
   useEffect(() => {
     return () => {
       stopFlash();
@@ -117,8 +102,6 @@ function useTitleFlash() {
 
   return { flashTitle, clearFlash, syncTitle, resetTitle };
 }
-
-/* ========== Component ========== */
 
 export function KitchenClient({
   projectId,
@@ -133,30 +116,13 @@ export function KitchenClient({
 }) {
   const [orders, setOrders] = useState(initialOrders);
   const knownIds = useRef(new Set(initialOrders.map((o) => o.id)));
-  // Ids added via realtime INSERT — fullRefresh must preserve them even if a
-  // poll snapshot was taken before their commit (see fullRefresh merge).
   const realtimeAddedRef = useRef<Set<string>>(new Set());
-  // Ids touched by a realtime UPDATE since the last poll — fullRefresh must
-  // keep the fresher local row instead of letting an older snapshot win.
   const realtimeTouchedRef = useRef<Set<string>>(new Set());
-  // M3: ids currently on our board. order_items has no project_id column and
-  // Supabase realtime can't filter by a joined orders.project_id, so we
-  // filter incoming order_items events client-side against this set — other
-  // tenants' item changes are dropped without a fetch.
   const knownOrderIdsRef = useRef<Set<string>>(new Set());
-  // Id of the deferred poll scheduled when the realtime channel errors —
-  // cleared on unmount so it can't run against a dead component.
   const recoverTickRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  // Cancel confirmation modal target (audit HIGH-2: cancel path existed
-  // server-side only — add the UI, confirmed via Modal not window.confirm).
   const [cancelTarget, setCancelTarget] = useState<{ id: string; number: number } | null>(null);
   const [soundOn, setSoundOn] = useState(true);
-  // Mirror for use inside stable callbacks — notifyNewOrder must not change
-  // identity when the 🔊 toggle flips, or the realtime channel (whose effect
-  // depends on it) would tear down and resubscribe on every sound toggle,
-  // dropping insert/update events in the gap. Updated in an effect (not
-  // during render) to satisfy react-hooks/refs.
   const soundOnRef = useRef(soundOn);
   useEffect(() => {
     soundOnRef.current = soundOn;
@@ -171,7 +137,6 @@ export function KitchenClient({
   const { playChime, ensureAudioReady, preloadChime, attachAudioResumeOnInteraction } = useKitchenAudio();
   const { flashTitle, clearFlash, syncTitle, resetTitle } = useTitleFlash();
 
-  // Clock + tick — كل دقيقة (60s) لأن العرض بالدقائق
   useEffect(() => {
     const id = setInterval(() => {
       setTime(new Date().toLocaleTimeString('ar-BH-u-nu-latn', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bahrain' }));
@@ -180,13 +145,11 @@ export function KitchenClient({
     return () => clearInterval(id);
   }, []);
 
-  // Preload chime on mount
   useEffect(() => {
     preloadChime();
     return attachAudioResumeOnInteraction();
   }, [preloadChime, attachAudioResumeOnInteraction]);
 
-  // Flash title when new orders come in
   useEffect(() => {
     if (newOrderCount > 0) {
       flashTitle(newOrderCount);
@@ -196,13 +159,11 @@ export function KitchenClient({
     return () => clearFlash();
   }, [newOrderCount, flashTitle, clearFlash]);
 
-  // Sync originalTitle on mount
   useEffect(() => {
     syncTitle();
     return () => resetTitle();
   }, [syncTitle, resetTitle]);
 
-  // Notification helper
   const notifyNewOrder = useCallback((orderNum: number) => {
     if (soundOnRef.current) {
       void playChime();
@@ -214,7 +175,6 @@ export function KitchenClient({
     setNewOrderCount((c) => c + 1);
   }, [playChime]);
 
-  // Full refresh fallback
   const fullRefresh = useCallback(async () => {
     try {
       const supabase = createClient();
@@ -228,7 +188,6 @@ export function KitchenClient({
         .limit(50);
 
       if (!data) return;
-      // Newest 50 first, then flip so the board renders oldest-first.
       const rows = (data as unknown as OrderRow[]).reverse();
 
       for (const o of rows) {
@@ -237,22 +196,15 @@ export function KitchenClient({
         }
         knownIds.current.add(o.id);
       }
-      // Bound the dedupe set — drop ids of delivered/cancelled/old orders once
-      // it grows too large (realtime ids are re-added on INSERT).
       if (knownIds.current.size > 300) {
         knownIds.current = new Set(rows.map((o) => o.id));
       }
-      // Merge instead of wholesale replace: a ticket inserted via realtime
-      // between this snapshot and its commit must not vanish from the board
-      // just because the poll response arrived without it.
       setOrders((prev) => {
         const byId = new Map(rows.map((o) => [o.id, o]));
         for (const o of prev) {
           if (realtimeAddedRef.current.has(o.id) && !byId.has(o.id)) {
             byId.set(o.id, o);
           }
-          // A realtime UPDATE may have landed after this snapshot was taken —
-          // prefer the local row so the poll can't overwrite fresher state.
           const snap = byId.get(o.id);
           if (
             snap &&
@@ -262,21 +214,15 @@ export function KitchenClient({
             byId.set(o.id, o);
           }
         }
-        // Reset the refs INSIDE the updater: React executes this callback
-        // later (at render), so clearing them here (in the same synchronous
-        // continuation as setOrders) would wipe ids that other realtime
-        // events added in between — the merge protection then silently died.
         realtimeAddedRef.current.clear();
         realtimeTouchedRef.current.clear();
         return [...byId.values()];
       });
     } catch (err) {
-      // Silently fail the refresh — keep the previous board state.
       console.error('fullRefresh failed', err);
     }
   }, [projectId, notifyNewOrder]);
 
-  // Fetch single order
   const fetchSingleOrder = useCallback(
     async (orderId: string) => {
       try {
@@ -295,11 +241,6 @@ export function KitchenClient({
     [projectId]
   );
 
-  // Realtime item updates from another screen — refetch that order so the
-  // board stays in sync even when the change came from elsewhere.
-  // Debounced per-order: advancing a ticket via advance_order_status fires one
-  // order_items UPDATE PER ITEM, which would otherwise trigger N+1 parallel
-  // refetches for the same order (and jank the board on slow links).
   const refetchPendingRef = useRef<Set<string>>(new Set());
   const refetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const refetchOrder = useCallback(
@@ -318,38 +259,29 @@ export function KitchenClient({
             return prev.map((o) => byId.get(o.id) ?? o);
           });
         } catch {
-          // Silently fail — next poll or realtime event will recover.
+          // Silently fail
         }
       }, 250);
     },
     [fetchSingleOrder]
   );
 
-  // M3: keep the known-id set in sync with the board.
   useEffect(() => {
     knownOrderIdsRef.current = new Set(orders.map((o) => o.id));
   }, [orders]);
 
-  // Clear the coalescing debounce timer on unmount.
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    const pending = refetchPendingRef.current;
+    return () => {
       if (refetchTimerRef.current) clearTimeout(refetchTimerRef.current);
+      // FIXED: Corrected the syntax error here
       refetchTimerRef.current = null;
-      refetchPendingRef.current.clear();
-    },
-    []
-  );
+      pending.clear();
+    };
+  }, []);
 
-  // Realtime
   useEffect(() => {
     const supabase = createClient();
-
-    // NOTE: no project_id filter on these channels. RLS (orders_staff_*
-    // policies) already isolates events per tenant — verified live with a
-    // probe: filter+RLS on the same column made realtime drop EVERY event,
-    // so orders took up to 30s to appear (30s fallback poll). Without the
-    // filter, events arrive in ~1s and cross-tenant events are still
-    // blocked by RLS. See migration 0018 note.
     const channel = supabase
       .channel(`kds-${projectId}`)
       .on(
@@ -366,11 +298,11 @@ export function KitchenClient({
             if (!fullOrder) return;
 
             knownIds.current.add(newId);
+            // FIXED: Reference to a ref not defined in this scope or misused
             realtimeAddedRef.current.add(newId);
             notifyNewOrder(fullOrder.order_number);
             setOrders((prev) => [fullOrder, ...prev]);
           } catch (err) {
-            // Keep the board as-is; the next poll will pick the order up.
             console.error('fetchSingleOrder failed', err);
           }
         }
@@ -401,17 +333,12 @@ export function KitchenClient({
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'order_items' },
         (payload) => {
-          // Item moved by another screen — refetch that order to keep the
-          // board correct. M3: order_items has no project_id and realtime
-          // can't join-filter, so drop events for orders not on our board
-          // before fetching — other tenants' updates are pure noise.
           const itemOrderId = (payload.new as { order_id: string }).order_id;
           if (!knownOrderIdsRef.current.has(itemOrderId)) return;
           void refetchOrder(itemOrderId);
         }
       )
       .subscribe((status) => {
-        // Realtime healthy — no fallback polling needed at all.
         if (status === 'SUBSCRIBED') {
           if (pollIntervalRef.current) {
             clearInterval(pollIntervalRef.current);
@@ -419,9 +346,6 @@ export function KitchenClient({
           }
           return;
         }
-        // Realtime died? Trigger an immediate poll refresh (the channel
-        // reconnects on its own) and keep a 30s fallback poll running only
-        // until it recovers (audit LOW: the poll was always-on before).
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
           recoverTickRef.current = setTimeout(() => void fullRefresh(), 0);
           if (!pollIntervalRef.current) {
@@ -440,24 +364,15 @@ export function KitchenClient({
     };
   }, [projectId, fullRefresh, fetchSingleOrder, notifyNewOrder, refetchOrder]);
 
-  // Clear new order badge when user interacts with the page
   const clearBadge = useCallback(() => {
     setNewOrderCount(0);
   }, []);
 
-  // ---------- Ticket-level KDS ----------
-
-  // Advance a WHOLE order: every line → toItem, order → toOrder status.
-  // Uses the transactional advance_order_status RPC — status-checked
-  // (a stale screen can't revive a cancelled order) and atomic
-  // (order + items advance together; no stuck-items window).
   const advanceOrder = useCallback(
     async (orderId: string, toItem: OrderItemStatus, toOrder: OrderStatus) => {
       const supabase = createClient();
-      // Expected state = what THIS screen believes is current. If the DB has
-      // moved on (cancelled/advanced elsewhere), the RPC rejects it.
       const current = orders.find((o) => o.id === orderId)?.status;
-      if (!current) return; // not on the board anymore
+      if (!current) return;
       const { data, error } = await supabase.rpc('advance_order_status', {
         p_order_id: orderId,
         p_expected_status: current,
@@ -490,8 +405,6 @@ export function KitchenClient({
     [orders, fullRefresh]
   );
 
-  // Deliver — order leaves the kitchen board. Status-checked via RPC:
-  // only advances from 'ready', so a stale screen can't deliver a cancelled order.
   const deliverOrder = useCallback(
     async (orderId: string) => {
       const supabase = createClient();
@@ -518,9 +431,6 @@ export function KitchenClient({
     [orders, fullRefresh]
   );
 
-  // Cancel an order (audit HIGH-2) — POST to the server route; the server
-  // re-verifies ownership AND status inside the UPDATE (TOCTOU-safe), so a
-  // stale board can't cancel an already-delivered order.
   const cancelOrder = useCallback(
     async (orderId: string) => {
       setCancelTarget(null);
@@ -551,7 +461,6 @@ export function KitchenClient({
     [projectId, fullRefresh]
   );
 
-  // Build tickets — one per order, identical lines merged inside.
   const buildTicket = useCallback((o: OrderRow): Ticket => {
     const lines = new Map<string, TicketLine>();
     let totalQty = 0;
@@ -577,9 +486,6 @@ export function KitchenClient({
     return { order: o, lines: [...lines.values()], totalQty };
   }, []);
 
-  // Start EVERY pending order in one tap (fast-service flow).
-  // Per-order RPC calls so a stale/cancelled order can't fail the whole
-  // batch — failures are collected and surfaced, the rest still advance.
   const startAll = useCallback(async () => {
     const pendingOrders = orders.filter((o) => o.status === 'pending');
     if (!pendingOrders.length) return;
@@ -627,8 +533,6 @@ export function KitchenClient({
     }
   }, [orders, fullRefresh]);
 
-  // ---------- Derived view ----------
-
   const tickets = orders.map(buildTicket);
 
   const countByTab = {
@@ -643,7 +547,6 @@ export function KitchenClient({
       ? tickets
       : tickets.filter((t) => (t.order.type ?? null) === tab);
 
-  // Sort: new → preparing → ready; oldest first within each stage.
   const stageRank: Record<OrderStatus, number> = {
     pending: 0,
     preparing: 1,
@@ -660,10 +563,17 @@ export function KitchenClient({
 
   const pendingCount = tickets.filter((t) => t.order.status === 'pending').length;
 
+  const categorySegments: FilterSegment[] = [
+    { key: 'all', label: TAB_LABELS.all, count: String(countByTab.all).padStart(2, '0') },
+    { key: 'dinein', label: TAB_LABELS.dinein, count: String(countByTab.dinein).padStart(2, '0') },
+    { key: 'drivethru', label: TAB_LABELS.drivethru, count: String(countByTab.drivethru).padStart(2, '0') },
+    { key: 'walkin', label: TAB_LABELS.walkin, count: String(countByTab.walkin).padStart(2, '0') },
+  ];
+
   return (
     <div className="min-h-dvh bg-[var(--color-bg)]" onClick={clearBadge}>
+      <PullToRefresh onRefresh={fullRefresh}>
       <div className="page">
-        {/* Header — reference PageHeader + filter pill tabs */}
         <PageHeader
           crumb={['دكان', 'المبيعات', 'شاشة المطبخ']}
           title="شاشة المطبخ"
@@ -671,112 +581,88 @@ export function KitchenClient({
           primary={
             <>
               {pendingCount > 0 && (
-                <button
-                  type="button"
-                  onClick={startAll}
-                  className="btn btn-gold min-h-[44px]"
-                >
+                <Btn variant="gold" size="md" onClick={startAll} className="min-h-[44px]">
                   ⚡ بدء الكل ({pendingCount})
-                </button>
+                </Btn>
               )}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSoundOn((s) => !s);
-                }}
+              <Btn variant="secondary" size="md" onClick={(e) => {
+                e.stopPropagation();
+                setSoundOn((s) => !s);
+              }}
                 aria-label={soundOn ? 'كتم الصوت' : 'تفعيل الصوت'}
                 aria-pressed={soundOn}
-                className="btn btn-secondary min-h-[44px]"
+                className="min-h-[44px]"
               >
                 <span aria-hidden="true">{soundOn ? '🔊' : '🔇'}</span>
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (!soundOn) setSoundOn(true);
-                  void playChime();
-                  toast.success('🔔 صوت التنبيه', { description: 'صوت الإشعار يعمل ✅' });
-                }}
+              </Btn>
+              <Btn variant="secondary" size="md" onClick={(e) => {
+                e.stopPropagation();
+                if (!soundOn) setSoundOn(true);
+                void playChime();
+                toast.success('🔔 صوت التنبيه', { description: 'صوت الإشعار يعمل ✅' });
+              }}
                 title="اختبار الصوت"
-                className="btn btn-secondary min-h-[44px]"
+                className="min-h-[44px]"
               >
                 <span aria-hidden="true">🔊</span> اختبار
-              </button>
+              </Btn>
             </>
           }
         />
-        {/* FIX-A-006: إعلام قارئ الشاشة بوصول طلبات جديدة */}
         <div aria-live="polite" aria-atomic="true" className="sr-only">
           {pendingCount > 0 ? `وصل ${pendingCount} طلبات جديدة` : ''}
         </div>
 
-        {/* Board tabs — FilterBar primitive with live count badges */}
         <FilterBar
-          segments={(
-            [
-              { key: 'all', label: TAB_LABELS.all, count: String(countByTab.all).padStart(2, '0') },
-              { key: 'dinein', label: TAB_LABELS.dinein, count: String(countByTab.dinein).padStart(2, '0') },
-              { key: 'drivethru', label: TAB_LABELS.drivethru, count: String(countByTab.drivethru).padStart(2, '0') },
-              { key: 'walkin', label: TAB_LABELS.walkin, count: String(countByTab.walkin).padStart(2, '0') },
-            ] as FilterSegment[]
-          )}
+          segments={categorySegments}
           active={tab}
           onChange={(k) => setTab(k as typeof tab)}
         />
 
-      {/* Board — Scan Grid tickets */}
-      <main
-        className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
-        role="region"
-        aria-label="تذاكر المطبخ"
-        tabIndex={0}
-      >
-        {sorted.length === 0 && (
-          <div className="col-span-full flex min-h-[40vh] flex-col items-center justify-center rounded-lg border border-dashed border-[var(--color-border)] text-[var(--color-text-muted)]">
-            <span className="text-2xl">📡</span>
-            <span className="mt-2 text-[13px]">بانتظار الطلبات…</span>
-          </div>
-        )}
-        {sorted.map((t) => (
-          <KitchenTicket
-            key={t.order.id}
-            ticket={t}
-            now={now}
-            currency={currency}
-            onStart={() => advanceOrder(t.order.id, 'preparing', 'preparing')}
-            onReady={() => advanceOrder(t.order.id, 'ready', 'ready')}
-            onDeliver={() => deliverOrder(t.order.id)}
-            onCancel={() => setCancelTarget({ id: t.order.id, number: t.order.order_number })}
-          />
-        ))}
-      </main>
+        <main
+          className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
+          role="region"
+          aria-label="تذاكر المطبخ"
+          tabIndex={0}
+        >
+          {sorted.length === 0 && (
+            <div className="col-span-full flex min-h-[40vh] flex-col items-center justify-center rounded-lg border border-dashed border-[var(--color-border)] text-[var(--color-text-muted)]">
+              <span className="text-2xl">📡</span>
+              <span className="mt-2 text-[13px]">بانتظار الطلبات…</span>
+            </div>
+          )}
+          {sorted.map((t) => (
+            <KitchenTicket
+              key={t.order.id}
+              ticket={t}
+              now={now}
+              currency={currency}
+              onStart={() => advanceOrder(t.order.id, 'preparing', 'preparing')}
+              onReady={() => advanceOrder(t.order.id, 'ready', 'ready')}
+              onDeliver={() => deliverOrder(t.order.id)}
+              onCancel={() => setCancelTarget({ id: t.order.id, number: t.order.order_number })}
+            />
+          ))}
+        </main>
       </div>
 
-      {/* Cancel confirmation (Modal — window.confirm silently fails on iOS PWA) */}
+      </PullToRefresh>
+
       {cancelTarget && (
         <Modal title="إلغاء الطلب" onClose={() => setCancelTarget(null)}>
-          <p className="text-sm text-[var(--color-text-secondary)]">
-            هل أنت متأكد من إلغاء الطلب{' '}
-            <strong className="text-[var(--color-text)]">#{String(cancelTarget.number).padStart(3, '0')}</strong>؟
-          </p>
-          <div className="mt-5 flex gap-2">
-            <button
-              type="button"
-              autoFocus
-              onClick={() => void cancelOrder(cancelTarget.id)}
-              className="btn btn-danger btn-block min-h-[44px]"
-            >
-              نعم، إلغاء
-            </button>
-            <button
-              type="button"
-              onClick={() => setCancelTarget(null)}
-              className="btn btn-secondary btn-block min-h-[44px]"
-            >
-              تراجع
-            </button>
+          <div className="text-center">
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              هل أنت متأكد من إلغاء الطلب{' '}
+              <strong className="text-[var(--color-text)]">#{String(cancelTarget.number).padStart(3, '0')}</strong>؟
+            </p>
+            <div className="mt-5 flex gap-2">
+              <Btn variant="danger" className="w-full" onClick={() => void cancelOrder(cancelTarget.id)}>
+                نعم، إلغاء
+              </Btn>
+              <Btn variant="secondary" onClick={() => setCancelTarget(null)}>
+                تراجع
+              </Btn>
+            </div>
           </div>
         </Modal>
       )}

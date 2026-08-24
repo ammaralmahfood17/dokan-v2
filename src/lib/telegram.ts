@@ -62,11 +62,11 @@ export async function sendTelegramAlert(
     .from('staff_members')
     .select('user_id, notify_telegram')
     .eq('project_id', projectId);
-  const telegramPref = new Map(
-    (staffPrefs ?? []).map((s: any) => [s.user_id, s.notify_telegram !== false])
+  const telegramPref = new Map<string | null, boolean>(
+    (staffPrefs ?? []).map((s) => [s.user_id, s.notify_telegram !== false] as [string | null, boolean])
   );
   const recipients = links.filter(
-    (link: any) => !link.user_id || telegramPref.get(link.user_id) === true
+    (link) => !link.user_id || telegramPref.get(link.user_id) === true
   );
 
   if (!recipients.length) return { sent: 0, failed: 0 };

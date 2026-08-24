@@ -43,7 +43,8 @@ function bahrainBounds(daysAgoStart: number, daysAgoEndExclusive: number): { sta
   const y = Number(parts.find((p) => p.type === 'year')!.value);
   const m = Number(parts.find((p) => p.type === 'month')!.value);
   const d = Number(parts.find((p) => p.type === 'day')!.value);
-  const todayStart = new Date(Date.UTC(y, m - 1, d)); // midnight Bahrain = this UTC instant
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const todayStart = new Date(`${y}-${pad(m)}-${pad(d)}T00:00:00+03:00`); // true Asia/Bahrain midnight (UTC+3)
   const start = new Date(todayStart.getTime() - daysAgoStart * 86400e3);
   const end = new Date(todayStart.getTime() + (daysAgoEndExclusive - daysAgoStart) * 86400e3);
   return { start: start.toISOString(), end: end.toISOString() };

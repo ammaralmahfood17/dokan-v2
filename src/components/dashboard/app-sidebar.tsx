@@ -63,7 +63,7 @@ const NAV_GROUPS: { label: string | null; items: NavItem[] }[] = [
   {
     label: 'المبيعات',
     items: [
-      { href: '/dashboard/orders', label: 'الطلبات', icon: ClipboardList, badge: '٧' },
+      { href: '/dashboard/orders', label: 'الطلبات', icon: ClipboardList },
       { href: '/dashboard/products', label: 'القائمة', icon: Package },
       { href: '/dashboard/tables', label: 'الطاولات وQR', icon: QrCode, module: 'menu_qr' },
       { href: '/dashboard/pos', label: 'نقطة البيع', icon: Monitor, module: 'pos' },
@@ -186,7 +186,7 @@ export function AppSidebar({ projectName, activeModules, businessType }: { proje
         id="app-drawer"
         className={cn(
           'fixed inset-y-0 end-0 z-[var(--z-drawer)] flex w-60 shrink-0 flex-col border-s transition-transform duration-300 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0',
-          isOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0',
+          isOpen ? 'translate-x-0' : 'translate-x-full rtl:-translate-x-full lg:translate-x-0',
           'print:hidden'
         )}
         style={{ background: C.primaryDark, borderColor: 'rgba(255,255,255,.08)' }}

@@ -13,8 +13,12 @@ export default async function BudgetPage() {
   const supabase = await createClient();
   const TZ = 'Asia/Bahrain';
   const dayFmt = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
-  const today = new Date(Date.parse(`${dayFmt.format(new Date())}T00:00:00+03:00`));
-  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  const dayKey = dayFmt.format(new Date());
+  const today = new Date(Date.parse(`${dayKey}T00:00:00+03:00`));
+  // True Asia/Bahrain month start (UTC+3) — using getFullYear()/getMonth() on
+  // the Bahrain-midnight instant would shift the boundary to 03:00 Bahrain and
+  // drop the first 3 hours of the month.
+  const monthStart = new Date(`${dayKey.slice(0, 7)}-01T00:00:00+03:00`);
 
   const [
     { data: expenses },

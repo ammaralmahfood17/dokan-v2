@@ -30,10 +30,11 @@ export default async function ReportsPage() {
       .gte('created_at', weekAgo.toISOString()),
     supabase
       .from('orders')
-      .select('id, total_amount, status, created_at')
+      .select('id, order_number, total_amount, status, created_at')
       .eq('project_id', ctx.project.id)
       .is('service_type', null)
-      .gte('created_at', monthAgo.toISOString()),
+      .gte('created_at', monthAgo.toISOString())
+      .order('created_at', { ascending: false }),
     supabase
       .from('order_items')
       .select('product_name, quantity, unit_price, orders!inner(created_at, status, project_id)')
@@ -43,9 +44,12 @@ export default async function ReportsPage() {
       .neq('orders.status', 'cancelled'),
   ]);
 
-  const weekRevenue = (weekOrders ?? []).reduce((sum, o) => sum + Number(o.total_amount ?? 0), 0);
-  const monthRevenue = (monthOrders ?? []).reduce((sum, o) => sum + Number(o.total_amount ?? 0), 0);
-  const avgOrder = monthOrders && monthOrders.length > 0 ? monthRevenue / monthOrders.length : 0;
+  const weekRevenue = (weekOrders ?? [])
+    .filter((o) => o.status !== 'cancelled')
+    .reduce((sum, o) => sum + Number(o.total_amount ?? 0), 0);
+  const activeMonthOrders = (monthOrders ?? []).filter((o) => o.status !== 'cancelled');
+  const monthRevenue = activeMonthOrders.reduce((sum, o) => sum + Number(o.total_amount ?? 0), 0);
+  const avgOrder = activeMonthOrders.length > 0 ? monthRevenue / activeMonthOrders.length : 0;
 
   const productMap = new Map<string, { qty: number; revenue: number }>();
   for (const item of topProductsRaw ?? []) {
@@ -153,7 +157,7 @@ export default async function ReportsPage() {
                 <tr key={o.id}>
                   <td>
                     <span className="font-mono text-xs font-bold text-[var(--color-primary)]" dir="ltr">
-                      #{String(o.id).slice(-6)}
+                      #{o.order_number}
                     </span>
                   </td>
                   <td className="text-[var(--color-text-secondary)]">

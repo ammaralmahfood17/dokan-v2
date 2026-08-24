@@ -7,6 +7,7 @@ import { Button } from '@/components/shadcn/button';
 import { Switch } from '@/components/shadcn/switch';
 import { Tag } from '@/components/dashboard/primitives';
 import { PageHeader } from '@/components/dashboard/page-header';
+import { Modal } from '@/components/ui/modal';
 import { NotificationPrefs } from '@/components/notification-prefs';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
@@ -125,30 +126,16 @@ function SubscriptionCard({
       )}
 
       {confirming && (
-        <div
-          className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center bg-black/60 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-label="تأكيد التجديد"
-          onClick={() => setConfirming(false)}
-        >
-          <div
-            className="w-full max-w-xs rounded-xl bg-[var(--color-surface)] p-5 text-center shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <Modal title="تأكيد التجديد" onClose={() => setConfirming(false)} className="max-w-xs">
+          <div className="text-center">
             <div className="mb-3 mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[var(--color-primary-tint)]">
               <span className="text-lg font-bold text-[var(--color-primary)]">$</span>
             </div>
-            <p className="mb-1 text-sm font-bold">تأكيد التجديد</p>
             <p className="mb-5 text-xs text-[var(--color-text-secondary)]">
               تأكد من تحصيل القيمة النقدية قبل تسجيل تجديد الاشتراك 30 يوم.
             </p>
             <div className="flex gap-2">
-              <Button
-                className="w-full"
-                disabled={renewing}
-                onClick={renew}
-              >
+              <Button className="w-full" disabled={renewing} onClick={renew}>
                 {renewing ? 'جاري…' : 'تأكيد التجديد'}
               </Button>
               <Button variant="secondary" onClick={() => setConfirming(false)}>
@@ -156,7 +143,7 @@ function SubscriptionCard({
               </Button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );
@@ -475,21 +462,11 @@ export function SettingsClient({
       </form>
 
       {confirmDeactivate && (
-        <div
-          className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center bg-black/60 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-label="إيقاف المتجر"
-          onClick={() => setConfirmDeactivate(false)}
-        >
-          <div
-            className="w-full max-w-xs rounded-xl bg-[var(--color-surface)] p-5 text-center shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <Modal title="إيقاف المتجر؟" onClose={() => setConfirmDeactivate(false)} className="max-w-xs">
+          <div className="text-center">
             <div className="mb-3 mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[var(--color-danger-tint)]">
               <span className="text-lg font-bold text-[var(--color-danger)]">!</span>
             </div>
-            <p className="mb-1 text-sm font-bold">إيقاف المتجر؟</p>
             <p className="mb-5 text-xs text-[var(--color-text-secondary)]">
               القائمة العامة ستتوقف عن العملاء — روابط الطاولات و QR ما راح يفتحون المنيو حتى تعيد التشغيل.
             </p>
@@ -509,7 +486,7 @@ export function SettingsClient({
               </Button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

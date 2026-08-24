@@ -19,6 +19,18 @@ import {
   type Supplier,
 } from '@/lib/types';
 
+/** Today's date key (YYYY-MM-DD) in Asia/Bahrain — avoids the UTC drift of
+ *  new Date().toISOString().slice(0,10) that books expenses to the wrong day
+ *  during Bahrain 00:00–02:59. */
+function bahrainDateKey(d: Date = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Bahrain',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d);
+}
+
 type Tab = 'inventory' | 'suppliers' | 'expenses';
 
 export function InventoryClient({
@@ -46,6 +58,9 @@ export function InventoryClient({
   const [showSupplier, setShowSupplier] = useState(false);
   const [showExpense, setShowExpense] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Destructive deletes must confirm via a Modal (iOS PWA window.confirm is
+  // broken). Holds the pending delete target.
+  const [confirmDelete, setConfirmDelete] = useState<{ table: 'inventory_items' | 'suppliers' | 'expenses'; id: string; label: string } | null>(null);
 
   const decimals = currencyDecimals(currency);
   const lowStock = useMemo(
@@ -136,7 +151,7 @@ export function InventoryClient({
       category: String(form.get('category') ?? 'أخرى'),
       amount,
       description: String(form.get('description') ?? '').trim() || null,
-      occurred_on: String(form.get('date') ?? new Date().toISOString().slice(0, 10)),
+      occurred_on: String(form.get('date') ?? bahrainDateKey()),
     });
     setSaving(false);
     if (error) {
@@ -284,7 +299,7 @@ export function InventoryClient({
                               <Button
                                 variant="ghost"
                                 size="icon-sm"
-                                onClick={() => deleteRow('inventory_items', i.id)}
+                                onClick={() => setConfirmDelete({ table: 'inventory_items', id: i.id, label: i.name })}
                                 aria-label="حذف الصنف"
                               >
                                 <Trash2 className="h-3.5 w-3.5 text-[var(--color-danger)]" />
@@ -351,7 +366,7 @@ export function InventoryClient({
                               <Button
                                 variant="ghost"
                                 size="icon-sm"
-                                onClick={() => deleteRow('suppliers', s.id)}
+                                onClick={() => setConfirmDelete({ table: 'suppliers', id: s.id, label: s.name })}
                                 aria-label="حذف المورد"
                               >
                                 <Trash2 className="h-3.5 w-3.5 text-[var(--color-danger)]" />
@@ -415,7 +430,7 @@ export function InventoryClient({
                     {expenses.map((x) => (
                       <tr key={x.id}>
                         <td className="font-mono text-[12px] tabular-nums text-[var(--color-text-secondary)]">
-                          {new Date(`${x.occurred_on}T00:00:00`).toLocaleDateString('ar-BH-u-nu-latn', {
+                          {new Date(`${x.occurred_on}T00:00:00+03:00`).toLocaleDateString('ar-BH-u-nu-latn', {
                             timeZone: 'Asia/Bahrain',
                           })}
                         </td>
@@ -433,7 +448,7 @@ export function InventoryClient({
                             <Button
                               variant="ghost"
                               size="icon-sm"
-                              onClick={() => deleteRow('expenses', x.id)}
+                              onClick={() => setConfirmDelete({ table: 'expenses', id: x.id, label: x.description || x.category })}
                               aria-label="حذف المصروف"
                             >
                               <Trash2 className="h-3.5 w-3.5 text-[var(--color-danger)]" />
@@ -587,6 +602,27 @@ export function InventoryClient({
               </Button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {confirmDelete && (
+        <Modal title="حذف السجل" onClose={() => setConfirmDelete(null)}>
+          <div className="text-center">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-danger-tint)]">
+              <Trash2 className="h-6 w-6 text-[var(--color-danger)]" />
+            </div>
+            <p className="mb-5 text-xs text-[var(--color-text-secondary)]">
+              هل أنت متأكد من حذف «{confirmDelete.label}»؟ لا يمكن التراجع.
+            </p>
+            <div className="flex gap-2">
+              <Btn variant="danger" className="w-full" disabled={saving} onClick={async () => { await deleteRow(confirmDelete.table, confirmDelete.id); setConfirmDelete(null); }}>
+                {saving ? 'جاري…' : 'نعم، حذف'}
+              </Btn>
+              <Btn variant="secondary" onClick={() => setConfirmDelete(null)}>
+                تراجع
+              </Btn>
+            </div>
+          </div>
         </Modal>
       )}
     </div>

@@ -10,26 +10,35 @@ export default async function CustomersPage() {
 
   const supabase = await createClient();
 
-  const [{ data: customers }, { data: campaigns }] = await Promise.all([
-    supabase
+  // Fetch ALL customers via a paged loop — a hard .limit() would truncate the
+  // list and undercount any campaign audience (audienceCount() filters this
+  // in-memory array).
+  const allCustomers: Customer[] = [];
+  const CUSTOMER_PAGE = 1000;
+  for (let from = 0; ; from += CUSTOMER_PAGE) {
+    const { data, error } = await supabase
       .from('customers')
       .select('*')
       .eq('project_id', ctx.project.id)
       .order('created_at', { ascending: false })
-      .limit(200),
-    supabase
-      .from('campaigns')
-      .select('*')
-      .eq('project_id', ctx.project.id)
-      .order('created_at', { ascending: false })
-      .limit(50),
-  ]);
+      .range(from, from + CUSTOMER_PAGE - 1);
+    if (error || !data) break;
+    allCustomers.push(...(data as Customer[]));
+    if (data.length < CUSTOMER_PAGE) break;
+  }
+
+  const { data: campaigns } = await supabase
+    .from('campaigns')
+    .select('*')
+    .eq('project_id', ctx.project.id)
+    .order('created_at', { ascending: false })
+    .limit(50);
 
   return (
     <CustomersClient
       projectId={ctx.project.id}
       currency={ctx.project.currency}
-      initialCustomers={(customers ?? []) as Customer[]}
+      initialCustomers={allCustomers}
       initialCampaigns={(campaigns ?? []) as Campaign[]}
     />
   );

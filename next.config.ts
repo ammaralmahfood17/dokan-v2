@@ -1,5 +1,11 @@
 import type { NextConfig } from 'next';
 import { withSentryConfig } from '@sentry/nextjs';
+import bundleAnalyzer from '@next/bundle-analyzer';
+
+const withAnalyzer = bundleAnalyzer({
+  enabled: process.env.ANALYZE === 'true',
+  openAnalyzer: false,
+});
 
 const securityHeaders = [
   { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
@@ -85,7 +91,7 @@ const nextConfig: NextConfig = {
 // Sentry wraps the config; harmless without SENTRY_DSN (SDK no-ops).
 // Auth tokens: no sentry.authToken set → CI/source-map upload disabled until
 // the user adds Sentry credentials in the dashboard.
-export default withSentryConfig(nextConfig, {
+export default withSentryConfig(withAnalyzer(nextConfig), {
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
   silent: !process.env.CI,

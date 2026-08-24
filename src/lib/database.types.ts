@@ -427,13 +427,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "ingredients_inventory_item_id_fkey"
-            columns: ["inventory_item_id"]
-            isOneToOne: false
-            referencedRelation: "inventory_items"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "ingredients_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false

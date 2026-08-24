@@ -40,6 +40,31 @@ export function PosClient({
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [query, setQuery] = useState('');
+  // Bottom-sheet hygiene: ESC to close + lock background scroll while open
+  // (AGENTS.md — sheets need scroll lock + ESC; body scroll position is
+  // preserved so the page doesn't jump when the sheet closes).
+  useEffect(() => {
+    if (!cartOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setCartOpen(false);
+      }
+    };
+    const scrollY = window.scrollY;
+    const prev = document.body.style.position;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.position = prev;
+      document.body.style.top = '';
+      document.body.style.width = '';
+      window.scrollTo(0, scrollY);
+    };
+  }, [cartOpen]);
   // Last successful order — drives the "وصل المطبخ" confirmation banner.
   const [lastConfirmed, setLastConfirmed] = useState<{
     orderNumber: number;

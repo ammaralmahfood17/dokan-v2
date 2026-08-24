@@ -119,6 +119,8 @@ export function ProductFormModal({
       setQuickCatName('');
       setShowQuickCat(false);
       toast.success(`تم إنشاء «${cat.name}»`);
+    } catch {
+      toast.error('فشل إنشاء التصنيف');
     } finally {
       setLoading(false);
     }

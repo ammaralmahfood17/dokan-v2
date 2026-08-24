@@ -99,20 +99,19 @@ export default async function PublicMenuPage({
 
   return (
     <>
-      {/* FIX-M-006: JSON-LD structured data (Restaurant) — خاصية jsonLd مدعومة
-          في React 19 runtime لكن @types/react لا يعرّفها بعد — cast محلي فقط.
-          بدون dangerouslySetInnerHTML: يبقى المشروع صفر استخدام له. */}
+      {/* FIX-M-006: JSON-LD structured data (Restaurant). Emitted as real
+          JSON text so crawlers can parse it. */}
       <script
         type="application/ld+json"
-        {...({
-          jsonLd: {
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
             '@context': 'https://schema.org',
             '@type': 'Restaurant',
             name: project.name,
             url: `https://www.dokanstore.xyz/${projectSlug}`,
             servesCuisine: 'Gulf',
-          },
-        } as object)}
+          }),
+        }}
       />
       <MenuClient
         project={project as Project}

@@ -58,18 +58,19 @@ export default function OnboardingPage() {
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
 
+  // Selecting a business type also auto-selects its recommended modules.
+  function handleSelectBusinessType(id: string) {
+    setBusinessTypeId(id);
+    const bt = businessTypes.find(b => b.id === id);
+    if (bt) {
+      setSelectedModules(BUSINESS_TYPE_RECOMMENDATIONS[bt.code] ?? []);
+    }
+  }
+
   const autoSlug = useMemo(() => generateSlug(name), [name]);
   const effectiveSlug = slugTouched ? slug : autoSlug;
 
   const selectedBusinessType = businessTypes.find(b => b.id === businessTypeId);
-
-  // Auto-select recommended modules when business type changes
-  useEffect(() => {
-    if (selectedBusinessType) {
-      const recommended = BUSINESS_TYPE_RECOMMENDATIONS[selectedBusinessType.code] ?? [];
-      setSelectedModules(recommended);
-    }
-  }, [selectedBusinessType?.code]);
 
   useEffect(() => {
     let cancelled = false;
@@ -311,7 +312,7 @@ export default function OnboardingPage() {
                       <button
                         key={bt.id}
                         type="button"
-                        onClick={() => setBusinessTypeId(bt.id)}
+                        onClick={() => handleSelectBusinessType(bt.id)}
                         className={`flex flex-col items-center gap-2 rounded-[10px] border-2 p-3 text-center transition-all ${
                           businessTypeId === bt.id
                             ? 'border-[var(--color-primary)] bg-[var(--color-primary-tint)]'

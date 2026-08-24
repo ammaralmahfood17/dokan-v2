@@ -27,10 +27,11 @@ export function Tag({ children, bg, fg, dot, className }: { children: React.Reac
   );
 }
 
-export function Card({ children, className, pad = true }: { children: React.ReactNode; className?: string; pad?: boolean }) {
+export function Card({ children, className, pad = true, onClick }: { children: React.ReactNode; className?: string; pad?: boolean; onClick?: () => void }) {
   return (
     <div
-      className={cn('rounded-xl border', className)}
+      onClick={onClick}
+      className={cn('rounded-xl border', onClick && 'cursor-pointer', className)}
       style={{ background: C.surface, borderColor: C.border, padding: pad ? 18 : 0 }}
     >
       {children}
@@ -57,21 +58,27 @@ export function Btn({
   size = 'md',
   className,
   type = 'button',
+  disabled = false,
+  title,
 }: {
   children: React.ReactNode;
   icon?: React.ComponentType<{ size?: number }>;
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   variant?: BtnVariant;
   size?: BtnSize;
   className?: string;
   type?: 'button' | 'submit';
+  disabled?: boolean;
+  title?: string;
 }) {
   const sizes = { md: 'px-3.5 py-2 text-sm', sm: 'px-2.5 py-1.5 text-xs' };
   return (
     <button
       type={type}
       onClick={onClick}
-      className={cn('inline-flex items-center gap-1.5 rounded-[10px] font-semibold transition active:scale-[.97]', sizes[size], className)}
+      disabled={disabled}
+      title={title}
+      className={cn('inline-flex items-center gap-1.5 rounded-[10px] font-semibold transition active:scale-[.97]', sizes[size], disabled && 'opacity-50 cursor-not-allowed pointer-events-none', className)}
       style={VARIANTS[variant]}
     >
       {Icon && <Icon size={size === 'sm' ? 13 : 15} />}

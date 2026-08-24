@@ -65,9 +65,12 @@ function tzHour(d: Date): number {
  * this is a force-dynamic server component re-rendered per request.
  */
 function getRangeBounds(count: number, range: Range) {
-  // "Today" at Asia/Bahrain midnight → UTC instant, then walk back N days.
-  const [y, m, d] = tzDayKey(new Date()).split('-').map(Number);
-  const todayUTCms = Date.UTC(y, m - 1, d);
+  // "Today" at Asia/Bahrain midnight → UTC instant. Bahrain is UTC+3 (no DST),
+  // so build the instant directly from the Bahrain day key with an explicit
+  // +03:00 offset. Using Date.UTC() here would yield UTC midnight = 03:00
+  // Bahrain and silently drop the first 3 hours of every day.
+  const dayKey = tzDayKey(new Date());
+  const todayUTCms = new Date(`${dayKey}T00:00:00+03:00`).getTime();
   const startUTC = new Date(todayUTCms - (count - 1) * 86400000);
 
   // Previous period (for comparison): same length, immediately before `startUTC`

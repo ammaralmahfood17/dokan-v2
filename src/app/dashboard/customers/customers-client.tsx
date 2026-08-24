@@ -71,6 +71,10 @@ export function CustomersClient({
 
   // Campaign modal
   const [showCampaign, setShowCampaign] = useState(false);
+  // Destructive actions must confirm via a Modal (window.confirm() is broken on
+  // iOS PWA and would silently delete). These hold the pending target.
+  const [confirmCustomer, setConfirmCustomer] = useState<Customer | null>(null);
+  const [confirmCampaign, setConfirmCampaign] = useState<Campaign | null>(null);
   const [campaignName, setCampaignName] = useState('');
   const [campaignChannel, setCampaignChannel] = useState<'sms' | 'whatsapp' | 'email' | 'push'>('whatsapp');
   const [campaignMsg, setCampaignMsg] = useState('');
@@ -111,13 +115,20 @@ export function CustomersClient({
   }, [customers, query]);
 
   async function refresh() {
-    const { data } = await supabase
-      .from('customers')
-      .select('*')
-      .eq('project_id', projectId)
-      .order('created_at', { ascending: false })
-      .limit(200);
-    if (data) setCustomers(data as Customer[]);
+    const all: Customer[] = [];
+    const PAGE = 1000;
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: false })
+        .range(from, from + PAGE - 1);
+      if (error || !data) break;
+      all.push(...(data as Customer[]));
+      if (data.length < PAGE) break;
+    }
+    if (all.length) setCustomers(all);
     router.refresh();
   }
 
@@ -169,9 +180,17 @@ export function CustomersClient({
       reason: loyaltyReason.trim() || null,
     });
     if (!error) {
+      // Read the authoritative current balance (not the stale client copy) so
+      // concurrent edits/awarded points aren't clobbered.
+      const { data: cur } = await supabase
+        .from('customers')
+        .select('loyalty_points')
+        .eq('id', showLoyalty.id)
+        .single();
+      const currentPoints = Number(cur?.loyalty_points ?? 0);
       await supabase
         .from('customers')
-        .update({ loyalty_points: showLoyalty.loyalty_points + delta })
+        .update({ loyalty_points: currentPoints + delta })
         .eq('id', showLoyalty.id);
       toast.success(`تم تعديل النقاط (${delta > 0 ? '+' : ''}${delta})`);
       setShowLoyalty(null);
@@ -447,10 +466,10 @@ export function CustomersClient({
                             >
                               <History className="h-3.5 w-3.5" />
                             </Button>
-                            <Button
+                              <Button
                               variant="ghost"
                               size="icon-sm"
-                              onClick={() => deleteCustomer(c.id)}
+                              onClick={() => setConfirmCustomer(c)}
                               aria-label="حذف العميل"
                             >
                               <Trash2 className="h-3.5 w-3.5 text-[var(--color-danger)]" />
@@ -531,9 +550,9 @@ export function CustomersClient({
                         </>
                       )}
                       {(cp.status === 'draft' || cp.status === 'cancelled') && (
-                        <Button variant="ghost" size="icon-sm" onClick={() => deleteCampaign(cp.id)} aria-label="حذف">
-                          <Trash2 className="h-3.5 w-3.5 text-[var(--color-danger)]" />
-                        </Button>
+                          <Button variant="ghost" size="icon-sm" onClick={() => setConfirmCampaign(cp)} aria-label="حذف">
+                            <Trash2 className="h-3.5 w-3.5 text-[var(--color-danger)]" />
+                          </Button>
                       )}
                     </div>
                   </div>
@@ -797,6 +816,48 @@ export function CustomersClient({
               </Button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {confirmCustomer && (
+        <Modal title="حذف العميل" onClose={() => setConfirmCustomer(null)}>
+          <div className="text-center">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-danger-tint)]">
+              <Trash2 className="h-6 w-6 text-[var(--color-danger)]" />
+            </div>
+            <p className="mb-5 text-xs text-[var(--color-text-secondary)]">
+              هل أنت متأكد من حذف العميل «{confirmCustomer.name || confirmCustomer.phone}»؟ لا يمكن التراجع.
+            </p>
+            <div className="flex gap-2">
+              <Btn variant="danger" className="w-full" disabled={saving} onClick={async () => { await deleteCustomer(confirmCustomer.id); setConfirmCustomer(null); }}>
+                {saving ? 'جاري…' : 'نعم، حذف'}
+              </Btn>
+              <Btn variant="secondary" onClick={() => setConfirmCustomer(null)}>
+                تراجع
+              </Btn>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {confirmCampaign && (
+        <Modal title="حذف الحملة" onClose={() => setConfirmCampaign(null)}>
+          <div className="text-center">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-danger-tint)]">
+              <Trash2 className="h-6 w-6 text-[var(--color-danger)]" />
+            </div>
+            <p className="mb-5 text-xs text-[var(--color-text-secondary)]">
+              هل أنت متأكد من حذف الحملة «{confirmCampaign.name}»؟ لا يمكن التراجع.
+            </p>
+            <div className="flex gap-2">
+              <Btn variant="danger" className="w-full" disabled={saving} onClick={async () => { await deleteCampaign(confirmCampaign.id); setConfirmCampaign(null); }}>
+                {saving ? 'جاري…' : 'نعم، حذف'}
+              </Btn>
+              <Btn variant="secondary" onClick={() => setConfirmCampaign(null)}>
+                تراجع
+              </Btn>
+            </div>
+          </div>
         </Modal>
       )}
     </div>

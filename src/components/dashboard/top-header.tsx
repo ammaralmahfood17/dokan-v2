@@ -65,12 +65,6 @@ export function TopHeader({ projectName }: { projectName: string }) {
           aria-label="الإشعارات"
         >
           <Bell size={16} style={{ color: 'var(--color-text)' }} />
-          <span
-            className="absolute -left-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold text-white"
-            style={{ background: 'var(--color-danger)' }}
-          >
-            ٣
-          </span>
         </button>
         <div className="mx-1 h-6 w-px" style={{ background: 'var(--color-border)' }} />
 

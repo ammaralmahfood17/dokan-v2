@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { Plus, Pencil, Trash2, X, ImageIcon, Check, Search, ChevronLeft } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { formatMoney, money, currencyDecimals } from '@/lib/utils';
-import { Button } from '@/components/shadcn/button';
+import { Btn, Card, Tag, FilterBar, Checkbox, type FilterSegment } from '@/components/dashboard/primitives';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Modal } from '@/components/ui/modal';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
@@ -16,15 +16,7 @@ import { toast } from 'sonner';
 
 type ProductWithAddons = Product & { product_addons: ProductAddon[] };
 
-/**
- * M5: after any product/category mutation, purge the public menu cache for
- * this project so the live QR menu reflects the change immediately instead of
- * after the 60s ISR window. Fire-and-forget — cache purge must never block or
- * fail the user's action. The endpoint re-checks membership server-side.
- */
-// FIX-C-001: helpers مستخرجة (validate/remove/compress)
 import { validateProduct, removeProductImage, compressImage, type FieldErrors } from '@/lib/products-utils';
-// FIX-P-003: Dynamic imports for heavy components — only load when needed
 import dynamic from 'next/dynamic';
 
 const ProductFormModal = dynamic(
@@ -59,10 +51,8 @@ function revalidateMenuCache(projectId: string) {
   }).catch(() => {});
 }
 
-/** Temporary addon line in the product form — id is set for existing (persisted) addons */
 type FormAddon = { key: string; id?: string; name: string; price: string };
 
-/** Best-effort: delete the storage object behind a product image URL (ignore failures) */
 export function ProductsClient({
   projectId,
   currency,
@@ -82,19 +72,13 @@ export function ProductsClient({
   const [editing, setEditing] = useState<ProductWithAddons | null>(null);
   const [loading, setLoading] = useState(false);
 
-
-  // Category form
   const [catName, setCatName] = useState('');
   const [catError, setCatError] = useState('');
-
-  // Edit category
   const [editingCat, setEditingCat] = useState<Category | null>(null);
   const [editCatName, setEditCatName] = useState('');
   const [confirmDeleteCat, setConfirmDeleteCat] = useState<Category | null>(null);
 
-  // Search + category filter
   const [searchQuery, setSearchQuery] = useState('');
-  // FIX-P-002: تأجيل الفلترة — لا تحجب الـ main thread أثناء الكتابة
   const deferredSearch = useDeferredValue(searchQuery);
   const [activeCat, setActiveCat] = useState<string | null>(null);
 
@@ -119,7 +103,6 @@ export function ProductsClient({
     return list;
   }, [sortedProducts, activeCat, deferredSearch]);
 
-  // Live product counts per category (updates as products change).
   const categoryCounts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const p of sortedProducts) {
@@ -130,13 +113,10 @@ export function ProductsClient({
   }, [sortedProducts]);
 
   function openCreate() {
-    // FIX-C-001: النموذج يهيئ حالته من editing (null = جديد)
     setEditing(null);
     setShowProductForm(true);
   }
 
-  // Fresh category form every time — never leak the previous draft or error
-  // into a newly opened modal (cancel/X/backdrop close without resetting).
   function openCategoryForm() {
     setCatName('');
     setCatError('');
@@ -144,12 +124,10 @@ export function ProductsClient({
   }
 
   function openEdit(p: ProductWithAddons) {
-    // FIX-C-001: النموذج يهيئ حالته من editing
     setEditing(p);
     setShowProductForm(true);
   }
 
-  // Delete confirmation state
   const [confirmDelete, setConfirmDelete] = useState<ProductWithAddons | null>(null);
 
   async function deleteProduct(id: string) {
@@ -173,7 +151,6 @@ export function ProductsClient({
   async function deleteAddon(productId: string, addonId: string) {
     try {
       const supabase = createClient();
-      // Verify the product belongs to this project before touching its addons
       const { data: owned } = await supabase
         .from('products')
         .select('id')
@@ -366,8 +343,15 @@ export function ProductsClient({
     }
   }
 
-
   const refresh = useCallback(async () => { router.refresh(); }, [router]);
+
+  const categorySegments = useMemo(() => {
+    const segs: FilterSegment[] = [{ key: 'all', label: 'الكل', count: sortedProducts.length }];
+    categories.forEach(c => {
+      segs.push({ key: c.id, label: c.name, count: categoryCounts.get(c.id) });
+    });
+    return segs;
+  }, [categories, sortedProducts, categoryCounts]);
 
   return (
     <div className="page">
@@ -381,38 +365,37 @@ export function ProductsClient({
             <ChevronLeft size={12} style={{ color: 'var(--color-text-muted)' }} />
             <span>القائمة</span>
           </div>
-          <h1>القائمة</h1>
-          <p>{sortedProducts.length} صنف عبر {categories.length} فئات</p>
+          <h1 className="text-2xl font-bold">القائمة</h1>
+          <p className="text-xs text-[var(--color-text-secondary)]">{sortedProducts.length} صنف عبر {categories.length} فئات</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {bulkMode ? (
             <>
-              <Button variant="secondary" size="sm" onClick={exitBulk}>
+              <Btn variant="secondary" size="sm" onClick={exitBulk}>
                 إلغاء التحديد
-              </Button>
-              <Button size="sm" onClick={openCreate}>
+              </Btn>
+              <Btn size="sm" onClick={openCreate}>
                 <Plus className="h-4 w-4" />
                 منتج جديد
-              </Button>
+              </Btn>
             </>
           ) : (
             <>
-              <Button variant="secondary" size="sm" onClick={() => setBulkMode(true)}>
+              <Btn variant="secondary" size="sm" onClick={() => setBulkMode(true)}>
                 تحديد
-              </Button>
-              <Button variant="secondary" size="sm" onClick={openCategoryForm}>
+              </Btn>
+              <Btn variant="secondary" size="sm" onClick={openCategoryForm}>
                 تصنيف جديد
-              </Button>
-              <Button size="sm" onClick={openCreate}>
+              </Btn>
+              <Btn size="sm" onClick={openCreate}>
                 <Plus className="h-4 w-4" />
                 منتج جديد
-              </Button>
+              </Btn>
             </>
           )}
         </div>
       </div>
 
-      {/* Search bar */}
       <div className="relative mb-4">
         <Search className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
         <input
@@ -435,71 +418,11 @@ export function ProductsClient({
       </div>
 
       {categories.length > 0 && (
-        <div className="mb-4 flex flex-wrap items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => setActiveCat(null)}
-            aria-pressed={!activeCat}
-            className={`flex min-h-[44px] items-center gap-1.5 rounded-full px-4 text-xs font-bold transition-all ${
-              !activeCat
-                ? 'bg-[var(--color-primary)] text-white shadow-sm'
-                : 'border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:border-[var(--color-primary)]'
-            }`}
-          >
-            <span>الكل</span>
-            <span
-              className={`rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${
-                !activeCat ? 'bg-white/20' : 'bg-[var(--color-bg)]'
-              }`}
-            >
-              {sortedProducts.length}
-            </span>
-          </button>
-          {categories.map((c) => (
-            <div
-              key={c.id}
-              className={`flex min-h-[44px] items-center gap-0.5 rounded-full py-1 pe-1 ps-3 text-xs font-bold transition-all ${
-                activeCat === c.id
-                  ? 'bg-[var(--color-primary)] text-white shadow-sm'
-                  : 'border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)]'
-              }`}
-            >
-              <button
-                type="button"
-                onClick={() => setActiveCat(activeCat === c.id ? null : c.id)}
-                aria-pressed={activeCat === c.id}
-                className="flex items-center gap-1.5 rounded-full py-1.5"
-              >
-                {c.name}
-                <span
-                  className={`rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${
-                    activeCat === c.id ? 'bg-white/20' : 'bg-[var(--color-bg)]'
-                  }`}
-                >
-                  {categoryCounts.get(c.id) ?? 0}
-                </span>
-              </button>
-              {/* Edit/delete — real buttons, always visible (touch + keyboard) */}
-              <span className="mx-0.5 h-4 w-px bg-[var(--color-border)]" aria-hidden="true" />
-              <button
-                type="button"
-                onClick={() => { setEditingCat(c); setEditCatName(c.name); }}
-                aria-label={`تعديل التصنيف ${c.name}`}
-                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full transition-opacity hover:opacity-70"
-              >
-                <Pencil className="h-3 w-3" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setConfirmDeleteCat(c)}
-                aria-label={`حذف التصنيف ${c.name}`}
-                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full transition-opacity hover:opacity-70"
-              >
-                <Trash2 className="h-3 w-3 text-[var(--color-danger)]" />
-              </button>
-            </div>
-          ))}
-        </div>
+        <FilterBar
+          segments={categorySegments}
+          active={activeCat ?? 'all'}
+          onChange={(key) => setActiveCat(key === 'all' ? null : key)}
+        />
       )}
 
       {!filteredProducts.length ? (
@@ -507,39 +430,23 @@ export function ProductsClient({
           title={searchQuery || activeCat ? 'لا توجد نتائج' : 'ما فيه منتجات حالياً'}
           description={searchQuery || activeCat ? 'جرب تغيير كلمات البحث أو إلغاء الفلتر.' : 'أضف أول منتج وبيّن للعملاء قائمتك.'}
           action={
-            <Button onClick={openCreate}>
+            <Btn onClick={openCreate}>
               <Plus className="h-4 w-4" />
               أضف أول منتج
-            </Button>
+            </Btn>
           }
         />
       ) : (
         <>
-          {/* FIX-P-003: containment لعزل الشبكة الثقيلة */}
           <div className="product-grid grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3">
             {filteredProducts.map((p) => (
-              <div
+              <Card
                 key={p.id}
-                role={bulkMode ? undefined : 'button'}
-                tabIndex={bulkMode ? undefined : 0}
-                onClick={bulkMode ? undefined : () => openEdit(p)}
-                onKeyDown={
-                  bulkMode
-                    ? undefined
-                    : (e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          openEdit(p);
-                        }
-                      }
-                }
-                aria-label={bulkMode ? undefined : `تعديل ${p.name}`}
-                className={`dashboard-card card overflow-hidden text-start transition-all active:scale-[0.98] ${
+                className={`overflow-hidden text-start transition-all active:scale-[0.98] ${
                   bulkMode && selectedIds.has(p.id) ? 'ring-2 ring-[var(--color-primary)]' : ''
                 } ${!p.is_available ? 'opacity-60' : ''}`}
+                onClick={bulkMode ? undefined : () => openEdit(p)}
               >
-                {/* Image / placeholder — 4:3 like the POS grid. surface so no-image
-                    cards read as one clean card instead of bleeding into the page bg */}
                 <div className="relative aspect-[4/3] w-full overflow-hidden bg-[var(--color-surface)]">
                   {p.image_url ? (
                     <Image
@@ -557,23 +464,17 @@ export function ProductsClient({
                     </div>
                   )}
                   {bulkMode ? (
-                    <button
-                      type="button"
-                      onClick={() => toggleSelect(p.id)}
-                      aria-label={`اختيار ${p.name}`}
-                      className={`absolute start-2 top-2 flex h-11 w-11 items-center justify-center rounded-full border-2 bg-[var(--color-surface)] shadow-sm transition-colors ${
-                        selectedIds.has(p.id)
-                          ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white'
-                          : 'border-[var(--color-border)] text-transparent'
-                      }`}
+                    <div 
+                      className="absolute start-2 top-2 flex h-11 w-11 items-center justify-center rounded-full border-2 bg-[var(--color-surface)] shadow-sm transition-colors"
+                      onClick={(e) => { e.stopPropagation(); toggleSelect(p.id); }}
                     >
-                      <Check className="h-5 w-5" />
-                    </button>
+                      <Checkbox checked={selectedIds.has(p.id)} onChange={() => {}} />
+                    </div>
                   ) : (
                     !p.is_available && (
-                      <span className="absolute end-2 top-2 rounded-[4px] bg-[var(--color-danger)] px-2 py-0.5 text-[10px] font-bold text-[var(--color-surface)] shadow-sm">
+                      <Tag bg="#C0483D" fg="#fff" className="absolute end-2 top-2">
                         متوقف
-                      </span>
+                      </Tag>
                     )
                   )}
                 </div>
@@ -592,69 +493,37 @@ export function ProductsClient({
                   {p.product_addons?.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1">
                       {p.product_addons.slice(0, 2).map((a) => (
-                        <span
-                          key={a.id}
-                          className="rounded-full bg-[var(--color-bg)] px-2 py-0.5 text-[10px] font-semibold text-[var(--color-text-secondary)]"
-                        >
+                        <Tag key={a.id} bg="var(--color-bg)" fg="var(--color-text-secondary)" className="text-[10px]">
                           {a.name}
-                        </span>
+                        </Tag>
                       ))}
                       {p.product_addons.length > 2 && (
-                        <span className="rounded-full bg-[var(--color-bg)] px-2 py-0.5 text-[10px] font-bold tabular-nums text-[var(--color-primary)]">
+                        <Tag bg="var(--color-bg)" fg="var(--color-primary)" className="text-[10px] font-bold">
                           +{p.product_addons.length - 2}
-                        </span>
+                        </Tag>
                       )}
                     </div>
                   )}
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
 
-          {/* Bulk action bar */}
           {bulkMode && (
             <div className="sticky bottom-3 z-[var(--z-sticky)] mt-4 flex items-center justify-between gap-2 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] p-2 shadow-lg">
-              <button
-                type="button"
-                onClick={toggleSelectAllVisible}
-                className="flex min-h-[44px] items-center gap-2 rounded-[var(--radius-md)] px-3 text-sm font-semibold text-[var(--color-text-secondary)]"
-              >
-                <span
-                  className={`flex h-5 w-5 items-center justify-center rounded border-2 ${
-                    allVisibleSelected
-                      ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white'
-                      : 'border-[var(--color-border)]'
-                  }`}
-                >
-                  {allVisibleSelected && <Check className="h-3 w-3" />}
-                </span>
+              <Btn variant="secondary" size="sm" onClick={toggleSelectAllVisible}>
                 {allVisibleSelected ? 'إلغاء الكل' : 'اختيار الكل'}
-              </button>
+              </Btn>
               <div className="flex gap-1">
-                <button
-                  type="button"
-                  onClick={() => bulkSetAvailability(true)}
-                  disabled={bulkBusy || selectedIds.size === 0}
-                  className="btn btn-secondary btn-sm"
-                >
+                <Btn variant="secondary" size="sm" onClick={() => bulkSetAvailability(true)} disabled={bulkBusy || selectedIds.size === 0}>
                   تفعيل
-                </button>
-                <button
-                  type="button"
-                  onClick={() => bulkSetAvailability(false)}
-                  disabled={bulkBusy || selectedIds.size === 0}
-                  className="btn btn-secondary btn-sm"
-                >
+                </Btn>
+                <Btn variant="secondary" size="sm" onClick={() => bulkSetAvailability(false)} disabled={bulkBusy || selectedIds.size === 0}>
                   إيقاف
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setConfirmBulkDelete(true)}
-                  disabled={bulkBusy || selectedIds.size === 0}
-                  className="btn btn-danger btn-sm"
-                >
+                </Btn>
+                <Btn variant="danger" size="sm" onClick={() => setConfirmBulkDelete(true)} disabled={bulkBusy || selectedIds.size === 0}>
                   حذف
-                </button>
+                </Btn>
               </div>
             </div>
           )}
@@ -663,7 +532,6 @@ export function ProductsClient({
 
       </PullToRefresh>
 
-      {/* ======== PRODUCT FORM MODAL — FIX-C-001: extracted component ======== */}
       {showProductForm && (
         <ProductFormModal
           projectId={projectId}
@@ -673,7 +541,6 @@ export function ProductsClient({
           editing={editing}
           onClose={() => setShowProductForm(false)}
           onSaved={(product, editingId) => {
-            // FIX-C-001: تحديث القائمة من النموذج المستخرج
             setProducts((prev) =>
               editingId
                 ? prev.map((p) => (p.id === editingId ? product : p))
@@ -687,7 +554,6 @@ export function ProductsClient({
         />
       )}
 
-      {/* ======== CATEGORY MODALS — FIX-C-001: extracted component ======== */}
       <CategoryManager
         showCategoryForm={showCategoryForm}
         catName={catName}
@@ -717,17 +583,40 @@ export function ProductsClient({
               هل أنت متأكد؟ هذا الإجراء لا يمكن التراجع عنه.
             </p>
             <div className="flex gap-2">
-              <Button
-                variant="destructive"
-                className="w-full"
-                disabled={bulkBusy}
-                onClick={bulkDelete}
-              >
+              <Btn variant="danger" className="w-full" disabled={bulkBusy} onClick={bulkDelete}>
                 {bulkBusy ? 'جاري…' : 'نعم، احذف'}
-              </Button>
-              <Button variant="secondary" onClick={() => setConfirmBulkDelete(false)}>
+              </Btn>
+              <Btn variant="secondary" onClick={() => setConfirmBulkDelete(false)}>
                 إلغاء
-              </Button>
+              </Btn>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {confirmDelete && (
+        <Modal title="حذف المنتج" onClose={() => setConfirmDelete(null)}>
+          <div className="text-center">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-danger-tint)]">
+              <Trash2 className="h-6 w-6 text-[var(--color-danger)]" />
+            </div>
+            <p className="mb-5 text-xs text-[var(--color-text-secondary)]">
+              هل أنت متأكد من حذف «{confirmDelete.name}»؟ لا يمكن التراجع.
+            </p>
+            <div className="flex gap-2">
+              <Btn
+                variant="danger"
+                className="w-full"
+                onClick={async () => {
+                  await deleteProduct(confirmDelete.id);
+                  setConfirmDelete(null);
+                }}
+              >
+                نعم، احذف
+              </Btn>
+              <Btn variant="secondary" onClick={() => setConfirmDelete(null)}>
+                إلغاء
+              </Btn>
             </div>
           </div>
         </Modal>

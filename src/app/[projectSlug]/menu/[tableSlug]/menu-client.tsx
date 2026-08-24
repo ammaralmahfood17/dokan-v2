@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { ShoppingBag, X, Check, Bell, FileText, Search, Languages } from 'lucide-react';
 import { formatMoney, money, currencyDecimals } from '@/lib/utils';
 import type {
@@ -28,6 +28,32 @@ import { OrderSuccessState } from '@/components/menu/order-success-state';
 import { MenuProductRow } from '@/components/menu/product-card';
 // D7: offline indicator on the customer-facing menu (banner, not blocker).
 import { OfflineBanner } from '@/components/ui/offline-banner';
+
+// External store for the display-language preference. useSyncExternalStore is
+// the React-19-idiomatic way to read localStorage: getServerSnapshot returns
+// 'ar' during SSR + hydration (so there is no text mismatch), then the client
+// snapshot switches to the saved value after mount — without calling
+// setState() inside an effect (which Next's lint rule forbids).
+const LANG_KEY = 'dokan-lang';
+const langSubscribers = new Set<() => void>();
+function subscribeLang(cb: () => void) {
+  langSubscribers.add(cb);
+  return () => {
+    langSubscribers.delete(cb);
+  };
+}
+function getLangSnapshot(): 'ar' | 'en' {
+  if (typeof window === 'undefined') return 'ar';
+  return localStorage.getItem(LANG_KEY) === 'en' ? 'en' : 'ar';
+}
+function setLangPref(next: 'ar' | 'en') {
+  try {
+    localStorage.setItem(LANG_KEY, next);
+  } catch {
+    // privacy mode — تجاهل بصمت
+  }
+  langSubscribers.forEach((cb) => cb());
+}
 
 /** Generic blur placeholder for product images — tiny 16×16 grey base64 */
 const BLUR_PLACEHOLDER =
@@ -72,17 +98,8 @@ export function MenuClient({
   const [menuQuery, setMenuQuery] = useState('');
   // تبديل لغة العرض: عربي / English (يستخدم name_en عندما متاح)
   // FIX-I-003: حفظ تفضيل اللغة في localStorage (لا يضيع عند refresh)
-  const [lang, setLang] = useState<'ar' | 'en'>(() => {
-    if (typeof window === 'undefined') return 'ar';
-    return localStorage.getItem('dokan-lang') === 'en' ? 'en' : 'ar';
-  });
-  useEffect(() => {
-    try {
-      localStorage.setItem('dokan-lang', lang);
-    } catch {
-      // privacy mode — تجاهل بصمت
-    }
-  }, [lang]);
+  const lang = useSyncExternalStore(subscribeLang, getLangSnapshot, () => 'ar' as const);
+
 
   const displayName = useCallback(
     (p: ProductWithAddons) =>
@@ -239,7 +256,9 @@ export function MenuClient({
     setCart((prev) =>
       prev
         .map((l) =>
-          l.key === key ? { ...l, quantity: l.quantity + delta } : l
+          l.key === key
+            ? { ...l, quantity: Math.max(1, Math.min(99, l.quantity + delta)) }
+            : l
         )
         .filter((l) => l.quantity > 0)
     );
@@ -517,7 +536,7 @@ export function MenuClient({
           {products.some((p) => p.name_en) && (
             <button
               type="button"
-              onClick={() => setLang((l) => (l === 'ar' ? 'en' : 'ar'))}
+              onClick={() => setLangPref(lang === 'ar' ? 'en' : 'ar')}
               aria-label={lang === 'ar' ? 'التبديل إلى الإنجليزية' : 'Switch to Arabic'}
               aria-pressed={lang === 'en'}
               className="flex h-[44px] shrink-0 items-center gap-1.5 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-xs font-bold text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-primary)]"

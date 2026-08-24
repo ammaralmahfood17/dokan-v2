@@ -109,6 +109,14 @@ export function hashXml(xml: string): string {
   return hash.toString('base64');
 }
 
+/** VAT in minor units, rounded HALF-UP to the nearest minor unit (halala/fils).
+ *  Integer division alone truncates (e.g. 15% of 10 halalas → 1 instead of 2),
+ *  which drifts the QR totals away from the invoice line totals. */
+function vatMinor(net: bigint, vatPercentBps: number): bigint {
+  const product = net * BigInt(vatPercentBps);
+  return (product + 5000n) / 10_000n;
+}
+
 /** Generates the QR TLV (Tag-Length-Value) per ZATCA spec §4.4:
  *   Tag 1 = Seller name
  *   Tag 2 = VAT number
@@ -189,7 +197,7 @@ export function buildUblXml(input: ZatcaInvoiceInput): { xml: string; uuid: stri
   const { netTotalRaw, vatTotalBpsSum } = input.lines.reduce(
     (acc, l) => {
       const lineNet = l.unitPriceMinor * BigInt(Math.round(l.quantity));
-      const lineVat = (lineNet * BigInt(l.vatPercentBps)) / 10_000n;
+      const lineVat = vatMinor(lineNet, l.vatPercentBps);
       acc.netTotalRaw += lineNet;
       acc.vatTotalBpsSum += lineVat;
       return acc;
@@ -205,9 +213,9 @@ export function buildUblXml(input: ZatcaInvoiceInput): { xml: string; uuid: stri
   // Invoice lines
   const invoiceLinesXml = input.lines
     .map((line, idx) => {
-      const lineNet = line.unitPriceMinor * BigInt(Math.round(line.quantity));
-      const lineVat = (lineNet * BigInt(line.vatPercentBps)) / 10_000n;
-      const lineTotal = lineNet + lineVat;
+       const lineNet = line.unitPriceMinor * BigInt(Math.round(line.quantity));
+       const lineVat = vatMinor(lineNet, line.vatPercentBps);
+       const lineTotal = lineNet + lineVat;
       return `    <cac:InvoiceLine>
         <cbc:ID>${idx + 1}</cbc:ID>
         <cbc:InvoicedQuantity unitCode="EA">${line.quantity.toFixed(2)}</cbc:InvoicedQuantity>
@@ -355,15 +363,16 @@ export function finalizeInvoice(
   const xmlHash = hashXml(xml);
   const signature = signHash(xmlHash, privateKeyPem);
 
-  const grossTotalMinor = input.lines
+  const netTotalMinor = input.lines
     .map((l) => (l.unitPriceMinor * BigInt(Math.round(l.quantity))))
     .reduce((a, b) => a + b, 0n);
   const vatTotalMinor = input.lines
     .map((l) => {
       const lineNet = l.unitPriceMinor * BigInt(Math.round(l.quantity));
-      return (lineNet * BigInt(l.vatPercentBps)) / 10_000n;
+      return vatMinor(lineNet, l.vatPercentBps);
     })
     .reduce((a, b) => a + b, 0n);
+  const grossTotalMinor = netTotalMinor + vatTotalMinor;
 
   // Build ECDSA public key from private key (for QR tags 7+8). Node returns
   // buffer only when asymmetricKeyDetails available (v18+); otherwise derive
@@ -384,6 +393,7 @@ export function finalizeInvoice(
   }
   const pubKeyB64 = pubKeyBuf.toString('base64');
 
+  // ZATCA QR Tag 4 = invoice total INCLUDING VAT; Tag 5 = VAT total.
   const qrTlv = generateQrTlv({
     sellerName: input.seller.nameAr,
     vatNumber: input.seller.vatNumber,
@@ -395,5 +405,5 @@ export function finalizeInvoice(
     publicKeyB64: pubKeyB64,
   });
 
-  return { xml, xmlHash, uuid, qrTlv, totalGrossMinor: grossTotalMinor + vatTotalMinor, totalVatMinor: vatTotalMinor };
+  return { xml, xmlHash, uuid, qrTlv, totalGrossMinor: grossTotalMinor, totalVatMinor: vatTotalMinor };
 }

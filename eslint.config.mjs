@@ -7,5 +7,6 @@ export default defineConfig([
     ".next/**",
     "node_modules/**",
     "supabase/functions/**",
+    "DokanDashboard2.jsx",
   ]),
 ]);
