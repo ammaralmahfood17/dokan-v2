@@ -249,9 +249,9 @@ export function TablesClient({
         <div className="card empty">
           <h3>ما فيه طاولات بعد</h3>
           <p className="mb-4 text-sm">أضف أول طاولة عشان تولّد QR ويقدر العملاء يطلبون.</p>
-          <Button onClick={openCreateModal}>
+          <Btn variant="primary" onClick={openCreateModal}>
             أضف أول طاولة
-          </Button>
+          </Btn>
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
@@ -271,9 +271,9 @@ export function TablesClient({
                   </Tag>
                 </div>
                 <div className="flex flex-wrap items-center justify-center gap-1">
-                  <Button variant="secondary" size="sm" onClick={() => showQr(t)}>
+                  <Btn variant="secondary" size="sm" onClick={() => showQr(t)}>
                     عرض QR
-                  </Button>
+                  </Btn>
                   <Button variant="ghost" size="icon-sm" onClick={() => copyUrl(url)} aria-label="نسخ رابط المنيو">
                     <Copy className="h-3.5 w-3.5" />
                   </Button>
@@ -338,12 +338,12 @@ export function TablesClient({
               </p>
             </div>
             <div className="flex gap-2">
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Btn type="submit" className="w-full" disabled={loading}>
                 إنشاء + توليد QR
-              </Button>
-              <Button type="button" variant="secondary" onClick={() => setShowTable(false)}>
+              </Btn>
+              <Btn variant="secondary" onClick={() => setShowTable(false)}>
                 إلغاء
-              </Button>
+              </Btn>
             </div>
           </form>
         </Modal>
@@ -363,10 +363,10 @@ export function TablesClient({
               {qrPreview.url}
             </p>
             <div className="mt-4 flex gap-2">
-              <Button className="w-full" onClick={() => copyUrl(qrPreview.url)}>
+              <Btn className="w-full" onClick={() => copyUrl(qrPreview.url)}>
                 <Copy className="h-4 w-4" />
                 نسخ الرابط
-              </Button>
+              </Btn>
               <a
                 href={qrPreview.dataUrl}
                 download={`qr-${qrPreview.label}.png`}
@@ -391,12 +391,12 @@ export function TablesClient({
               لا يمكن الحذف إذا كان عليها طلبات نشطة (قيد التحضير أو جاهزة).
             </p>
             <div className="flex gap-2">
-              <Button variant="destructive" className="w-full" disabled={loading} onClick={() => deleteTable(confirmDelete)}>
+              <Btn variant="danger" className="w-full" disabled={loading} onClick={() => deleteTable(confirmDelete)}>
                 {loading ? 'جاري…' : 'نعم، احذف'}
-              </Button>
-              <Button variant="secondary" onClick={() => setConfirmDelete(null)}>
+              </Btn>
+              <Btn variant="secondary" onClick={() => setConfirmDelete(null)}>
                 إلغاء
-              </Button>
+              </Btn>
             </div>
           </div>
         </Modal>

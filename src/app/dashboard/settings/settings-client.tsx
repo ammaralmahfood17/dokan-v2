@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { CURRENCIES, DEFAULT_PRIMARY_COLOR, type Project } from '@/lib/types';
 import { Button } from '@/components/shadcn/button';
 import { Switch } from '@/components/shadcn/switch';
-import { Tag } from '@/components/dashboard/primitives';
+import { Tag, Btn } from '@/components/dashboard/primitives';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Modal } from '@/components/ui/modal';
 import { NotificationPrefs } from '@/components/notification-prefs';
@@ -110,14 +110,14 @@ function SubscriptionCard({
       )}
 
       {isOwner && (
-        <Button
+        <Btn
           variant="secondary"
           className="mt-3"
           disabled={renewing}
           onClick={() => setConfirming(true)}
         >
           {renewing ? 'جاري التجديد…' : 'تسجيل تجديد 30 يوم'}
-        </Button>
+        </Btn>
       )}
       {!isOwner && (
         <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
@@ -135,12 +135,12 @@ function SubscriptionCard({
               تأكد من تحصيل القيمة النقدية قبل تسجيل تجديد الاشتراك 30 يوم.
             </p>
             <div className="flex gap-2">
-              <Button className="w-full" disabled={renewing} onClick={renew}>
+              <Btn className="w-full" disabled={renewing} onClick={renew}>
                 {renewing ? 'جاري…' : 'تأكيد التجديد'}
-              </Button>
-              <Button variant="secondary" onClick={() => setConfirming(false)}>
+              </Btn>
+              <Btn variant="secondary" onClick={() => setConfirming(false)}>
                 رجوع
-              </Button>
+              </Btn>
             </div>
           </div>
         </Modal>
@@ -456,9 +456,9 @@ export function SettingsClient({
           </p>
         )}
 
-        <Button type="submit" disabled={loading || !isOwner}>
+        <Btn type="submit" disabled={loading || !isOwner}>
           {loading ? 'جاري الحفظ…' : 'حفظ التغييرات'}
-        </Button>
+        </Btn>
       </form>
 
       {confirmDeactivate && (
@@ -471,8 +471,8 @@ export function SettingsClient({
               القائمة العامة ستتوقف عن العملاء — روابط الطاولات و QR ما راح يفتحون المنيو حتى تعيد التشغيل.
             </p>
             <div className="flex gap-2">
-              <Button
-                variant="destructive"
+              <Btn
+                variant="danger"
                 className="w-full"
                 onClick={() => {
                   setIsActive(false);
@@ -480,10 +480,10 @@ export function SettingsClient({
                 }}
               >
                 نعم، إيقاف
-              </Button>
-              <Button variant="secondary" onClick={() => setConfirmDeactivate(false)}>
+              </Btn>
+              <Btn variant="secondary" onClick={() => setConfirmDeactivate(false)}>
                 رجوع
-              </Button>
+              </Btn>
             </div>
           </div>
         </Modal>

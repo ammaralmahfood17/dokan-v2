@@ -242,10 +242,10 @@ export function InventoryClient({
                   title="المخزون فارغ"
                   description="أضف أول صنف لتتبّع الكميات وتكاليف المطبخ."
                   action={
-                    <Button size="sm" onClick={() => setShowItem(true)}>
+                    <Btn size="sm" variant="primary" onClick={() => setShowItem(true)}>
                       <Plus className="h-4 w-4" />
                       إضافة صنف
-                    </Button>
+                    </Btn>
                   }
                 />
               </div>
@@ -326,10 +326,10 @@ export function InventoryClient({
                   title="لا يوجد موردون"
                   description="أضف مورديك لإسناد الأصناف إليهم وتنظيم الطلبيات."
                   action={
-                    <Button size="sm" onClick={() => setShowSupplier(true)}>
+                    <Btn size="sm" variant="primary" onClick={() => setShowSupplier(true)}>
                       <Plus className="h-4 w-4" />
                       إضافة مورد
-                    </Button>
+                    </Btn>
                   }
                 />
               </div>
@@ -406,10 +406,10 @@ export function InventoryClient({
                   title="لا توجد مصروفات"
                   description="سجّل المصروفات اليومية لتظهر في تقارير الأرباح والخسائر."
                   action={
-                    <Button size="sm" onClick={() => setShowExpense(true)}>
+                    <Btn size="sm" variant="primary" onClick={() => setShowExpense(true)}>
                       <Plus className="h-4 w-4" />
                       تسجيل مصروف
-                    </Button>
+                    </Btn>
                   }
                 />
               </div>
@@ -512,12 +512,12 @@ export function InventoryClient({
               </div>
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="secondary" size="sm" onClick={() => setShowItem(false)}>
+              <Btn variant="secondary" size="sm" onClick={() => setShowItem(false)}>
                 إلغاء
-              </Button>
-              <Button type="submit" size="sm" disabled={saving}>
+              </Btn>
+              <Btn type="submit" variant="primary" size="sm" disabled={saving}>
                 {saving ? 'جاري الحفظ…' : 'إضافة'}
-              </Button>
+              </Btn>
             </div>
           </form>
         </Modal>
@@ -550,12 +550,12 @@ export function InventoryClient({
               <textarea className="textarea" name="notes" maxLength={300} />
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="secondary" size="sm" onClick={() => setShowSupplier(false)}>
+              <Btn variant="secondary" size="sm" onClick={() => setShowSupplier(false)}>
                 إلغاء
-              </Button>
-              <Button type="submit" size="sm" disabled={saving}>
+              </Btn>
+              <Btn type="submit" variant="primary" size="sm" disabled={saving}>
                 {saving ? 'جاري الحفظ…' : 'إضافة'}
-              </Button>
+              </Btn>
             </div>
           </form>
         </Modal>
@@ -594,12 +594,12 @@ export function InventoryClient({
               <textarea className="textarea" name="description" maxLength={300} />
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="secondary" size="sm" onClick={() => setShowExpense(false)}>
+              <Btn variant="secondary" size="sm" onClick={() => setShowExpense(false)}>
                 إلغاء
-              </Button>
-              <Button type="submit" size="sm" disabled={saving}>
+              </Btn>
+              <Btn type="submit" variant="primary" size="sm" disabled={saving}>
                 {saving ? 'جاري الحفظ…' : 'تسجيل'}
-              </Button>
+              </Btn>
             </div>
           </form>
         </Modal>

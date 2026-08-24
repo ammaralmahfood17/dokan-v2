@@ -370,10 +370,10 @@ export function CustomersClient({
                   }
                   action={
                     !query ? (
-                      <Button size="sm" onClick={() => setShowAdd(true)}>
+                      <Btn size="sm" variant="primary" onClick={() => setShowAdd(true)}>
                         <Plus className="h-4 w-4" />
                         إضافة عميل
-                      </Button>
+                      </Btn>
                     ) : undefined
                   }
                 />
@@ -445,8 +445,8 @@ export function CustomersClient({
                         </td>
                         <td>
                           <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
+                            <Btn
+                              variant="plain"
                               size="sm"
                               onClick={() => {
                                 setShowLoyalty(c);
@@ -457,7 +457,7 @@ export function CustomersClient({
                             >
                               <Star className="h-3.5 w-3.5" />
                               نقاط
-                            </Button>
+                            </Btn>
                             <Button
                               variant="ghost"
                               size="icon-sm"
@@ -496,10 +496,10 @@ export function CustomersClient({
                   title="لا توجد حملات بعد"
                   description="أنشئ حملة رسائل للعملاء — ستصلك مسودة جاهزة للإرسال."
                   action={
-                    <Button size="sm" onClick={() => setShowCampaign(true)}>
+                    <Btn size="sm" variant="primary" onClick={() => setShowCampaign(true)}>
                       <Plus className="h-4 w-4" />
                       حملة جديدة
-                    </Button>
+                    </Btn>
                   }
                 />
               </div>
@@ -539,14 +539,14 @@ export function CustomersClient({
                     <div className="flex flex-wrap justify-end gap-1">
                       {(cp.status === 'draft' || cp.status === 'scheduled') && (
                         <>
-                          <Button variant="ghost" size="sm" onClick={() => void setCampaignState(cp, 'sent')}>
+                          <Btn variant="plain" size="sm" onClick={() => void setCampaignState(cp, 'sent')}>
                             <Check className="h-3.5 w-3.5" />
                             أُرسلت
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => void setCampaignState(cp, 'cancelled')}>
+                          </Btn>
+                          <Btn variant="plain" size="sm" onClick={() => void setCampaignState(cp, 'cancelled')}>
                             <Ban className="h-3.5 w-3.5" />
                             إلغاء
-                          </Button>
+                          </Btn>
                         </>
                       )}
                       {(cp.status === 'draft' || cp.status === 'cancelled') && (
@@ -580,12 +580,12 @@ export function CustomersClient({
               <input className="input" name="email" type="email" maxLength={200} />
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="secondary" size="sm" onClick={() => setShowAdd(false)}>
+              <Btn variant="secondary" size="sm" onClick={() => setShowAdd(false)}>
                 إلغاء
-              </Button>
-              <Button type="submit" size="sm" disabled={saving}>
+              </Btn>
+              <Btn type="submit" variant="primary" size="sm" disabled={saving}>
                 {saving ? 'جاري الحفظ…' : 'إضافة'}
-              </Button>
+              </Btn>
             </div>
           </form>
         </Modal>
@@ -646,12 +646,12 @@ export function CustomersClient({
               />
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="secondary" size="sm" onClick={() => setShowLoyalty(null)}>
+              <Btn variant="secondary" size="sm" onClick={() => setShowLoyalty(null)}>
                 إلغاء
-              </Button>
-              <Button size="sm" onClick={() => void applyLoyalty()} disabled={saving}>
+              </Btn>
+              <Btn size="sm" variant="primary" onClick={() => void applyLoyalty()} disabled={saving}>
                 {saving ? 'جاري الحفظ…' : 'تطبيق'}
-              </Button>
+              </Btn>
             </div>
           </div>
         </Modal>
@@ -808,12 +808,12 @@ export function CustomersClient({
               </p>
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="secondary" size="sm" onClick={() => setShowCampaign(false)}>
+              <Btn variant="secondary" size="sm" onClick={() => setShowCampaign(false)}>
                 إلغاء
-              </Button>
-              <Button type="submit" size="sm" disabled={saving}>
+              </Btn>
+              <Btn type="submit" variant="primary" size="sm" disabled={saving}>
                 {saving ? 'جاري الإنشاء…' : 'إنشاء مسودة'}
-              </Button>
+              </Btn>
             </div>
           </form>
         </Modal>

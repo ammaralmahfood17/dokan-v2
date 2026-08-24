@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Check, CreditCard, Percent, Landmark, BadgeCheck } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { formatMoney } from '@/lib/utils';
-import { Button } from '@/components/shadcn/button';
+import { Btn, Card } from '@/components/dashboard/primitives';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
@@ -53,7 +53,7 @@ export function BillingClient({
       />
 
       {/* Current plan summary */}
-      <div className="mb-4 flex flex-wrap items-center gap-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-4">
+      <Card className="mb-4 flex flex-wrap items-center gap-4 px-5 py-4">
         <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--color-primary-tint)]">
           <BadgeCheck className="h-5 w-5 text-[var(--color-primary)]" />
         </div>
@@ -74,7 +74,7 @@ export function BillingClient({
             {formatMoney(current?.price ?? 0, currency)}
           </p>
         </div>
-      </div>
+      </Card>
 
       {/* Plans grid */}
       <h2 className="section-title">اختر الخطة المناسبة لمشروعك</h2>
@@ -122,9 +122,9 @@ export function BillingClient({
                   {plan.max_branches ?? '∞'} فرع · {plan.max_tables ?? '∞'} طاولة
                 </li>
               </ul>
-              <Button
+              <Btn
                 className="mt-6 w-full"
-                variant={isCurrent ? 'secondary' : 'default'}
+                variant={isCurrent ? 'secondary' : 'primary'}
                 disabled={isCurrent || switching === plan.code}
                 onClick={() => void switchPlan(plan)}
               >
@@ -133,7 +133,7 @@ export function BillingClient({
                   : switching === plan.code
                     ? 'جاري التبديل…'
                     : `التبديل إلى ${plan.name}`}
-              </Button>
+              </Btn>
             </div>
           );
         })}
@@ -141,7 +141,7 @@ export function BillingClient({
 
       {/* VAT + payments info */}
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-sm">
+        <Card>
           <div className="mb-4 flex items-center gap-2.5">
             <Percent className="h-4 w-4 text-[var(--color-primary)]" />
             <h3 className="text-sm font-semibold">ضريبة القيمة المضافة (VAT)</h3>
@@ -153,9 +153,9 @@ export function BillingClient({
           <p className="mt-3 inline-flex items-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--color-primary-tint)] px-3 py-1.5 font-mono text-sm font-bold tabular-nums text-[var(--color-primary)]">
             {vatRate}٪
           </p>
-        </div>
+        </Card>
 
-        <div className="border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-sm">
+        <Card>
           <div className="mb-4 flex items-center gap-2.5">
             <CreditCard className="h-4 w-4 text-[var(--color-primary)]" />
             <h3 className="text-sm font-semibold">بوابات الدفع</h3>
@@ -173,7 +173,7 @@ export function BillingClient({
           <p className="mt-4 text-[11.5px] text-[var(--color-text-muted)]">
             تُفعَّل بوابات الدفع تلقائيًا بعد تفعيل الخطة المناسبة.
           </p>
-        </div>
+        </Card>
       </div>
     </div>
   );
