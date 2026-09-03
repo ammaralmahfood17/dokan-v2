@@ -17,7 +17,7 @@
 
 begin;
 create extension if not exists pgtap;
-select plan(9);
+select plan(13);
 
 -- ---------------------------------------------------------------------
 -- Fixtures: two tenants (Store A, Store B), three users.
@@ -70,12 +70,12 @@ select is(
   'staff can read their own project''s expenses'
 );
 
--- 3. Staff CAN insert an expense — v2's expenses_member_all policy is
---    member-level for ALL operations (deliberate design choice).
-select lives_ok(
+-- 3. Staff cannot insert an expense; financial writes are manager-level.
+select throws_ok(
   $$ insert into public.expenses (project_id, amount, category)
      values ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 5.000, 'test') $$,
-  'staff can insert an expense row (member-level policy by design)'
+  '42501'::char(5), NULL,
+  'staff cannot insert an expense row'
 );
 
 -- 4. Owner CAN insert an expense.
@@ -86,23 +86,27 @@ select lives_ok(
   'owner can insert an expense row'
 );
 
--- 5. Staff CAN insert a customer (front-line checkout workflow, not a
---    privileged action).
+-- 5. Staff cannot create or update customer records.
 select pg_temp.as_user('22222222-2222-2222-2222-222222222222');
+select throws_ok(
+  $$ insert into public.customers (project_id, phone, name) values
+     ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '+97333000002', 'Walk-in') $$,
+  '42501'::char(5), NULL,
+  'staff cannot insert a customer row'
+);
+select throws_ok(
+  $$ update public.customers set name = 'Changed By Staff' where phone = '+97333000001' $$,
+  '42501'::char(5), NULL,
+  'staff cannot update a customer row'
+);
+
+-- 6. The owner can insert a customer.
+select pg_temp.as_user('11111111-1111-1111-1111-111111111111');
 select lives_ok(
   $$ insert into public.customers (project_id, phone, name) values
      ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '+97333000002', 'Walk-in') $$,
-  'staff can insert a new customer'
+  'owner can insert a customer row'
 );
-
--- 6. Staff CAN update customers — customers_member_all is member-level FOR ALL.
-select pg_temp.as_user('22222222-2222-2222-2222-222222222222');
-select lives_ok(
-  $$ update public.customers set name = 'Changed By Staff' where phone = '+97333000001' $$,
-  'staff can update a customer row (member-level policy by design)'
-);
-select pg_temp.as_user('11111111-1111-1111-1111-111111111111');
-update public.customers set name = 'Original Name' where phone = '+97333000001';
 
 -- 7. Cross-tenant write is blocked: staff of Store A cannot insert a
 --    product into Store B, even though they're passing a syntactically
@@ -114,7 +118,7 @@ select throws_ok(
   'staff of Store A cannot insert a product into Store B'
 );
 
--- 8. Nobody can INSERT into `projects` directly — no INSERT grant exists
+-- 9. Nobody can INSERT into `projects` directly — no INSERT grant exists
 --    for `authenticated` regardless of role; creation is service-role only
 --    via /api/onboarding/project. Even an owner is blocked.
 select pg_temp.as_user('11111111-1111-1111-1111-111111111111');
@@ -124,7 +128,7 @@ select throws_ok(
   'even an owner cannot INSERT a projects row directly (service-role only)'
 );
 
--- 9. Staff cannot delete a staff_members row (owner-only). DELETE denied
+-- 10. Staff cannot delete a staff_members row (owner-only). DELETE denied
 --    by USING also silently affects zero rows rather than throwing.
 select pg_temp.as_user('22222222-2222-2222-2222-222222222222');
 delete from public.staff_members
@@ -133,6 +137,33 @@ select is(
   (select count(*) from public.staff_members where project_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' and role = 'owner')::int,
   1,
   'staff cannot delete the owner''s staff_members row'
+);
+
+-- 11. Cross-tenant composite references are rejected by the database.
+select pg_temp.as_user('11111111-1111-1111-1111-111111111111');
+select throws_ok(
+  $$ insert into public.products (project_id, category_id, name, price)
+     values ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+             'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'Bad category', 1.000) $$,
+  '23503'::char(5), NULL,
+  'a product cannot reference a category from another project'
+);
+
+-- 12. Staff can read, but cannot mutate, inventory movements.
+select pg_temp.as_user('22222222-2222-2222-2222-222222222222');
+select is(
+  (select count(*) from public.inventory_movements
+    where project_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa')::int,
+  0,
+  'staff can query only their own project inventory movements'
+);
+
+-- 13. The permission helper is not callable anonymously.
+select pg_temp.as_user('11111111-1111-1111-1111-111111111111');
+select is(
+  public.has_project_permission('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'finance.read'),
+  true,
+  'owner has finance.read permission'
 );
 
 select * from finish();
