@@ -29,6 +29,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseOrigin = supabaseUrl ? new URL(supabaseUrl).origin : '';
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://www.dokanstore.xyz'),
   title: {
     default: 'دكان — منصة إدارة المطاعم',
     template: '%s — دكان',
