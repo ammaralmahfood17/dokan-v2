@@ -10,7 +10,7 @@ npx supabase db push --linked
 npx supabase test db
 ```
 
-The new migration `0021_backend_reliability_scope.sql` adds branch access, project-currency enforcement, and an atomic `event_outbox` for order-created events. It must be applied after `0020_integrity_rbac_rls_hardening.sql`.
+The new migrations `0021_backend_reliability_scope.sql` and `0022_security_advisor_hardening.sql` add branch access, project-currency enforcement, atomic `event_outbox` capture, default-deny policies for internal tables, trigger-only function grants, and extension isolation. They must be applied after `0020_integrity_rbac_rls_hardening.sql`.
 
 ## Preflight checks
 
@@ -82,4 +82,4 @@ npm run build
 npm audit --omit=dev
 ```
 
-Production must set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SITE_URL`, and the configured rate-limit backend. Never put the service-role key in a `NEXT_PUBLIC_*` variable or browser bundle.
+For the current project, set `NEXT_PUBLIC_SUPABASE_URL` to `https://eyzjyddiyiivuxmmmlzr.supabase.co` and use the publishable/anon key from the Supabase dashboard. Production must also set `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SITE_URL`, and the configured rate-limit backend. Never put the service-role key in a `NEXT_PUBLIC_*` variable or browser bundle.
