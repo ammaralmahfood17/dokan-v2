@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/shadcn/button';
 import { Lock, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
+import { AuthShell } from '@/components/auth/auth-shell';
 
 export default function UpdatePasswordPage() {
   const router = useRouter();
@@ -88,40 +89,31 @@ export default function UpdatePasswordPage() {
 
   if (checking) {
     return (
-      <div className="flex min-h-dvh items-center justify-center text-sm text-[var(--color-text-secondary)]">
+      <main className="auth-shell flex min-h-dvh items-center justify-center text-sm text-[var(--color-text-secondary)]">
         جاري التحميل…
-      </div>
+      </main>
     );
   }
 
   if (done) {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-[var(--color-bg)] px-4 py-10">
-        <div className="w-full max-w-sm text-center">
-          <CheckCircle2 className="mx-auto mb-3 h-12 w-12 text-[var(--color-success)]" />
-          <h1 className="text-xl font-bold">تم تحديث كلمة المرور</h1>
-          <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
-            جارِ تحويلك إلى لوحة التحكم…
-          </p>
-        </div>
-      </div>
+      <AuthShell
+        title="تم تحديث كلمة المرور"
+        subtitle="جارِ تحويلك إلى لوحة التحكم…"
+        footer={<Link href="/dashboard" className="mt-6 block text-center text-sm font-bold text-[var(--color-primary)]">الانتقال الآن</Link>}
+      >
+        <div className="surface-card p-8 text-center"><CheckCircle2 className="mx-auto mb-4 h-12 w-12 text-[var(--color-success)]" /><p className="text-sm text-[var(--color-text-secondary)]">تم حفظ كلمة المرور الجديدة بنجاح.</p></div>
+      </AuthShell>
     );
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-[var(--color-bg)] px-4 py-10">
-      <div className="w-full max-w-sm">
-        <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-primary)] text-base font-bold text-white">
-            <Lock className="h-5 w-5" />
-          </div>
-          <h1 className="text-xl font-bold">تعيين كلمة مرور جديدة</h1>
-          <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-            أدخل كلمة المرور الجديدة
-          </p>
-        </div>
-
-        <form onSubmit={onSubmit} className="card card-body space-y-4">
+    <AuthShell
+      title="أمّن حسابك من جديد"
+      subtitle="اختر كلمة مرور قوية وسهلة التذكر لحماية مساحة عملك."
+      footer={<Link href="/login" className="mt-6 block text-center text-sm font-bold text-[var(--color-primary)]">العودة لتسجيل الدخول</Link>}
+    >
+      <form onSubmit={onSubmit} className="surface-card space-y-4 p-6 sm:p-8">
           {error && (
             <div className="rounded-[var(--radius-md)] border border-[var(--color-danger)]/20 bg-[var(--color-danger-tint)] px-3 py-2 text-xs text-[var(--color-danger)]">
               {error}
@@ -169,7 +161,7 @@ export default function UpdatePasswordPage() {
               dir="ltr"
             />
           </div>
-          <Button className="w-full" disabled={loading}>
+          <Button className="h-12 w-full rounded-xl text-[15px] font-bold" disabled={loading}>
             {loading ? 'جاري الحفظ…' : 'حفظ كلمة المرور الجديدة'}
           </Button>
 
@@ -178,8 +170,7 @@ export default function UpdatePasswordPage() {
               العودة لتسجيل الدخول
             </Link>
           </div>
-        </form>
-      </div>
-    </div>
+      </form>
+    </AuthShell>
   );
 }

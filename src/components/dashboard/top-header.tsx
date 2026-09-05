@@ -16,20 +16,20 @@ export function TopHeader({ projectName }: { projectName: string }) {
 
   return (
     <header
-      className="sticky top-0 z-[var(--z-sticky)] flex h-14 items-center justify-between gap-3 border-b px-4 backdrop-blur lg:px-7 print:hidden"
-      style={{ background: 'rgba(243,242,237,.9)', borderColor: 'var(--color-border)' }}
+      className="sticky top-0 z-[var(--z-sticky)] flex h-[68px] items-center justify-between gap-3 border-b px-4 backdrop-blur lg:px-8 print:hidden"
+      style={{ background: 'rgba(246,248,245,.84)', borderColor: 'rgba(228,225,214,.8)' }}
     >
       <div className="flex items-center gap-3">
         <button
           type="button"
           onClick={openDrawer}
-          className="flex h-9 w-9 items-center justify-center rounded-[10px] lg:hidden"
+          className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--color-border)] bg-white/70 lg:hidden"
           aria-label="فتح القائمة"
         >
           <MenuIcon size={20} style={{ color: 'var(--color-text)' }} />
         </button>
         <div
-          className="hidden items-center gap-2 rounded-[10px] border px-3 py-1.5 sm:flex"
+          className="hidden items-center gap-2 rounded-2xl border px-3.5 py-2 sm:flex"
           style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)', minWidth: 240 }}
         >
           <Search size={15} style={{ color: 'var(--color-text-muted)' }} />
@@ -52,7 +52,7 @@ export function TopHeader({ projectName }: { projectName: string }) {
       <div className="flex items-center gap-2">
         <button
           type="button"
-          className="hidden h-9 w-9 items-center justify-center rounded-[10px] border sm:flex"
+          className="hidden h-10 w-10 items-center justify-center rounded-2xl border sm:flex"
           style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}
           aria-label="المساعدة"
         >
@@ -60,7 +60,7 @@ export function TopHeader({ projectName }: { projectName: string }) {
         </button>
         <button
           type="button"
-          className="relative flex h-9 w-9 items-center justify-center rounded-[10px] border"
+          className="relative flex h-10 w-10 items-center justify-center rounded-2xl border"
           style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}
           aria-label="الإشعارات"
         >
@@ -70,7 +70,7 @@ export function TopHeader({ projectName }: { projectName: string }) {
 
         <button
           type="button"
-          className="flex items-center gap-2 rounded-[10px] px-2 py-1"
+          className="flex items-center gap-2 rounded-2xl px-2 py-1.5 transition-colors hover:bg-white/70"
         >
           <div
             className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white"

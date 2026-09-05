@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { FormEvent, useState } from 'react';
 import { Mail, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/shadcn/button';
+import { AuthShell } from '@/components/auth/auth-shell';
 
 export default function ResetPasswordPage() {
   const [email, setEmail] = useState('');
@@ -37,20 +38,18 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-[var(--color-bg)] px-4 py-10">
-      <div className="w-full max-w-sm">
-        <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-primary)] text-base font-bold text-white">
-            د
-          </div>
-          <h1 className="text-xl font-bold">إعادة تعيين كلمة المرور</h1>
-          <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-            أدخل بريدك الإلكتروني وسنرسل لك رابط إعادة التعيين
-          </p>
-        </div>
-
+    <AuthShell
+      title="استرجع دخولك"
+      subtitle="أدخل بريدك الإلكتروني وسنرسل لك رابطاً آمناً لإعادة تعيين كلمة المرور."
+      footer={(
+        <p className="mt-6 text-center text-sm text-[var(--color-text-secondary)]">
+          تذكرت كلمة المرور؟{' '}
+          <Link href="/login" className="font-bold text-[var(--color-primary)] hover:underline">العودة للدخول</Link>
+        </p>
+      )}
+    >
         {done ? (
-          <div className="card card-body text-center">
+          <div className="surface-card p-6 text-center sm:p-8">
             <CheckCircle2 className="mx-auto mb-3 h-10 w-10 text-[var(--color-success)]" />
             <h2 className="text-base font-bold">تم الإرسال</h2>
             <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
@@ -64,7 +63,7 @@ export default function ResetPasswordPage() {
             </Link>
           </div>
         ) : (
-          <form onSubmit={onSubmit} className="card card-body space-y-4">
+          <form onSubmit={onSubmit} className="surface-card space-y-4 p-6 sm:p-8">
             {error && (
               <div className="rounded-[var(--radius-md)] border border-[var(--color-danger)]/20 bg-[var(--color-danger-tint)] px-3 py-2 text-xs text-[var(--color-danger)]">
                 {error}
@@ -83,7 +82,8 @@ export default function ResetPasswordPage() {
                 dir="ltr"
                 placeholder="name@example.com"
               />
-            </div>            <Button className="w-full" disabled={loading}>
+            </div>
+            <Button className="h-12 w-full rounded-xl text-[15px] font-bold" disabled={loading}>
               {loading ? 'جاري الإرسال…' : 'إرسال رابط إعادة التعيين'}
             </Button>
             <div className="text-center">
@@ -96,7 +96,6 @@ export default function ResetPasswordPage() {
             </div>
           </form>
         )}
-      </div>
-    </div>
+    </AuthShell>
   );
 }

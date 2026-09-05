@@ -413,18 +413,18 @@ export function MenuClient({
 
   // ======== MAIN MENU ========
   return (
-    <div className="min-h-dvh bg-[var(--color-bg)] pb-24 page-enter">
+    <div className="public-menu-shell min-h-dvh pb-24 page-enter">
       {/* D7: offline notice — replaces the full-screen blocker (design: the
           customer should still be able to browse the cached menu) */}
       <OfflineBanner />
       {/* HEADER — brand mark + TABLE chip */}
       <header
-        className="sticky top-0 z-[var(--z-sticky)] border-b border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3.5"
+        className="public-menu-header sticky top-0 z-[var(--z-sticky)] border-b px-4 py-3.5"
       >
         <div className="mx-auto flex max-w-[480px] items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2.5">
             <div
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-text)] font-display text-[18px] font-bold text-[var(--color-primary)]"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-primary)] font-display text-[18px] font-bold text-white shadow-[0_8px_18px_rgba(15,94,86,.18)]"
             >
               {project.name.slice(0, 1)}
             </div>
@@ -439,7 +439,7 @@ export function MenuClient({
           <div className="flex items-center gap-1.5">
             <div
               className="relative px-2.5 py-1 font-mono text-[12px] font-semibold tabular-nums text-[var(--color-primary)]"
-              style={{ border: '1.5px solid var(--color-primary)' }}
+              style={{ border: '1px solid var(--color-primary)', borderRadius: 999 }}
             >
               TABLE·{String(table.number).padStart(2, '0')}
             </div>
@@ -465,7 +465,7 @@ export function MenuClient({
 
       {/* CATEGORIES — pills, active = primary (mockup) */}
       {categories.length > 0 && (
-        <div className="sticky top-[57px] z-[var(--z-sticky)] border-b border-[var(--color-border)] bg-[var(--color-bg)]">
+        <div className="public-menu-categories sticky top-[69px] z-[var(--z-sticky)] border-b">
           {/* FIX-R-003: fade على الحواف يشير لوجود محتوى إضافي (scrollbar مخفي) */}
           <div
             className="mx-auto flex max-w-[480px] gap-2 overflow-x-auto px-3 pb-1 pt-1"
@@ -505,7 +505,7 @@ export function MenuClient({
       )}
 
       {/* PRODUCTS — grouped by category */}
-      <main ref={productsRef} className="mx-auto max-w-lg px-3 py-4">
+      <main ref={productsRef} className="mx-auto max-w-lg px-4 py-6">
         {/* Search + language toggle — search only for big menus */}
         <div className="mb-4 flex items-center gap-2">
           {showMenuSearch && (
@@ -603,7 +603,7 @@ export function MenuClient({
             <button
               type="button"
               onClick={() => setCartOpen(true)}
-              className="relative flex w-full items-center justify-between bg-[var(--color-text)] px-4 py-3.5 text-[var(--color-bg)] shadow-lg transition-transform active:scale-[0.98]"
+              className="relative flex w-full items-center justify-between rounded-2xl bg-[var(--color-text)] px-4 py-3.5 text-[var(--color-bg)] shadow-[0_14px_32px_rgba(23,35,31,.2)] transition-transform active:scale-[0.98]"
             >
 
               <span className="flex items-center gap-2.5">

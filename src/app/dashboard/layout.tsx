@@ -45,7 +45,7 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="flex min-h-dvh bg-[var(--color-bg)]">
+    <div className="dashboard-frame flex min-h-dvh bg-[var(--color-bg)]">
       {/* Phase C: persistent support-mode banner (top of every dashboard page) */}
       {impersonation && (
         <ImpersonationBanner
@@ -75,8 +75,10 @@ export default async function DashboardLayout({
         )}
 
         {/* Main */}
-        <main className="flex-1">
-          <div className="page-enter">
+        <main className="relative flex-1 overflow-hidden">
+          <div className="dashboard-glow dashboard-glow-one" aria-hidden="true" />
+          <div className="dashboard-glow dashboard-glow-two" aria-hidden="true" />
+          <div className="page-enter relative z-[1]">
             {children}
           </div>
         </main>

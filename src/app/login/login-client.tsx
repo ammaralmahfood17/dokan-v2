@@ -8,6 +8,7 @@ import { Button } from '@/components/shadcn/button';
 import { Input } from '@/components/shadcn/input';
 import { Card, CardContent } from '@/components/shadcn/card';
 import { Eye, EyeOff } from 'lucide-react';
+import { AuthShell } from '@/components/auth/auth-shell';
 
 function RegisteredNotice() {
   const searchParams = useSearchParams();
@@ -85,7 +86,7 @@ function LoginForm() {
   const blur = (field: 'email' | 'password') => () => setTouched((t) => ({ ...t, [field]: true }));
 
   return (
-    <Card className="space-y-1 px-6">
+    <Card className="surface-card space-y-1 p-6 sm:p-8">
       <form onSubmit={onSubmit} className="space-y-1">
         <div className="field">
           <label className="label" htmlFor="email">البريد الإلكتروني</label>
@@ -141,7 +142,7 @@ function LoginForm() {
           )}
         </div>
         {error && <p className="error-text mb-3" role="alert">{error}</p>}
-        <Button type="submit" className="w-full" disabled={loading || !!emailErr || !!passErr}>
+        <Button type="submit" className="h-12 w-full rounded-xl text-[15px] font-bold shadow-[0_12px_24px_rgba(15,94,86,0.18)]" disabled={loading || !!emailErr || !!passErr}>
           {loading ? 'جاري الدخول…' : 'دخول'}
         </Button>
         <div className="mt-3 text-center">
@@ -156,29 +157,26 @@ function LoginForm() {
 
 export default function LoginClient() {
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-[var(--color-bg)] px-4 py-10">
-      <div className="w-full max-w-sm">
-        <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-primary)] text-white font-bold">د</div>
-          <h1 className="text-xl font-bold">تسجيل الدخول</h1>
-          <p className="mt-1 text-sm text-[var(--color-text-secondary)]">مرحباً بك في دكان</p>
-        </div>
-        <Suspense fallback={
-          <div className="space-y-4 animate-pulse">
-            <div className="h-10 w-full rounded-md bg-muted" />
-            <div className="h-10 w-full rounded-md bg-muted" />
-            <div className="h-10 w-full rounded-md bg-muted" />
-            <div className="h-12 w-full rounded-md bg-muted/60" />
-          </div>
-        }>
-          <LoginForm />
-          <RegisteredNotice />
-        </Suspense>
-        <p className="mt-4 text-center text-sm text-[var(--color-text-secondary)]">
+    <AuthShell
+      title="أهلاً بعودتك"
+      subtitle="سجّل الدخول لإدارة الطلبات، المنيو، فريق العمل، وتقارير متجرك."
+      footer={(
+        <p className="mt-6 text-center text-sm text-[var(--color-text-secondary)]">
           ليس لديك حساب؟{' '}
-          <Link href="/register" className="font-semibold text-[var(--color-primary)]">إنشاء حساب</Link>
+          <Link href="/register" className="font-bold text-[var(--color-primary)] hover:underline">إنشاء حساب جديد</Link>
         </p>
-      </div>
-    </main>
+      )}
+    >
+      <Suspense fallback={
+        <div className="surface-card space-y-4 p-6 animate-pulse">
+          <div className="h-11 w-full rounded-xl bg-[var(--color-surface-sunken)]" />
+          <div className="h-11 w-full rounded-xl bg-[var(--color-surface-sunken)]" />
+          <div className="h-12 w-full rounded-xl bg-[var(--color-surface-sunken)]" />
+        </div>
+      }>
+        <LoginForm />
+        <RegisteredNotice />
+      </Suspense>
+    </AuthShell>
   );
 }

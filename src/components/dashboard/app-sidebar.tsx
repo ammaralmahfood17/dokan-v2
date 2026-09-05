@@ -185,17 +185,17 @@ export function AppSidebar({ projectName, activeModules, businessType }: { proje
       <aside
         id="app-drawer"
         className={cn(
-          'fixed inset-y-0 end-0 z-[var(--z-drawer)] flex w-60 shrink-0 flex-col border-s transition-transform duration-300 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0',
+          'fixed inset-y-0 end-0 z-[var(--z-drawer)] flex w-[272px] shrink-0 flex-col border-s transition-transform duration-300 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0',
           isOpen ? 'translate-x-0' : 'translate-x-full rtl:-translate-x-full lg:translate-x-0',
           'print:hidden'
         )}
-        style={{ background: C.primaryDark, borderColor: 'rgba(255,255,255,.08)' }}
+        style={{ background: 'linear-gradient(180deg, #083f3b 0%, #0a4640 56%, #073834 100%)', borderColor: 'rgba(255,255,255,.08)' }}
         aria-label="التنقل الرئيسي"
       >
         {/* Brand — gold chef-hat mark (reference) */}
-        <div className="flex h-14 items-center justify-between px-4">
+        <div className="flex h-[72px] items-center justify-between px-5">
           <Link href="/dashboard" onClick={() => setIsOpen(false)} className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-[10px]" style={{ background: C.gold }}>
+            <div className="flex h-9 w-9 items-center justify-center rounded-[13px] shadow-[0_8px_18px_rgba(0,0,0,.12)]" style={{ background: C.gold }}>
               {businessType ? (
                 <BusinessTypeIcon icon={businessType.icon} />
               ) : (
@@ -213,7 +213,7 @@ export function AppSidebar({ projectName, activeModules, businessType }: { proje
         </div>
 
         {/* Navigation — grouped like the reference */}
-        <nav className="mt-1 flex flex-col gap-4 overflow-y-auto px-3 pb-4" style={{ maxHeight: 'calc(100vh - 150px)' }} aria-label="التنقل الرئيسي">
+        <nav className="mt-2 flex flex-col gap-5 overflow-y-auto px-3 pb-4" style={{ maxHeight: 'calc(100vh - 150px)' }} aria-label="التنقل الرئيسي">
           {NAV_GROUPS.map((g, gi) => {
             const visible = g.items.filter((item) => !item.module || activeModuleCodes.has(item.module));
             if (visible.length === 0) return null;
@@ -232,7 +232,7 @@ export function AppSidebar({ projectName, activeModules, businessType }: { proje
                         href={item.href}
                         onClick={() => setIsOpen(false)}
                         aria-current={active ? 'page' : undefined}
-                        className="flex items-center justify-between gap-2 rounded-[10px] px-2.5 py-2 text-[13.5px] font-medium transition-colors"
+                        className="flex items-center justify-between gap-2 rounded-2xl px-3 py-2.5 text-[13.5px] font-medium transition-all duration-150"
                         style={{
                           background: active ? 'rgba(255,255,255,.1)' : 'transparent',
                           color: active ? '#fff' : 'rgba(255,255,255,.68)',
