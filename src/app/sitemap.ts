@@ -1,10 +1,14 @@
 import type { MetadataRoute } from 'next';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createClient } from '@/lib/supabase/server';
 
 /**
  * Dynamic sitemap generation for Dokan v2.
  * Fetches all active tables (with their project slug) so every real public
  * menu URL is indexed — '/' is not a valid tableSlug, so we never guess.
+ *
+ * Uses the regular server client because the public menu tables expose only
+ * public columns through RLS; sitemap generation must never require the
+ * service-role secret during a build.
  *
  * Privacy trade-off, deliberate: menu URLs `<projectSlug>/menu/<tableSlug>`
  * are the product pages diners need. The per-table lastModified was dropped
@@ -14,7 +18,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
  * remove the table loop entirely.
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const supabase = createAdminClient();
+  const supabase = await createClient();
 
   const { data: tables, error } = await supabase
     .from('tables')

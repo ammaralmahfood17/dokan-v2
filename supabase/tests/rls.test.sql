@@ -17,7 +17,7 @@
 
 begin;
 create extension if not exists pgtap;
-select plan(13);
+select plan(16);
 
 -- ---------------------------------------------------------------------
 -- Fixtures: two tenants (Store A, Store B), three users.
@@ -164,6 +164,31 @@ select is(
   public.has_project_permission('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'finance.read'),
   true,
   'owner has finance.read permission'
+);
+
+-- 14. Explicit branch assignments narrow access to assigned branches.
+insert into public.branches (id, project_id, name, code) values
+  ('aaaaaaaa-0000-0000-0000-000000000001', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Branch A', 'A'),
+  ('bbbbbbbb-0000-0000-0000-000000000001', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Branch B', 'B');
+insert into public.staff_branch_access (staff_member_id, project_id, branch_id)
+select sm.id, sm.project_id, 'aaaaaaaa-0000-0000-0000-000000000001'
+from public.staff_members sm
+where sm.user_id = '22222222-2222-2222-2222-222222222222';
+select pg_temp.as_user('22222222-2222-2222-2222-222222222222');
+select is(
+  public.can_access_project_branch('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'aaaaaaaa-0000-0000-0000-000000000001'),
+  true,
+  'staff can access an explicitly assigned branch'
+);
+select is(
+  public.can_access_project_branch('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'bbbbbbbb-0000-0000-0000-000000000001'),
+  false,
+  'staff cannot access an unassigned branch'
+);
+select is(
+  public.can_access_project_branch('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', NULL),
+  false,
+  'staff cannot access another project without membership'
 );
 
 select * from finish();

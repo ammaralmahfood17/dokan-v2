@@ -4,9 +4,9 @@ import { NextResponse, type NextRequest } from 'next/server';
 /**
  * Refresh Supabase session cookies and enforce auth for protected routes.
  * 
- * PERFORMANCE: Uses getSession() (local cookie read, ~1ms) instead of
- * getUser() (Supabase Auth API call, 200-800ms). JWT signature is still
- * verified locally via the cookie parser.
+ * Security: uses getUser() for route decisions so revoked or invalid sessions
+ * are not treated as authenticated. Route handlers still perform their own
+ * membership and role checks; this is only the edge redirect layer.
  */
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -32,12 +32,12 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // getSession() reads the JWT from the cookie locally — no network call
+  // getUser() verifies the identity with Supabase Auth. Middleware is not the
+  // final authorization boundary, but it must not redirect based on an
+  // unverified/stale cookie alone.
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  const user = session?.user ?? null;
+    data: { user },
+  } = await supabase.auth.getUser();
   const path = request.nextUrl.pathname;
 
   const isAuthPage =

@@ -1,13 +1,15 @@
 // Dokan Service Worker — Precache build assets + RSC caching + Push + Offline-first
 // M6: single source of truth for cache versioning — bump CACHE_VERSION on every
 // SW change so old caches are evicted by activate() (matched by prefix).
-// v9: stop caching authenticated /api/* + auth'd RSC payloads (sensitive data
+// v10: version and clean the dedicated public menu cache as well as stopping
+// caching authenticated /api/* + auth'd RSC payloads (sensitive data
 // on device); old caches purged on activate.
-const CACHE_VERSION = 'v9';
+const CACHE_VERSION = 'v10';
 const CACHE_SHELL = `dokan-shell-${CACHE_VERSION}`;
 const CACHE_IMAGES = `dokan-images-${CACHE_VERSION}`;
 const CACHE_STATIC = `dokan-static-${CACHE_VERSION}`;
 const CACHE_PAGES = `dokan-pages-${CACHE_VERSION}`;
+const CACHE_MENU = `dokan-menu-${CACHE_VERSION}`;
 
 // M6: cap on the runtime caches (images/pages grow unbounded on iOS's stricter
 // storage quota). LRU-ish: evict oldest entries past the cap.
@@ -70,7 +72,8 @@ self.addEventListener('activate', (event) => {
             k === CACHE_SHELL ||
             k === CACHE_IMAGES ||
             k === CACHE_STATIC ||
-            k === CACHE_PAGES
+            k === CACHE_PAGES ||
+            k === CACHE_MENU
           ) return;
           return caches.delete(k);
         })
@@ -176,7 +179,7 @@ self.addEventListener('fetch', (event) => {
 
   // 5. Menu-specific caching (C5): store public menu data in a dedicated cache
   if (url.pathname.match(/^\/[^/]+\/menu\/[^/]+$/)) {
-    event.respondWith(networkFirst(event.request, 'menu-data-cache'));
+    event.respondWith(networkFirst(event.request, CACHE_MENU));
     return;
   }
 
