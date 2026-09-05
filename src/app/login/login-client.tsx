@@ -1,18 +1,50 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { FormEvent, Suspense, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { FormEvent, useEffect, useState, useSyncExternalStore } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/shadcn/button';
 import { Input } from '@/components/shadcn/input';
-import { Card, CardContent } from '@/components/shadcn/card';
+import { Card } from '@/components/shadcn/card';
 import { Eye, EyeOff } from 'lucide-react';
 import { AuthShell } from '@/components/auth/auth-shell';
 
-function RegisteredNotice() {
-  const searchParams = useSearchParams();
-  if (searchParams.get('registered') !== '1') return null;
+function safeNextPath(rawNext: string | null): string | null {
+  if (!rawNext || !rawNext.startsWith('/') || rawNext.startsWith('//') || rawNext.includes('\\')) {
+    return null;
+  }
+  return rawNext;
+}
+
+const EMPTY_SEARCH = '';
+const subscribeToLocation = (callback: () => void) => {
+  window.addEventListener('popstate', callback);
+  window.addEventListener('dokan-location-change', callback);
+  return () => {
+    window.removeEventListener('popstate', callback);
+    window.removeEventListener('dokan-location-change', callback);
+  };
+};
+const getSearchSnapshot = () => (typeof window === 'undefined' ? EMPTY_SEARCH : window.location.search);
+const getServerSearchSnapshot = () => EMPTY_SEARCH;
+
+function useLoginQuery() {
+  useEffect(() => {
+    window.dispatchEvent(new Event('dokan-location-change'));
+  }, []);
+
+  const search = useSyncExternalStore(subscribeToLocation, getSearchSnapshot, getServerSearchSnapshot);
+  const params = new URLSearchParams(search);
+  return {
+    nextPath: safeNextPath(params.get('next')),
+    registered: params.get('registered') === '1',
+  };
+}
+
+function RegisteredNotice({ registered }: { registered: boolean }) {
+  if (!registered) return null;
+
   return (
     <p className="mt-3 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-primary-tint)] px-3 py-2 text-center text-xs font-semibold text-[var(--color-primary)]">
       تم إنشاء الحساب. يمكنك تسجيل الدخول الآن.
@@ -20,18 +52,9 @@ function RegisteredNotice() {
   );
 }
 
-function LoginForm() {
+function LoginForm({ nextPath }: { nextPath: string | null }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const rawNext = searchParams.get('next');
-  // Open-redirect guard (same rule as auth/callback): only same-origin
-  // relative paths survive; http://evil, //evil and backslash variants → null
-  const nextParam =
-    rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//') && !rawNext.includes('\\')
-      ? rawNext
-      : null;
-
-  const [showPass, setShowPass] = useState(false); // FIX-S-007
+  const [showPass, setShowPass] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -62,13 +85,12 @@ function LoginForm() {
     //   super admin → /super-admin/subscriptions
     //   store owner/staff → /dashboard
     //   no store yet → /onboarding
-    // Super admin takes priority over nextParam (a logged-in super admin
-    // never needs the guest redirect chain).
+    // Super admin takes priority over nextPath.
     const { data: isSuperAdmin } = await supabase.rpc('is_super_admin');
     let dest = isSuperAdmin
       ? '/super-admin/subscriptions'
-      : nextParam || '/dashboard';
-    if (!isSuperAdmin && !nextParam) {
+      : nextPath || '/dashboard';
+    if (!isSuperAdmin && !nextPath) {
       const { data: membership } = await supabase
         .from('staff_members')
         .select('id')
@@ -156,6 +178,8 @@ function LoginForm() {
 }
 
 export default function LoginClient() {
+  const { nextPath, registered } = useLoginQuery();
+
   return (
     <AuthShell
       title="أهلاً بعودتك"
@@ -167,16 +191,8 @@ export default function LoginClient() {
         </p>
       )}
     >
-      <Suspense fallback={
-        <div className="surface-card space-y-4 p-6 animate-pulse">
-          <div className="h-11 w-full rounded-xl bg-[var(--color-surface-sunken)]" />
-          <div className="h-11 w-full rounded-xl bg-[var(--color-surface-sunken)]" />
-          <div className="h-12 w-full rounded-xl bg-[var(--color-surface-sunken)]" />
-        </div>
-      }>
-        <LoginForm />
-        <RegisteredNotice />
-      </Suspense>
+      <LoginForm nextPath={nextPath} />
+      <RegisteredNotice registered={registered} />
     </AuthShell>
   );
 }
