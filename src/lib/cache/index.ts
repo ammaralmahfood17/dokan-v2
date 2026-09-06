@@ -46,21 +46,59 @@ class VercelKVProvider implements CacheProvider {
   }
 }
 
+/**
+ * Upstash Redis provider (REST protocol). Loaded lazily so the package is
+ * only imported when actually configured (KV_URL set with Upstash REST URL).
+ */
+class UpstashRedisProvider implements CacheProvider {
+  private redisPromise: Promise<import('@upstash/redis').Redis> | null = null;
+
+  private async redis() {
+    if (!this.redisPromise) {
+      if (!process.env.KV_URL || !process.env.KV_REST_API_TOKEN) {
+        throw new Error('KV_REST_API_URL and KV_REST_API_TOKEN are required for the Upstash cache provider');
+      }
+      const { Redis } = await import('@upstash/redis');
+      this.redisPromise = Promise.resolve(Redis.fromEnv());
+    }
+    return this.redisPromise;
+  }
+
+  async hGetAll<T extends Record<string, unknown>>(key: string): Promise<T | null> {
+    const redis = await this.redis();
+    return redis.hgetall<T>(key);
+  }
+
+  async hSet(key: string, fields: Record<string, unknown>): Promise<void> {
+    const redis = await this.redis();
+    await redis.hset(key, fields);
+  }
+
+  async hIncrBy(key: string, field: string, by: number): Promise<number> {
+    const redis = await this.redis();
+    return redis.hincrby(key, field, by);
+  }
+
+  async expire(key: string, seconds: number): Promise<void> {
+    const redis = await this.redis();
+    await redis.expire(key, seconds);
+  }
+}
+
 let cacheProvider: CacheProvider | null = null;
 
 /**
  * Resolve the active cache provider.
- *  - CACHE_PROVIDER=upstash → UpstashRedisProvider (add class here when needed)
+ *  - CACHE_PROVIDER=upstash → UpstashRedisProvider (KV_URL = Upstash REST URL)
  *  - default → VercelKVProvider
  */
 export function getCacheProvider(): CacheProvider {
   if (!cacheProvider) {
     if (process.env.CACHE_PROVIDER === 'upstash') {
-      // TODO: add UpstashRedisProvider (same Redis commands — HGETALL/HSET/
-      // HINCRBY/EXPIRE) when migrating off Vercel. Swap = this line + env var.
-      throw new Error('CACHE_PROVIDER=upstash is not wired up yet');
+      cacheProvider = new UpstashRedisProvider();
+    } else {
+      cacheProvider = new VercelKVProvider();
     }
-    cacheProvider = new VercelKVProvider();
   }
   return cacheProvider;
 }

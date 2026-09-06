@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     // ── Load order + project + config ─────────────────────────────────────
     const [orderRes, projectRes, configRes, itemsRes] = await Promise.all([
       admin.from('orders').select('*').eq('id', body.orderId).eq('project_id', projectId).maybeSingle(),
-      admin.from('projects').select('id, currency, name').eq('id', projectId).single(),
+      admin.from('projects').select('id, currency, name, vat_rate').eq('id', projectId).single(),
       admin.from('zatca_config').select('*').eq('project_id', projectId).maybeSingle(),
       admin.from('order_items').select('*').eq('order_id', body.orderId),
     ]);
@@ -90,7 +90,11 @@ export async function POST(request: NextRequest) {
     // ── Construct the invoice (simplified for now: walk-in B2C only) ────
     // total_amount is numeric(10,3) in DB — convert to minor units (fils)
     const totalGrossMinor = Math.round(Number(od.total_amount) * 100);
-    const vatRateBps = 1500; // 15% Saudi standard rate; TODO: project config
+    // VAT rate comes from the project (projects.vat_rate, percent — e.g. 15
+    // for KSA, 10 for Bahrain). ZATCA invoices are Saudi-only (seller country
+    // is hardcoded SA below), so clamp to 15% for SAR projects.
+    const projectVatPct = Number(projectRes.data?.vat_rate ?? 15);
+    const vatRateBps = Math.round((isSar ? Math.min(Math.max(projectVatPct, 0), 15) : projectVatPct) * 100);
     const netTotalMinor = Math.round(totalGrossMinor / (1 + vatRateBps / 10_000));
     const vatTotalMinor = totalGrossMinor - netTotalMinor;
 
