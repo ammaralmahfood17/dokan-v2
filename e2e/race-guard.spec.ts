@@ -156,7 +156,7 @@ test('race guard: cancelled order cannot be revived via stale advance (H1)', asy
       'Content-Type': 'application/json',
       Cookie: `sb-${ref}-auth-token=${JSON.stringify(sess.session)}`,
     },
-    body: JSON.stringify({ orderId }),
+    body: JSON.stringify({ orderId, projectId }),
   });
   expect(cancelRes.status).toBe(200);
 

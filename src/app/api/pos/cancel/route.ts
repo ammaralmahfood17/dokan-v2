@@ -32,34 +32,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
     }
 
-    const body = (await request.json()) as { orderId?: string; projectId?: string };
-        const { orderId } = body;
+    const body = (await request.json()) as { orderId: string; projectId: string };
+        const { orderId, projectId } = body;
 
         if (typeof orderId !== 'string' || !/^[0-9a-f-]{36}$/i.test(orderId)) {
           return NextResponse.json({ error: 'بيانات غير صالحة' }, { status: 400 });
         }
-        if (body.projectId !== undefined && (typeof body.projectId !== 'string' || !/^[0-9a-f-]{36}$/i.test(body.projectId))) {
+        if (typeof projectId !== 'string' || !/^[0-9a-f-]{36}$/i.test(projectId)) {
           return NextResponse.json({ error: 'بيانات غير صالحة' }, { status: 400 });
         }
 
-    // DETERMINISTIC project resolution — same as /api/pos/order: bind to the
-    // client-supplied projectId when present so a multi-store staff member
-    // can't cancel an order in the wrong project; fall back to created_at ASC
-    // (getCurrentProject's order) for legacy callers.
-    // FALLBACK: If projectId is omitted, we default to the user's oldest project.
-    // This supports legacy POS clients; modern clients should always send projectId.
-    // TODO: Make projectId required in a future API version.
-    let membershipQuery = userClient
-      .from('staff_members')
-      .select('project_id')
-      .eq('user_id', user.id);
-    if (body.projectId) {
-      membershipQuery = membershipQuery.eq('project_id', body.projectId);
-    }
-    const { data: membership } = await membershipQuery
-      .order('created_at', { ascending: true })
-      .limit(1)
-      .maybeSingle();
+    // DETERMINISTIC project resolution — bind to the client-supplied projectId
+        // so a multi-store staff member can't cancel an order in the wrong project.
+        const { data: membership } = await userClient
+          .from('staff_members')
+          .select('project_id')
+          .eq('user_id', user.id)
+          .eq('project_id', projectId)
+          .single();
 
     if (!membership) {
       return NextResponse.json({ error: 'لا يوجد مشروع' }, { status: 403 });

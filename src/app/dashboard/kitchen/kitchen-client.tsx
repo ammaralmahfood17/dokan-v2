@@ -637,8 +637,8 @@ export function KitchenClient({
               ticket={t}
               now={now}
               currency={currency}
-              onStart={() => advanceOrder(t.order.id, 'preparing', 'preparing')}
-              onReady={() => advanceOrder(t.order.id, 'ready', 'ready')}
+              onStart={() => advanceOrder(t.order.id, 'pending', 'preparing')}
+              onReady={() => advanceOrder(t.order.id, 'preparing', 'ready')}
               onDeliver={() => deliverOrder(t.order.id)}
               onCancel={() => setCancelTarget({ id: t.order.id, number: t.order.order_number })}
             />

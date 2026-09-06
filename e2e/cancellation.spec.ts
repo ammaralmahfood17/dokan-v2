@@ -50,7 +50,7 @@ async function cancelOrder(orderId: string): Promise<{ status: number; body: unk
   const res = await fetch(`https://dokanstore.xyz/api/pos/cancel`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...(authCookieHeader ? { Cookie: authCookieHeader } : {}) },
-    body: JSON.stringify({ orderId }),
+    body: JSON.stringify({ orderId, projectId }),
   });
   return { status: res.status, body: await res.json() };
 }
