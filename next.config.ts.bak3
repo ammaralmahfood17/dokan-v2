@@ -24,20 +24,20 @@ const securityHeaders = [
   // F1: Content-Security-Policy (nonce-based, task 1.1 — Sep 6 2026 audit).
   // History: the original static CSP blocked Next.js 16 App Router's inline
   // RSC payload scripts → hydration died site-wide; phase-0 restored it with
-  // a blunt. Now: middleware (src/proxy.ts) generates a
+  // a blunt 'unsafe-inline'. Now: middleware (src/proxy.ts) generates a
   // per-request nonce, sets the CSP header with it, and the root layout
   // forwards the nonce to Next via the `nonce` prop on <html> so Next stamps
   // its own bootstrap/RSC scripts with it. script-src therefore needs NO
-  // in production. Dev keeps 'unsafe-eval' for Fast Refresh.
-  // style-src keeps (Next + fonts inject inline <style>).
+  // 'unsafe-inline' in production. Dev keeps 'unsafe-eval' for Fast Refresh.
+  // style-src keeps 'unsafe-inline' (Next + fonts inject inline <style>).
   // NOTE: the static header here is a FALLBACK for requests that bypass the
   // proxy matcher; the middleware's nonce header takes precedence when set.
   {
     key: 'Content-Security-Policy',
     value: [
       "default-src 'self'",
-      `script-src 'self'${isDevelopment ? " 'unsafe-eval'" : ''} https://*.sentry.io`,
-      "style-src 'self' https://fonts.googleapis.com",
+      `script-src 'self' 'unsafe-inline'${isDevelopment ? " 'unsafe-eval'" : ''} https://*.sentry.io`,
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "img-src 'self' blob: data: https://*.supabase.co",
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://sentry.io https://*.ingest.sentry.io",
       "font-src 'self' https://fonts.gstatic.com",

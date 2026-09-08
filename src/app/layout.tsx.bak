@@ -5,7 +5,6 @@ import { ServiceWorkerRegister } from '@/components/service-worker-register';
 import { WebVitals } from '@/components/web-vitals';
 // D15: install-to-homescreen prompt (beforeinstallprompt on Android/Chrome).
 import { InstallPrompt } from '@/components/ui/install-prompt';
-import { headers } from 'next/headers';
 import './globals.css';
 
 // "دكان" — Editorial identity v2.0
@@ -85,22 +84,16 @@ export const viewport: Viewport = {
   themeColor: '#0F5E56',
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // Get nonce from header set by middleware
-  const nonceHeader = await headers();
-  const nonce = nonceHeader.get('X-Nonce') ?? '';
-
   return (
     <html
       lang="ar"
       dir="rtl"
       suppressHydrationWarning
-      // Pass the nonce to the html tag so Next.js can use it for inline scripts
-      nonce={nonce}
       className={`${ibmPlexSansArabic.variable} ${notoKufi.variable}`}
     >
       <head>
