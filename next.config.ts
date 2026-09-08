@@ -22,17 +22,19 @@ const securityHeaders = [
     value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
   },
   // F1: Content-Security-Policy. Fast Refresh needs 'unsafe-eval' in dev;
-  // production omits it. Next.js RSC hydration does not require unsafe-inline
-  // for scripts; style-src remains inline-compatible for Next/Google Fonts.
-  // injected as <script> without body content (no inline execution), and the
-  // only inline <script> we ship (dark-flash blocker) moved into the static
-  // layout via an external bundle since v16.2. 'unsafe-inline' remains on
-  // style-src because Next + Google Fonts inject inline <style> tags.
+  // production omits it. Phase-0 hotfix (Sep 6 2026 audit): Next.js 16 App
+  // Router injects its RSC payload as inline <script> tags — without
+  // 'unsafe-inline' they are CSP-blocked, hydration never runs, and every
+  // interactive component on the site is dead (verified: 14 CSP violations,
+  // no React fiber, submit handlers never fire). 'unsafe-inline' is the
+  // interim fix; the proper nonce-based CSP lands in task 1.1.
+  // style-src keeps 'unsafe-inline' because Next + Google Fonts inject
+  // inline <style> tags.
   {
     key: 'Content-Security-Policy',
     value: [
       "default-src 'self'",
-      `script-src 'self'${isDevelopment ? " 'unsafe-eval'" : ''} https://*.sentry.io`,
+      `script-src 'self' 'unsafe-inline'${isDevelopment ? " 'unsafe-eval'" : ''} https://*.sentry.io`,
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "img-src 'self' blob: data: https://*.supabase.co",
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://sentry.io https://*.ingest.sentry.io",
