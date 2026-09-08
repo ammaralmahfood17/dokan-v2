@@ -46,7 +46,7 @@ function generateNonce(): string {
   crypto.getRandomValues(array);
   // Convert to base64url
   let base64 = btoa(String.fromCharCode(...array));
-  // Remove padding and replace +/ with -_
+  // Replace + and /, and remove padding
   base64 = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
   return base64;
 }
@@ -66,7 +66,5 @@ export const config = {
     // handlers remain the final authorization boundary and must verify the
     // user, project membership, and role themselves.
     '/api/pos/:path*',
-    // Add a catch-all to run middleware on all paths (for CSP nonce)
-    '/:path*',
   ],
 };
