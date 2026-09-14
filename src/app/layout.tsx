@@ -128,7 +128,7 @@ export default async function RootLayout({
         >
           تخطي إلى المحتوى
         </a>
-        <div id="main-content">
+        <div id="main-content" tabIndex={-1}>
           {children}
         </div>
         <Toaster position="top-center" richColors dir="rtl" />

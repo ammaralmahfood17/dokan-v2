@@ -47,7 +47,7 @@ export default function LandingPage() {
       </header>
 
       <main>
-        <section className="landing-hero mx-auto max-w-7xl px-5 py-16 lg:px-8 lg:py-24">
+        <section className="landing-hero mx-auto max-w-7xl min-h-[calc(100dvh-64px)] flex flex-col lg:flex-row items-center justify-center px-5 py-16 lg:px-8 lg:py-24">
           <div className="landing-hero-copy">
             <div className="eyebrow"><Sparkles className="h-3.5 w-3.5" /> مساحة عمل أهدأ للمطاعم</div>
             <h1 className="landing-title mt-6 font-extrabold text-[var(--color-ink)]">
@@ -66,9 +66,9 @@ export default function LandingPage() {
               <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[var(--color-primary)]" /> يعمل على الجوال</span>
             </div>
           </div>
-          <div className="landing-visual" aria-label="معاينة لوحة تشغيل دكان">
+          <div className="landing-visual" aria-label="معاينة لوحة تشغيل دكان"><div className="relative overflow-hidden max-h-[640px]">
             <div className="landing-window">
-              <div className="landing-window-bar"><span className="font-semibold text-white/85">نظرة اليوم</span><span>الثلاثاء، ٥ سبتمبر</span></div>
+              <div className="landing-window-bar"><span className="font-semibold text-white/85">نظرة اليوم</span><span>الثلاثاء، ٥ سبتمبر</span></div><div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[var(--color-bg)] to-transparent" /></div>
               <div className="landing-window-grid">
                 <div className="landing-window-panel tall"><div className="flex items-center justify-between text-xs text-white/65"><span>مبيعات اليوم</span><span className="rounded-full bg-white/10 px-2 py-1 text-[var(--color-gold)]">+١٨٪</span></div><div className="mt-3 text-3xl font-extrabold">١,٢٨٤ <span className="text-sm font-normal text-white/55">د.ب</span></div><div className="mt-7 flex h-24 items-end gap-2">{[32,48,42,70,58,84,64,94,72,100,80,90].map((height, i) => <span key={i} className="flex-1 rounded-t-md bg-white/15" style={{ height: `${height}%`, opacity: i === 9 ? 1 : .6, background: i === 9 ? 'var(--color-gold)' : undefined }} />)}</div></div>
                 <div className="landing-window-panel tall"><div className="text-xs text-white/65">طلبات قيد التنفيذ</div><div className="mt-3 text-3xl font-extrabold">١٢</div><div className="mt-6 space-y-3">{['طاولة ٠٤', 'طاولة ٠٨', 'طلب سفري'].map((label, i) => <div key={label} className="flex items-center justify-between text-xs"><span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ background: i === 0 ? 'var(--color-gold)' : '#80c9ad' }} />{label}</span><span className="text-white/45">{i + 2} أصناف</span></div>)}</div></div>

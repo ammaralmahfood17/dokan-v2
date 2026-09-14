@@ -1,0 +1,82 @@
+{
+  "name": "دكان",
+  "short_name": "دكان",
+  "description": "منصة سحابية لإدارة المطاعم والمقاهي في الخليج",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fff",
+  "theme_color": "#0F5E56",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/icon-72.png",
+      "sizes": "72x72",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-96.png",
+      "sizes": "96x96",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-128.png",
+      "sizes": "128x128",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-144.png",
+      "sizes": "144x144",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-152.png",
+      "sizes": "152x152",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-384.png",
+      "sizes": "384x384",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "طلبات اليوم",
+      "short_name": "طلبات اليوم",
+      "description": "عرض طلبات اليوم الحالية",
+      "url": "/dashboard/orders",
+      "icons": [{ "src": "/icons/shortcuts/orders.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "شاشة المطبخ",
+      "short_name": "المطبخ",
+      "description": "عرض شاشة المطبخ للتحضير",
+      "url": "/dashboard/kitchen",
+      "icons": [{ "src": "/icons/shortcuts/kitchen.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "نقطة البيع",
+      "short_name": "نقطة البيع",
+      "description": "فتح شاشة نقطة البيع للطلبات الجديدة",
+      "url": "/dashboard/pos",
+      "icons": [{ "src": "/icons/shortcuts/pos.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "إضافة منتج",
+      "short_name": "إضافة منتج",
+      "description": "إضافة منتج جديد إلى المنيو",
+      "url": "/dashboard/products?new=1",
+      "icons": [{ "src": "/icons/shortcuts/product.png", "sizes": "96x96" }]
+    }
+  ]
+}
