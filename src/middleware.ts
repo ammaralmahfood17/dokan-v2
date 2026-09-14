@@ -2,11 +2,11 @@ import { type NextRequest } from 'next/server';
 import { updateSession } from '@/lib/supabase/middleware';
 
 /**
- * Next.js 16 proxy (replaces middleware.ts).
+ * Next.js 16 middleware.
  * Refreshes auth session and guards /dashboard + /onboarding.
  * Also generates a nonce for CSP and sets the CSP header.
  */
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const response = await updateSession(request);
 
   // Generate nonce for CSP
@@ -34,6 +34,10 @@ export async function proxy(request: NextRequest) {
   response.headers.set('Content-Security-Policy', csp);
   // Also set a header so layout can read it (for passing nonce to <html>)
   response.headers.set('X-Nonce', nonce);
+  // Debug headers
+  response.headers.set('X-Middleware-Worked', 'true');
+  response.headers.set('X-Debug-Middleware', 'working');
+  response.headers.set('X-Hello', 'world');
 
   return response;
 }
