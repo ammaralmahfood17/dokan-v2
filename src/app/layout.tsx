@@ -5,6 +5,7 @@ import { ServiceWorkerRegister } from '@/components/service-worker-register';
 import { WebVitals } from '@/components/web-vitals';
 // D15: install-to-homescreen prompt (beforeinstallprompt on Android/Chrome).
 import { InstallPrompt } from '@/components/ui/install-prompt';
+import ThemeToggle from '@/components/theme-toggle';
 import { headers } from 'next/headers';
 import './globals.css';
 
@@ -59,7 +60,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'دكان — منصة إدارة المطاعم',
-    description: 'منصة سحابية لإدارة المطاعم والمقاهي في الخليج',
+    description: 'منصة سحابية لإدارة المطاعم والمقازي في الخليج',
     images: ['/og-image.jpg'],
   },
   icons: [
@@ -134,6 +135,8 @@ export default async function RootLayout({
         <ServiceWorkerRegister />
         <WebVitals />
         <InstallPrompt />
+        {/* Theme toggle (dark mode) */}
+        <ThemeToggle />
       </body>
     </html>
   );
