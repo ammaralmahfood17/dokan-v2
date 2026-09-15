@@ -9,7 +9,15 @@ import type { Category, Product, ProductAddon, Project, Table } from '@/lib/type
 // IMMEDIATELY, not up to 60s later (a cached page would keep serving a
 // deactivated store). Performance is preserved by unstable_cache on the menu
 // queries below (60s, project-tagged, purged on edit via /api/revalidate-menu).
-export const dynamicParams = true;
+//
+// Explicitly force-dynamic: the root layout reads headers() (for the CSP
+// nonce) on every request via middleware's catch-all matcher, so this route
+// is already dynamic app-wide. The previous generateStaticParams=[] +
+// dynamicParams=true combo was trying to opt this page into on-demand
+// static generation, which conflicts with that forced-dynamic parent and
+// intermittently threw DYNAMIC_SERVER_USAGE in production. Being explicit
+// removes the conflict; the 60s cache above still does the real caching.
+export const dynamic = 'force-dynamic';
 
 // M5: on-demand invalidation. Product/category edits call
 // /api/revalidate-menu, which revalidateTag()s `menu-${projectId}`. The menu
@@ -43,14 +51,6 @@ async function getMenuData(projectId: string, tableId: string) {
     ['menu-data', projectId, tableId],
     { revalidate: 60, tags: [`menu-${projectId}`] }
   )();
-}
-
-// Enable ISR for any slug combination: without generateStaticParams, async
-// `params` force dynamic rendering (cache-control: no-store) regardless of
-// revalidate. An empty list + dynamicParams=true opts into on-demand
-// static generation: first visit builds the page, then it's cached & revalidated.
-export async function generateStaticParams() {
-  return [];
 }
 
 export default async function PublicMenuPage({
