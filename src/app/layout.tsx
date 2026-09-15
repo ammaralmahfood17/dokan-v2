@@ -105,6 +105,15 @@ export default async function RootLayout({
       className={`${ibmPlexSansArabic.variable} ${notoKufi.variable}`}
     >
       <head>
+        {/* Blocking script: apply saved dark-mode class before first paint
+            to eliminate the light->dark FOUC flash. nonce required by CSP. */}
+        <script
+          nonce={nonce}
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{if(localStorage.getItem('dark-mode')==='true'){document.documentElement.classList.add('dark')}}catch(e){}",
+          }}
+        />
         {/* Supabase: early connect */}
         {supabaseUrl && (
           <>

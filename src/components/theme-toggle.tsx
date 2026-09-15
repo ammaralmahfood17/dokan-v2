@@ -3,31 +3,24 @@
 import { useEffect, useState } from 'react';
 import { Moon, Sun } from 'lucide-react';
 
+function getInitialDarkMode() {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem('dark-mode') === 'true';
+}
+
 export default function ThemeToggle() {
-  const [darkMode, setDarkMode] = useState(false);
+  // Lazy initializer reads localStorage synchronously on first render —
+  // avoids the setState-in-effect cascading render (and the FOUC that caused).
+  const [darkMode, setDarkMode] = useState(getInitialDarkMode);
 
   useEffect(() => {
-    const saved = localStorage.getItem('dark-mode');
-    if (saved !== null) {
-      setDarkMode(saved === 'true');
-    }
-    // Apply the class to the html element
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    document.documentElement.classList.toggle('dark', darkMode);
   }, [darkMode]);
 
   const toggle = () => {
     const newMode = !darkMode;
     setDarkMode(newMode);
     localStorage.setItem('dark-mode', String(newMode));
-    if (newMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
   };
 
   return (

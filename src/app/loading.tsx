@@ -87,7 +87,7 @@ export default function Loading() {
                     <div key={idx}>
                       <div className="landing-window-line" style={{ width: `${width}%` }} />
                       <div className="mt-2 text-[10px] text-white/55">{['برجر دكان', 'لاتيه زعفران', 'تشيز كيك'][idx]}</div>
-                    >
+                    </div>
                   ))}
                 </div>
               </div>
