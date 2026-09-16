@@ -34,10 +34,6 @@ export async function middleware(request: NextRequest) {
   response.headers.set('Content-Security-Policy', csp);
   // Also set a header so layout can read it (for passing nonce to <html>)
   response.headers.set('X-Nonce', nonce);
-  // Debug headers
-  response.headers.set('X-Middleware-Worked', 'true');
-  response.headers.set('X-Debug-Middleware', 'working');
-  response.headers.set('X-Hello', 'world');
 
   return response;
 }
