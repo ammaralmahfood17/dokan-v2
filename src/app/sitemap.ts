@@ -1,14 +1,16 @@
 import type { MetadataRoute } from 'next';
-import { createClient } from '@/lib/supabase/server';
+import { createAnonClient } from '@/lib/supabase/anon';
 
 /**
  * Dynamic sitemap generation for Dokan v2.
  * Fetches all active tables (with their project slug) so every real public
  * menu URL is indexed — '/' is not a valid tableSlug, so we never guess.
  *
- * Uses the regular server client because the public menu tables expose only
- * public columns through RLS; sitemap generation must never require the
- * service-role secret during a build.
+ * Uses the anon, session-less client (not the cookie-aware server client):
+ * sitemap.ts is crawled with no user session, and the cookie-aware client's
+ * cookies() call was the cause of the intermittent Gateway Timeout in
+ * production — this route needs zero auth context, only the public rows
+ * RLS already exposes to `anon`.
  *
  * Privacy trade-off, deliberate: menu URLs `<projectSlug>/menu/<tableSlug>`
  * are the product pages diners need. The per-table lastModified was dropped
@@ -18,7 +20,7 @@ import { createClient } from '@/lib/supabase/server';
  * remove the table loop entirely.
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const supabase = await createClient();
+  const supabase = createAnonClient();
 
   const { data: tables, error } = await supabase
     .from('tables')
