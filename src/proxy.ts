@@ -6,7 +6,7 @@ import { updateSession } from '@/lib/supabase/middleware';
  * Refreshes auth session and guards /dashboard + /onboarding.
  * Also generates a nonce for CSP and sets the CSP header.
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const response = await updateSession(request);
 
   // Generate nonce for CSP
